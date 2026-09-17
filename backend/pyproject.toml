@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "financirdus-backend"
+version = "1.0.0"
+description = "FinanciRDUS backend: FastAPI + SQLAlchemy + Alembic"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.29",
+    "sqlalchemy>=2.0.30",
+    "alembic>=1.13",
+    "psycopg[binary]>=3.1",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",
+    # Starlette 1.6+ usa httpx2 en TestClient; httpx queda para que la suite siga
+    # funcionando si algún día la resolución trae un Starlette anterior.
+    "httpx2>=2",
+    "httpx>=0.28",
+    "ruff>=0.4",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["app/tests"]
+markers = [
+    "postgres: integration test that requires a running PostgreSQL (set TEST_DATABASE_URL)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+# B008: FastAPI's dependency injection uses `Depends()` in argument defaults,
+# which is the documented, idiomatic pattern (ruff false positive).
+ignore = ["B008"]
+
+[tool.ruff.lint.per-file-ignores]
+"alembic/versions/*.py" = ["E501"]

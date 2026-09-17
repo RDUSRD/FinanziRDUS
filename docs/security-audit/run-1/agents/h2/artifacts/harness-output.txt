@@ -1,0 +1,8 @@
+valid_date_str('2026-09-04')=True   date.fromisoformat -> OK
+valid_date_str('2026-02-29')=False  date.fromisoformat -> ValueError: day is out of range for month
+valid_date_str('2024-02-29')=True   date.fromisoformat -> OK
+valid_date_str('0000-01-01')=True   date.fromisoformat -> ValueError: year 0 is out of range   <<< MISMATCH (validator accepts, sink raises)
+valid_date_str('0001-01-01')=True   date.fromisoformat -> OK
+valid_date_str('9999-12-31')=True   date.fromisoformat -> OK
+category_types.get([1]) -> TypeError: unhashable type: 'list'  <<< unhandled in _validate_payload
+category_types.get({'a': 1}) -> TypeError: unhashable type: 'dict'  <<< unhandled in _validate_payload

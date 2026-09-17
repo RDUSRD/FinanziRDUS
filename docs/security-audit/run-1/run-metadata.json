@@ -1,0 +1,68 @@
+{
+  "run_id": "financirdus-run-1",
+  "repo": "FinanciRDUS",
+  "target": "/home/rdus/code/FinanciRDUS",
+  "source_ref": "no-vcs:sha256:94b60186c77cb1b03b3c950c6d7e200a7b70e840afc5e22e898a2b98afa1cf34",
+  "source_ref_note": "The target directory is not a git repository (git rev-parse fails). No commit hash exists; the ref above is a sha256 over the reviewed backend/frontend/deploy source files. There is no worktree dirtiness signal to report.",
+  "profile": "standard",
+  "scope_paths": [
+    "backend/app",
+    "backend/alembic",
+    "backend/Dockerfile",
+    "backend/scripts/entrypoint.sh",
+    "backend/pyproject.toml",
+    "frontend/src",
+    "frontend/nginx.conf",
+    "frontend/Dockerfile",
+    "frontend/index.html",
+    "docker-compose.yml",
+    "legacy/index.html"
+  ],
+  "out_of_scope_paths": [
+    "frontend/node_modules",
+    "backend/.ruff_cache",
+    "backend/.pytest_cache",
+    "backend/**/__pycache__"
+  ],
+  "budget": 16,
+  "execution_policy": "sandboxed-source-and-local-only",
+  "sandbox": {
+    "available": true,
+    "mechanism": "bwrap (bubblewrap) + unshare",
+    "verified": "unshare -rn succeeds; bwrap present",
+    "limits": "no external network, empty allowlisted environment, read-only target, scratch-only writes, rlimit + wall-clock cap",
+    "backend_runtime_deps_present": false,
+    "backend_runtime_deps_note": "fastapi/starlette/sqlalchemy/pydantic are NOT installed locally and network installs are prohibited, so the full ASGI app cannot be executed. app/domain.py is pure-stdlib and can be exercised by a minimal harness."
+  },
+  "output_dir_note": "User explicitly selected an in-repo directory (docs/security-audit/). The target is not under version control, so there is no .gitignore rule excluding this directory; the usual 'must be VCS-ignored' requirement is therefore vacuous rather than satisfied.",
+  "prior_runs": [],
+  "prior_runs_note": "No compatible prior coverage-ledger.json or findings.json exists. This run seeds prior_status='none' for every unit and makes no carried-record claim.",
+  "selected_companion_files": [
+    "WEB-PROTOCOL-AND-AUTH.md",
+    "CLIENT-SIDE.md",
+    "CLOUD-AND-DEPLOYMENT.md",
+    "DATA-ISOLATION-AND-LIFECYCLE.md",
+    "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md",
+    "SUPPLY-CHAIN-AND-RELEASE.md"
+  ],
+  "excluded_companion_files": [
+    {"file": "MEMORY-SAFETY-AND-BINARY.md", "reason": "No native/binary/kernel/FFI target; stack is Python + TypeScript."},
+    {"file": "AI-AND-LLM.md", "reason": "No model, prompt assembly, tool-calling, or agent surface."},
+    {"file": "PROTOCOLS-RPC-AND-MESSAGING.md", "reason": "No gRPC/GraphQL/queue/broker/streaming RPC; only plain HTTP/JSON."},
+    {"file": "DESKTOP-MOBILE-AND-LOCAL-IPC.md", "reason": "No native app, deep link, webview bridge, or local IPC."},
+    {"file": "RECONNAISSANCE.md", "reason": "Process document for phase 1, not an attack-class companion."},
+    {"file": "HUNTING.md", "reason": "Process document for phase 2, not an attack-class companion."},
+    {"file": "VALIDATION-AND-REPORTING.md", "reason": "Process document for phases 3-6, not an attack-class companion."},
+    {"file": "ATTACK-CLASSES.md", "reason": "Ordinary attack-class source; selected ordinary blocks are recorded per unit and excluded ordinary blocks are recorded per unit."}
+  ],
+  "shared_file_owners": {
+    "run-metadata.json": "parent",
+    "architecture.md": "parent",
+    "coverage-ledger.json": "parent",
+    "findings.json": "parent",
+    "REPORT.md": "parent",
+    "FINDINGS-DETAIL.md": "parent",
+    "NEEDS-VALIDATION.md": "parent"
+  },
+  "run_status": "complete"
+}

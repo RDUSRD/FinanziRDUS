@@ -1,0 +1,21 @@
+# --- Node / frontend ---
+node_modules/
+dist/
+*.log
+
+# --- Python / backend ---
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+
+# --- Entorno ---
+.env
+
+# --- Sistema ---
+.DS_Store
+Thumbs.db

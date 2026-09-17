@@ -1,0 +1,232 @@
+[
+  {
+    "verdict": "rejected",
+    "fingerprint": "backend/app/config.py:Settings.cors_origins:CORSMiddleware_wildcard_credentials",
+    "title": "Deployed CORS_ORIGINS value may be '*' while CORSMiddleware allows credentials, exposing the unauthenticated API to arbitrary web origins",
+    "description": "create_app sets CORSMiddleware(allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=['*'], allow_headers=['*']). cors_origins defaults to ['http://localhost:5173'] (repo and docker-compose default) and is parsed from the comma-separated CORS_ORIGINS env with no guard rejecting '*'. If an operator sets CORS_ORIGINS='*', Starlette sets allow_all_origins and emits Access-Control-Allow-Origin: * (with Allow-Credentials: true), letting any website read the unauthenticated API JSON cross-origin.",
+    "claimed_root_cause": "The origin allowlist is fully operator-configurable from an env var with no validation rejecting the wildcard '*'; combined with allow_credentials=True, a wildcard makes the API readable by arbitrary web origins.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/app/config.py",
+        "line": 33,
+        "scope": "Settings.cors_origins",
+        "description": "Default origin list is the explicit safe value ['http://localhost:5173']; no '*' is present in source."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/app/config.py",
+        "line": 37,
+        "scope": "Settings._parse_cors_origins",
+        "description": "Comma-split validator strips/keeps entries verbatim and never synthesizes or widens to a wildcard; a safe explicit value stays explicit."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/app/main.py",
+        "line": 40,
+        "scope": "create_app.CORSMiddleware",
+        "description": "allow_origins=settings.cors_origins is passed through with allow_credentials=True and allow_methods/allow_headers='*'."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/app/main.py",
+        "line": 39,
+        "scope": "create_app.CORSMiddleware",
+        "description": "Starlette can only echo a listed origin; a wildcard header is emitted only if the operator-supplied env value is literally '*'."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/app/config.py",
+        "line": 33,
+        "description": "cors_origins: Annotated[list[str], NoDecode] = ['http://localhost:5173'] - the sole in-source default is the explicit dev origin, not '*'."
+      },
+      {
+        "file": "backend/app/config.py",
+        "line": 37,
+        "description": "_parse_cors_origins splits on commas with no wildcard rejection, but also never emits '*' from any non-'*' input; the wildcard path is entirely operator-invented, not source-visible."
+      },
+      {
+        "file": "backend/app/main.py",
+        "line": 39,
+        "description": "CORSMiddleware is configured with allow_origins=settings.cors_origins, allow_credentials=True, allow_methods=['*'], allow_headers=['*']."
+      },
+      {
+        "file": "docker-compose.yml",
+        "line": 30,
+        "description": "CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173} - the shipped deployment default is the safe explicit origin."
+      },
+      {
+        "file": ".env.example",
+        "line": 24,
+        "description": "CORS_ORIGINS=http://localhost:5173 - the documented operator value is the safe explicit origin, with no wildcard."
+      },
+      {
+        "file": "tests/integration/api_smoke.py",
+        "line": 280,
+        "description": "Integration test asserts OPTIONS from http://localhost:5173 is allowed and that http://evil.example yields no Access-Control-Allow-Origin header."
+      },
+      {
+        "file": "README.md",
+        "line": 150,
+        "description": "'no hay cookies, ni analitica, ni tracking, ni fuentes o CDNs externos' and 'Esta app no tiene autenticacion' - no ambient credential exists for allow_credentials=True to protect."
+      },
+      {
+        "file": "frontend/nginx.conf",
+        "line": 30,
+        "description": "Production SPA talks to the API same-origin via nginx proxy_pass http://api:8000, so CORS is never exercised in the shipped deployment; only `pnpm dev` uses cross-origin requests."
+      }
+    ],
+    "reason": "Rejected: this is a conditional operator misconfiguration with no ambient credential to protect and no source-visible wildcard path. Every in-source, docker-compose and .env.example default for CORS_ORIGINS is the explicit safe origin http://localhost:5173, and the parse validator never produces '*'; the wildcard must be invented by an operator and appears nowhere in the repository. allow_credentials=True is inert because the app has no cookies, no Set-Cookie, no session and no HTTP auth (README states 'no hay cookies'), so there is no credentialed state for a browser to steal. Production traffic is same-origin through nginx (connect-src 'self', proxy_pass to the API), so CORS only applies to `pnpm dev`; the app is also unauthenticated by design, so any peer that can already reach the API reads the same JSON with or without CORS. Per the CLIENT-SIDE companion rule, a bare wildcard with credentials is rejected by browsers, so no reflected/allowed-origin data path is actually exploitable; and per WEB-PROTOCOL-AND-AUTH rule 1, deployed auth modes are outside the repo. The hypothesis is a non-source-visible environment guess, not a source-grounded defect."
+  },
+  {
+    "verdict": "rejected",
+    "fingerprint": "backend/app/routers/data.py:_apply_merge+export_data:unbounded_full_store_read",
+    "title": "Import (merge) and export perform unbounded work/memory proportional to the entire movements table with no aggregate cap",
+    "description": "Candidate asserts that although per-request bounds exist (5 MB body cap, 20,000 movements per import), there is no bound on the stored aggregate, so _apply_merge reads the whole movements table to build existing_signatures and export_data loads/serializes the complete store into one in-memory JSONResponse; a network peer reaching the unauthenticated API could grow the table with repeated <=5 MB imports and force O(total stored rows) work on the shared API worker and PostgreSQL.",
+    "claimed_root_cause": "Unbounded full-store read/materialization with no aggregate bound: _apply_merge reads the entire movements table to build existing_signatures, and export_data reads and serializes the entire store; only per-request limits exist (MAX_IMPORT_BYTES, MAX_IMPORT_MOVEMENTS), with no cap on total stored movements and no response-size bound.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/app/routers/data.py",
+        "line": 245,
+        "scope": "import_data",
+        "description": "POST /api/data/import handler; unauthenticated by design in a single-user app with no tenant dimension."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/app/routers/data.py",
+        "line": 30,
+        "scope": "_read_body_within_limit",
+        "description": "Per-request body is capped at MAX_IMPORT_BYTES (5 MB), enforced on both declared Content-Length (line 38) and the streamed byte count (line 45)."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/app/routers/data.py",
+        "line": 102,
+        "scope": "_validate_payload",
+        "description": "Per-request movement list is capped at MAX_IMPORT_MOVEMENTS (20,000) before any apply step runs."
+      },
+      {
+        "kind": "propagation",
+        "file": "backend/app/routers/data.py",
+        "line": 189,
+        "scope": "_apply_merge",
+        "description": "Reads the entire movements table into existing_signatures, so per-request cost is O(total stored rows)."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/app/routers/data.py",
+        "line": 55,
+        "scope": "export_data",
+        "description": "Reads all movements and serializes the full payload into one in-memory JSONResponse with no response-size cap."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/app/routers/data.py",
+        "line": 189,
+        "description": "_apply_merge builds existing_signatures from select(Movement).scalars().all(), a full-table read on every merge import."
+      },
+      {
+        "file": "backend/app/routers/data.py",
+        "line": 55,
+        "description": "export_data reads the whole movement table via .all()."
+      },
+      {
+        "file": "backend/app/routers/data.py",
+        "line": 78,
+        "description": "export returns a single JSONResponse containing the entire store; no response-size bound."
+      },
+      {
+        "file": "backend/app/routers/data.py",
+        "line": 25,
+        "description": "MAX_IMPORT_BYTES = 5 MB per-request body cap (source-visible bound)."
+      },
+      {
+        "file": "backend/app/routers/data.py",
+        "line": 26,
+        "description": "MAX_IMPORT_MOVEMENTS = 20,000 per-request item cap (source-visible bound)."
+      },
+      {
+        "file": "backend/app/models.py",
+        "line": 87,
+        "description": "Movement declares only per-row CHECK constraints (type, amount_cents > 0); no aggregate/size/uniqueness constraint exists."
+      }
+    ],
+    "reason": "Hardening note, not a source-grounded blocked-boundary hypothesis, so it fails the candidate gate. (1) No shared blast radius: the app is single-user, with no authentication and no tenant dimension by design, and README/docs/architecture state that any peer who can reach the API already holds full read/write/delete authority over all records. Extra resource consumption therefore crosses no boundary the design protects; the exhausted resources (API worker, PostgreSQL) are the single owner's own. (2) The per-request path is source-visibly bounded (MAX_IMPORT_BYTES at data.py:25/38/45, MAX_IMPORT_MOVEMENTS at data.py:26/102), so no single request is unbounded; the claimed aggregate effect only materializes under sustained repeated imports, and the Resource Exhaustion discipline explicitly discounts sustained volume and a missing rate limit ('A missing rate limit is not enough'; 'One bounded input with superlinear or persistent shared effect is materially different from sustained volume'). (3) export_data returning the whole store is intentional designed behavior per README ('el export si devuelve todo por diseno') and docs/api.md, not a boundary failure. (4) There is no other user, no cross-tenant scope, no paid quota and no operator-owned spend. The candidate's stated blockers describe how to measure magnitude (deployed memory limits, supervisor scope), not a plausible upstream bound that exists and is bypassed. Per Resource Exhaustion validation rule 1, missing limits without concrete shared impact are hardening; per rule 5, needs_validation/confirmed require a meaningful shared effect."
+  },
+  {
+    "verdict": "needs_validation",
+    "fingerprint": "deploy-backend-pyproject-dev-extra-httpx2-unpinned-unused-namespace",
+    "title": "Backend dev extra declares an unpinned, unused dependency named httpx2 (near-name to httpx) with no hash pinning",
+    "description": "backend/pyproject.toml [project.optional-dependencies].dev declares `httpx2>=2` with no upper bound and no hash. No source file imports httpx2 (repo-wide grep matches only backend/pyproject.toml line 25 / comment line 23, the generated backend/financirdus_backend.egg-info/requires.txt line 11, and the audit docs). The test suite uses fastapi.testclient (conftest.py line 8), whose client is built on the canonical `httpx`, also declared (pyproject line 26). The justification comment claiming `Starlette 1.6+ usa httpx2 en TestClient` does not match the real Starlette/httpx relationship. Backend dependency resolution is unpinned (open-ended '>=' ranges, no Python lockfile, no hashes), so whatever distribution occupies the `httpx2` name on the configured index at install time is selected and its build backend is executed by pip. The release image built by backend/Dockerfile (line 23, `pip install --no-cache-dir -e .`) does NOT install the dev extra, so the affected boundary is the developer/operator machine or disposable dev container that runs `pip install -e '.[dev]'` (Makefile test-backend target line 38; README 'Desarrollo sin Docker' line 99).",
+    "claimed_root_cause": "A dev-only dependency named `httpx2` is declared with an open-ended version range and no hash/lock pinning and is imported by no code, so its resolution target is unverified and its artifact identity is unbound; whoever controls the `httpx2` distribution name on the configured index can influence what code pip builds and executes on the installing (dev/CI) machine.",
+    "trace": [
+      {
+        "kind": "entrypoint",
+        "file": "backend/pyproject.toml",
+        "line": 25,
+        "scope": "[project.optional-dependencies].dev",
+        "description": "Declares 'httpx2>=2' with an open-ended lower bound, no upper bound and no hash, adjacent to comment lines 23-24 attributing it to a Starlette TestClient dependency."
+      },
+      {
+        "kind": "propagation",
+        "file": "Makefile",
+        "line": 38,
+        "scope": "test-backend target",
+        "description": "Runs `docker compose run --rm --no-deps api sh -c \"pip install -q -e '.[dev]' && python -m pytest -q -m 'not postgres'\"`, installing the dev extra (including httpx2) into a fresh environment on each invocation."
+      },
+      {
+        "kind": "propagation",
+        "file": "README.md",
+        "line": 99,
+        "scope": "Desarrollo sin Docker",
+        "description": "Documents `pip install -e \".[dev]\"` inside a local venv on the developer machine, the same resolution boundary."
+      },
+      {
+        "kind": "sink",
+        "file": "backend/financirdus_backend.egg-info/requires.txt",
+        "line": 11,
+        "scope": "[dev]",
+        "description": "Generated metadata records httpx2>=2, confirming the requirement reaches the resolver with no hash binding."
+      }
+    ],
+    "evidence": [
+      {
+        "file": "backend/pyproject.toml",
+        "line": 25,
+        "description": "`\"httpx2>=2\",` declared under the dev extra with no upper bound and no hash."
+      },
+      {
+        "file": "backend/pyproject.toml",
+        "line": 23,
+        "description": "Comment 'Starlette 1.6+ usa httpx2 en TestClient' attributes the dependency to Starlette, which does not match the real Starlette dependency (its TestClient is built on httpx)."
+      },
+      {
+        "file": "backend/app/tests/conftest.py",
+        "line": 8,
+        "description": "Imports `from fastapi.testclient import TestClient`; the suite exercises TestClient/httpx, not httpx2, so nothing imports the declared httpx2."
+      },
+      {
+        "file": "backend/financirdus_backend.egg-info/requires.txt",
+        "line": 11,
+        "description": "Generated metadata lists httpx2>=2 under [dev], confirming the requirement is propagated to the resolver."
+      },
+      {
+        "file": "backend/Dockerfile",
+        "line": 23,
+        "description": "`RUN pip install --no-cache-dir -e .` installs only the base dependencies; the dev extra (and thus httpx2) is absent from the release image."
+      }
+    ],
+    "blockers": [
+      "The state of the configured index for the name `httpx2` (existence, owner, artifact contents) is a hosted fact not observable offline, and network installs are prohibited in this environment.",
+      "No Python lockfile or hash pinning exists to bind the resolved artifact identity, so the artifact actually selected by the open-ended `httpx2>=2` range cannot be determined from repository source.",
+      "No CI workflow consumes the dev extra (no .github / .gitlab-ci.yml exists), so there is no hosted build or resolution observation to confirm the selected distribution."
+    ],
+    "validation_plan": {
+      "local": "In a network-isolated fixture with a captured index mirror, run a pip dry-run resolution of `pip install -e '.[dev]'` and record which distribution provides httpx2, its artifact URL and sha256 (or that no distribution exists).",
+      "deployment": "Owner inspects the pip cache/download directory for any prior resolution of httpx2 from `make test-backend` or `pip install -e '.[dev]'` and captures the resolved artifact and hash."
+    }
+  }
+]

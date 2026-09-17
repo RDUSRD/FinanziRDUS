@@ -1,0 +1,51 @@
+name: financirdus
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-financirdus}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-financirdus}
+      POSTGRES_DB: ${POSTGRES_DB:-financirdus}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    restart: unless-stopped
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-financirdus}:${POSTGRES_PASSWORD:-financirdus}@db:5432/${POSTGRES_DB:-financirdus}
+      APP_ENV: ${APP_ENV:-production}
+      APP_TZ: ${APP_TZ:-America/Argentina/Buenos_Aires}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # La API queda accesible SOLO desde la máquina host (http://localhost:8000/api/docs).
+      # El navegador entra por `web`, que proxea /api en el mismo origen.
+      # Para exponerla a la LAN, poné API_BIND=0.0.0.0 en tu .env (leé el README: no hay login).
+      - "${API_BIND:-127.0.0.1}:${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  web:
+    build:
+      context: ./frontend
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "${WEB_PORT:-8080}:8080"
+    restart: unless-stopped
+
+volumes:
+  pgdata:

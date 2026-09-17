@@ -1,0 +1,1215 @@
+[
+  {
+    "coverage_id": "backend%2FDockerfile%2Cfrontend%2FDockerfile%23build%20inputs::backend%2Fpyproject.toml%2Cfrontend%2Fpackage.json%2Cfrontend%2Fpnpm-lock.yaml::deploy::SUPPLY-CHAIN-AND-RELEASE.md%23Mutable%20and%20unbound%20build%20inputs",
+    "canonical_refs": {
+      "surface": "backend/Dockerfile,frontend/Dockerfile#build inputs",
+      "boundary": "backend/pyproject.toml,frontend/package.json,frontend/pnpm-lock.yaml",
+      "subsystem": "deploy",
+      "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs"
+    },
+    "surface": "backend/Dockerfile,frontend/Dockerfile#build inputs",
+    "boundary": "backend/pyproject.toml,frontend/package.json,frontend/pnpm-lock.yaml",
+    "subsystem": "deploy",
+    "attack_class": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+    "starting_paths": [
+      "backend/Dockerfile",
+      "frontend/Dockerfile",
+      "backend/pyproject.toml",
+      "frontend/package.json",
+      "frontend/pnpm-lock.yaml"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Obvious things",
+    "selected_companion_blocks": [
+      "SUPPLY-CHAIN-AND-RELEASE.md#Core discipline",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Build-context inclusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Dependency source and namespace confusion",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Universal moves",
+      "SUPPLY-CHAIN-AND-RELEASE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Untrusted code in a privileged workflow",
+        "reason": "No CI workflows exist in the repository."
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Plugin and extension trust expansion",
+        "reason": "No plugin/extension loading and no updater/signing surface exists."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "candidate",
+    "agent_id": "h4",
+    "reviewed_paths": [
+      "backend/.dockerignore",
+      "backend/Dockerfile",
+      "backend/pyproject.toml",
+      "frontend/.dockerignore",
+      "frontend/Dockerfile",
+      "frontend/package.json",
+      "frontend/pnpm-lock.yaml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h4",
+        "reviewed_paths": [
+          "backend/Dockerfile",
+          "frontend/Dockerfile",
+          "backend/pyproject.toml",
+          "frontend/package.json",
+          "frontend/pnpm-lock.yaml",
+          "backend/.dockerignore",
+          "frontend/.dockerignore"
+        ],
+        "invariant": "Every build input determining image/artifact content is bound to a reviewed immutable identity, or a lower-trust writer able to change it is named with the consuming trusted build.",
+        "method": "source",
+        "result": "Frontend resolution is bound: pnpm-lock.yaml carries sha512 integrity for every package and the Dockerfile runs `pnpm install --frozen-lockfile`. Backend resolution is NOT bound: pyproject.toml uses open-ended '>=' ranges with no lockfile/hashes, so backend/Dockerfile `pip install -e .` resolves fresh versions each build. Base images use mutable minor tags. The dev extra declares `httpx2>=2`, a name no source file imports and which no hash pins. frontend/.dockerignore has no `.env*` rule while the Dockerfile does `COPY . .`, but no .env* exists in frontend/ and the only consumed var (VITE_API_BASE) is non-secret.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [
+      "deploy-backend-pyproject-dev-extra-httpx2-unpinned-unused-namespace"
+    ],
+    "unresolved": [],
+    "hardening_notes": [
+      "Base images use mutable tags, not digests: python:3.12-slim, node:22-alpine, nginxinc/nginx-unprivileged:1.27-alpine.",
+      "Backend runtime dependencies use open-ended '>=' ranges with no Python lockfile or hash pinning; the built image is not reproducibility/integrity bound.",
+      "frontend/.dockerignore omits `.env*` while the Dockerfile does `COPY . .`; a developer-local frontend/.env would enter the build context and Vite would inline VITE_ values (non-secret today).",
+      "frontend/pnpm-workspace.yaml sets minimumReleaseAgeExclude without a matching minimumReleaseAge, so the intended pnpm release-cooldown is a no-op.",
+      "frontend/Dockerfile runs `npm install -g pnpm@11.10.0` from the public registry (version-pinned, not hash-pinned)."
+    ],
+    "final_decisions": [
+      {
+        "fingerprint": "deploy-backend-pyproject-dev-extra-httpx2-unpinned-unused-namespace",
+        "verdict": "needs_validation",
+        "note": "Source-grounded dependency-integrity hypothesis pending an offline/hosted resolution observation."
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Fconfig.py%23Settings%20%28env-driven%20runtime%20configuration%29::backend%2Fapp%2Fconfig.py%23Settings%2C_parse_cors_origins%2Ctz%2Ccurrent_month::backend::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/app/config.py#Settings (env-driven runtime configuration)",
+      "boundary": "backend/app/config.py#Settings,_parse_cors_origins,tz,current_month",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "backend/app/config.py#Settings (env-driven runtime configuration)",
+    "boundary": "backend/app/config.py#Settings,_parse_cors_origins,tz,current_month",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "backend/app/config.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "CLIENT-SIDE.md#DOM-based XSS",
+        "reason": "No browser sink in the settings module."
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 2,
+    "status": "covered",
+    "agent_id": "h5",
+    "reviewed_paths": [
+      "backend/app/config.py",
+      "backend/app/db.py",
+      "backend/app/main.py",
+      "backend/app/schemas.py",
+      "backend/scripts/entrypoint.sh",
+      "docker-compose.yml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/config.py",
+          "backend/app/main.py",
+          "backend/app/db.py",
+          "backend/app/schemas.py"
+        ],
+        "invariant": "Every env-derived setting has a safe fallback and invalid values fail at startup, not at request time.",
+        "method": "source",
+        "result": "database_url/cors_origins/seed_on_start/log_level have safe defaults; cors_origins only splits a comma list; log_level falls back to INFO. GAP: app_tz is materialized lazily in Settings.tz, so an invalid APP_TZ is accepted at boot then raises ZoneInfoNotFoundError on the first request that computes current_month()/serializes a datetime -> per-request 500. Operator-controlled, self-impact -> hardening.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/config.py",
+          "backend/scripts/entrypoint.sh",
+          "docker-compose.yml"
+        ],
+        "invariant": "A setting has a single effective source of truth and app_env changes the runtime posture where claimed.",
+        "method": "source",
+        "result": "Two inert fields: app_env is read nowhere (no production profile exists), and seed_on_start is never consumed; the effective seed gate is the entrypoint's literal string compare, so a truthy-but-not-lowercase value parses True in Settings yet silently does not seed.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "config.py: APP_TZ is only materialized lazily in Settings.tz; an invalid timezone is accepted at startup and then 500s every request that computes current_month() or serializes a datetime. Add a field validator so a bad timezone fails at boot.",
+      "config.py: app_env is read but never used; no production profile rejects a wildcard CORS_ORIGINS, disables /api/docs + /api/openapi.json, or forces SEED_ON_START off.",
+      "config.py: seed_on_start is dead config; the effective gate is entrypoint.sh's string compare, so 'True'/'1' parses truthy in Settings yet does not seed. Collapse to one source of truth."
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Fmain.py%23create_app%20%28CORSMiddleware%2C%20docs_url%2C%20openapi_url%29::backend%2Fapp%2Fmain.py%23CORSMiddleware%2Cbackend%2Fapp%2Fconfig.py%23Settings.cors_origins::backend::CLIENT-SIDE.md%23Credentialed%20CORS%20trust",
+    "canonical_refs": {
+      "surface": "backend/app/main.py#create_app (CORSMiddleware, docs_url, openapi_url)",
+      "boundary": "backend/app/main.py#CORSMiddleware,backend/app/config.py#Settings.cors_origins",
+      "subsystem": "backend",
+      "attack_class": "CLIENT-SIDE.md#Credentialed CORS trust"
+    },
+    "surface": "backend/app/main.py#create_app (CORSMiddleware, docs_url, openapi_url)",
+    "boundary": "backend/app/main.py#CORSMiddleware,backend/app/config.py#Settings.cors_origins",
+    "subsystem": "backend",
+    "attack_class": "CLIENT-SIDE.md#Credentialed CORS trust",
+    "starting_paths": [
+      "backend/app/main.py",
+      "backend/app/config.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#Credentialed CORS trust",
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#Response-header injection",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Ordinary CSRF",
+        "reason": "No cookies or ambient credentials exist, so browser session fixation/CSRF is structurally absent."
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Federated-identity attack classes",
+        "reason": "No JWT/OAuth/SAML/MFA/passkey/token surface exists."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h3",
+    "reviewed_paths": [
+      "backend/app/config.py",
+      "backend/app/main.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h3",
+        "reviewed_paths": [
+          "backend/app/main.py",
+          "backend/app/config.py"
+        ],
+        "invariant": "CORSMiddleware must not reflect or weakly match Origin while allowing credentials against sensitive responses.",
+        "method": "source",
+        "result": "cors_origins is an explicit list (default ['http://localhost:5173']) parsed from CORS_ORIGINS with no '*' and no allow_origin_regex, so Starlette can only echo a listed origin. No cookies/session/HTTP auth exist, so the credentialed path is inert by default. Failure requires an operator to set CORS_ORIGINS='*' (not source-visible).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "allow_credentials=True is set although the app writes no cookies and uses no HTTP auth; dropping it removes the credentialed-CORS anti-pattern entirely.",
+      "config.app_env is read but never used: no production profile rejects a wildcard CORS_ORIGINS, disables /api/docs and /api/openapi.json, or forces SEED_ON_START off.",
+      "/api/docs and /api/openapi.json are always served with no config toggle, exposing a full API map on the unauthenticated surface."
+    ],
+    "final_decisions": [
+      {
+        "fingerprint": "backend/app/config.py:Settings.cors_origins:CORSMiddleware_wildcard_credentials",
+        "verdict": "rejected",
+        "note": "Independently validated and refuted; retained in findings.json so future runs do not repeat the unsupported claim."
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2F__init__.py%23month_bounds%20%28month%20query%20on%20%2Fapi%2Fmovements%2C%2Fapi%2Fbudgets%2C%2Fapi%2Fstats%2F%2A%29::backend%2Fapp%2Fdomain.py%23parse_month%2Cshift_month%2Cvalid_date_str::backend::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/app/routers/__init__.py#month_bounds (month query on /api/movements,/api/budgets,/api/stats/*)",
+      "boundary": "backend/app/domain.py#parse_month,shift_month,valid_date_str",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "backend/app/routers/__init__.py#month_bounds (month query on /api/movements,/api/budgets,/api/stats/*)",
+    "boundary": "backend/app/domain.py#parse_month,shift_month,valid_date_str",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "backend/app/routers/__init__.py",
+      "backend/app/domain.py",
+      "backend/app/routers/stats.py",
+      "backend/app/routers/budgets.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "No authorization decision is made on the month/date path."
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "No SQL string construction: month/date values are bound parameters or Python-level filters."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h1",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/routers/__init__.py",
+      "backend/app/routers/movements.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/__init__.py",
+          "backend/app/domain.py"
+        ],
+        "invariant": "month_bounds rejects malformed month keys with 422 and produces a correct half-open range across ordinary year boundaries.",
+        "method": "source",
+        "result": "parse_month requires 4-digit year + zero-padded month 01..12; shift_month uses floor integer arithmetic (2024-01 -1 -> 2023-12). All routers pass the range to bound SQL predicates (date >= start, < end).",
+        "artifact": null
+      },
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/__init__.py",
+          "backend/app/domain.py",
+          "backend/app/routers/movements.py"
+        ],
+        "invariant": "No year value accepted by parse_month/shift_month/valid_date_str can make router date construction raise an uncaught ValueError.",
+        "method": "local",
+        "result": "Reproduced in an OS sandbox (bwrap, no net, empty env, ro target, scratch-only writes, rlimits): month_bounds('0000-01') and ('0000-12') raise uncaught ValueError('year 0 is out of range'); '9999-12' raises uncaught ValueError from the unguarded second parse_month('10000-01'); valid_date_str('0000-01-01') is True while date.fromisoformat raises. Each is HTTP 500 returned only to the requester (self-impact, no mutation) -> recorded as hardening, not a cross-boundary finding.",
+        "artifact": "agents/h1/artifacts/probe-output.txt"
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "backend/app/routers/__init__.py: a month key of 0000-01/0000-12 passes parse_month then date(0,1,1) raises an uncaught ValueError -> HTTP 500 (self-impact). Reject year 0000 in parse_month or move date() inside the guarded try. Regression: GET /api/movements?month=0000-01 must be 422.",
+      "backend/app/routers/__init__.py: '9999-12' makes shift_month emit a 5-digit year; the second parse_month is outside try/except and raises uncaught ValueError -> 500. Validate the shifted key inside the same guarded block.",
+      "backend/app/routers/movements.py: valid_date_str accepts year 0000 but the later date.fromisoformat raises uncaught ValueError -> 500 on POST/PATCH /api/movements. Require year >= 0001. Regression: POST with date '0000-01-01' must be 422.",
+      "Sibling divergence: movement CRUD rejects notes > 140 chars with 422 while /api/data/import silently truncates; both bounded and safe, but the two siblings should agree."
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2Fbudgets.py%23GET%2CPUT%2CDELETE%20%2Fapi%2Fbudgets::backend%2Fapp%2Frouters%2Fbudgets.py%23get_budgets%2Cput_budget%2Cdelete_budget%2Cbackend%2Fapp%2Fdomain.py%23validate_cap%2Cbudget_status::backend::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/app/routers/budgets.py#GET,PUT,DELETE /api/budgets",
+      "boundary": "backend/app/routers/budgets.py#get_budgets,put_budget,delete_budget,backend/app/domain.py#validate_cap,budget_status",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "backend/app/routers/budgets.py#GET,PUT,DELETE /api/budgets",
+    "boundary": "backend/app/routers/budgets.py#get_budgets,put_budget,delete_budget,backend/app/domain.py#validate_cap,budget_status",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "backend/app/routers/budgets.py",
+      "backend/app/domain.py",
+      "backend/app/schemas.py",
+      "backend/app/models.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Missing tenant or owner enforcement",
+        "reason": "Single-user store with no authentication by design; no tenant/owner dimension exists."
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "Budget reads/writes use bound parameters and primary-key lookups; no string SQL is constructed."
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 2,
+    "status": "covered",
+    "agent_id": "h5",
+    "reviewed_paths": [
+      "backend/app/db.py",
+      "backend/app/domain.py",
+      "backend/app/models.py",
+      "backend/app/routers/budgets.py",
+      "backend/app/routers/data.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/routers/budgets.py",
+          "backend/app/domain.py",
+          "backend/app/routers/data.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "Every budget write path enforces validate_cap and rejects non-gasto categories; no path bypasses the control.",
+        "method": "source",
+        "result": "Holds. put_budget calls validate_cap then gates category.type=='gasto' before upsert; the import path enforces equivalent bounds and never persists 0; delete_budget only removes. DB CHECK ck_budgets_cap_positive is the backstop.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/routers/budgets.py",
+          "backend/app/domain.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "get_budgets computes pct/status/totals without division-by-zero or integer overflow for any stored state.",
+        "method": "source",
+        "result": "Holds. pct guarded by cap>0; totals are Python ints; SUM(int4)->bigint in PostgreSQL; cap bounded to 2^31-1 at write; budget_status uses integer cross-multiplication.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/routers/budgets.py",
+          "backend/app/db.py"
+        ],
+        "invariant": "put_budget upsert is atomic under concurrent writes.",
+        "method": "source",
+        "result": "Does not hold: get-then-add with no ON CONFLICT; two concurrent first-PUTs both INSERT and one commit raises IntegrityError -> 500 for one requester. Single-user/single-container default means it is not realized -> hardening.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "budgets.py: put_budget is a non-atomic get-or-create upsert; two concurrent first-PUTs for the same category both observe None and one raises IntegrityError -> 500. Not realized under the single-instance default. Use ON CONFLICT DO UPDATE or catch IntegrityError."
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2Fdata.py%23GET%20%2Fapi%2Fdata%2Fexport::backend%2Fapp%2Frouters%2Fdata.py%23export_data::backend::ATTACK-CLASSES.md%23Feature%20abuse%20and%20data%20leakage",
+    "canonical_refs": {
+      "surface": "backend/app/routers/data.py#GET /api/data/export",
+      "boundary": "backend/app/routers/data.py#export_data",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Feature abuse and data leakage"
+    },
+    "surface": "backend/app/routers/data.py#GET /api/data/export",
+    "boundary": "backend/app/routers/data.py#export_data",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+    "starting_paths": [
+      "backend/app/routers/data.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Feature abuse and data leakage",
+    "selected_companion_blocks": [
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Core discipline",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Export and backup scope expansion",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Import and restore authority expansion",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Universal moves",
+      "DATA-ISOLATION-AND-LIFECYCLE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Soft-delete and tombstone bypass",
+        "reason": "Movements are hard-deleted (DELETE removes the row); there is no soft-delete or tombstone state to bypass."
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "Single-user store with no per-resource authorization; every caller has the same authority by design."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Service-worker cache and identity confusion",
+        "reason": "The app registers no service worker, so no cached export copy can outlive logout or account switch."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h2",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/models.py",
+      "backend/app/routers/data.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py"
+        ],
+        "invariant": "GET /api/data/export discloses only records the caller is authorized for (no cross-principal/tenant scope expansion).",
+        "method": "source",
+        "result": "No finding: single-tenant store with no per-resource authorization, so export cannot include another principal's data; the tenant-isolation class is structurally absent.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "Export excludes soft-deleted/draft/private content or pruned history above the caller's access.",
+        "method": "source",
+        "result": "No finding: Movement has no soft-delete/tombstone column; DELETE removes the row, and no draft/history/revision state exists.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py",
+          "backend/app/domain.py"
+        ],
+        "invariant": "Import/restore does not create records that bypass normal validation or overwrite state the caller cannot write.",
+        "method": "source",
+        "result": "No data-isolation finding: import validation matches the CRUD rules and the single owner has full write authority by design.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py"
+        ],
+        "invariant": "Export response size is bounded by the request.",
+        "method": "source",
+        "result": "Resource property (not data-leakage): export materializes the whole movements table and serializes it into one JSONResponse with no cap; same root cause as the import-merge read candidate, tracked there.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2Fdata.py%23POST%20%2Fapi%2Fdata%2Fimport::backend%2Fapp%2Frouters%2Fdata.py%23_read_body_within_limit%2C_validate_payload%2C_apply_merge%2C_apply_replace::backend::ATTACK-CLASSES.md%23Resource%20and%20file%20handling",
+    "canonical_refs": {
+      "surface": "backend/app/routers/data.py#POST /api/data/import",
+      "boundary": "backend/app/routers/data.py#_read_body_within_limit,_validate_payload,_apply_merge,_apply_replace",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Resource and file handling"
+    },
+    "surface": "backend/app/routers/data.py#POST /api/data/import",
+    "boundary": "backend/app/routers/data.py#_read_body_within_limit,_validate_payload,_apply_merge,_apply_replace",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Resource and file handling",
+    "starting_paths": [
+      "backend/app/routers/data.py",
+      "backend/app/domain.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Core discipline",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Decompression and representation amplification",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Unbounded buffering and cardinality",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Reachable fatal error or deadlock",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Universal moves",
+      "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Superlinear parsing, matching, or evaluation",
+        "reason": "json.loads over a <=5 MB byte-capped body is linear; deep nesting raises RecursionError and is caught and mapped to 422."
+      },
+      {
+        "block": "RESOURCE-EXHAUSTION-AND-AVAILABILITY.md#Pre-authentication work imbalance",
+        "reason": "The 5 MB byte cap is applied before any parsing, so expensive work cannot start before the size gate."
+      },
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Tenant and object-isolation attack classes",
+        "reason": "No multi-tenant records exist to scope per item; import targets the single owner's store."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h2",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/routers/data.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py"
+        ],
+        "invariant": "Declared Content-Length above 5 MB and any real streamed byte count above 5 MB are rejected with 413 before parsing.",
+        "method": "source",
+        "result": "Holds: data.py declared check (~line 38) and streamed accumulation check (~line 45) both raise 413; the integration smoke test asserts declared 11 MB -> 413.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py",
+          "backend/app/domain.py"
+        ],
+        "invariant": "The import payload is bounded per item (<=20000 movements; amount 1..MAX_CENTS; category must match category type).",
+        "method": "source",
+        "result": "Holds: the list cap and per-item checks are present; no path lets a value exceed PostgreSQL INTEGER range.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py",
+          "backend/app/domain.py"
+        ],
+        "invariant": "Every date string accepted by _validate_payload can be consumed by the apply step (valid_date_str agrees with date.fromisoformat).",
+        "method": "local",
+        "result": "FAILS at the boundary: valid_date_str('0000-01-01') is True but date.fromisoformat raises ValueError (year 0 out of range), so _apply_merge/_apply_replace raise and the handler re-raises an unhandled 500. Self-impact only -> hardening.",
+        "artifact": "agents/h2/artifacts/harness-output.txt"
+      },
+      {
+        "agent_id": "h2",
+        "reviewed_paths": [
+          "backend/app/routers/data.py"
+        ],
+        "invariant": "_validate_payload handles any JSON type for category_id without an unhandled exception.",
+        "method": "local",
+        "result": "FAILS: category_types.get(category_id) raises TypeError (unhashable) when category_id is a JSON array/object; _validate_payload runs outside the try block, so it propagates as an unhandled 500. Self-impact only -> hardening.",
+        "artifact": "agents/h2/artifacts/harness-output.txt"
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "Import apply/validate can raise unhandled 500s on validator/sink disagreement: date year 0000 (valid_date_str passes, fromisoformat raises) and non-string category_id (TypeError unhashable). Both self-impact only. Fix: reject year < 1 and non-string category_id with the documented 422.",
+      "_read_body_within_limit uses declared.isdigit() then int(declared); a value passing str.isdigit() without being an int literal would raise ValueError -> 500. Likely rejected by the ASGI server first; not defensive.",
+      "Import note handling coerces any JSON value with str() and truncates to 140, unlike CRUD which rejects invalid notes; imported notes can carry Python repr artifacts."
+    ],
+    "final_decisions": [
+      {
+        "fingerprint": "backend/app/routers/data.py:_apply_merge+export_data:unbounded_full_store_read",
+        "verdict": "rejected",
+        "note": "Independently validated and refuted; retained in findings.json so future runs do not repeat the unsupported claim."
+      }
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2Fmovements.py%23%2Fapi%2Fmovements%20%28GET%2CPOST%2CPATCH%2CDELETE%29::backend%2Fapp%2Fdomain.py%23validate_amount%2Cvalid_date_str%2Cvalidate_category_match::backend::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/app/routers/movements.py#/api/movements (GET,POST,PATCH,DELETE)",
+      "boundary": "backend/app/domain.py#validate_amount,valid_date_str,validate_category_match",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "backend/app/routers/movements.py#/api/movements (GET,POST,PATCH,DELETE)",
+    "boundary": "backend/app/domain.py#validate_amount,valid_date_str,validate_category_match",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "backend/app/routers/movements.py",
+      "backend/app/domain.py",
+      "backend/app/schemas.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Missing tenant or owner enforcement",
+        "reason": "No multi-tenant or access-controlled records: single-user store, so tenant-scope classes cannot apply."
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Access control",
+        "reason": "No state machine, approval flow or replayable business flow beyond CRUD."
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Cryptography and secrets",
+        "reason": "No cryptographic material, tokens or secrets in this unit."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h1",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/models.py",
+      "backend/app/routers/movements.py",
+      "backend/app/schemas.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/movements.py",
+          "backend/app/domain.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "amount_cents is a positive int within PostgreSQL INTEGER range on every movement write path.",
+        "method": "source",
+        "result": "create and update both call validate_amount (rejects bool/non-int/<=0/>MAX_CENTS); DB backstop is CheckConstraint amount_cents > 0. No write path bypasses it.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/movements.py",
+          "backend/app/domain.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "movement.type must equal the referenced category.type and unknown categories are rejected.",
+        "method": "source",
+        "result": "Both write paths call validate_category_match(type, category.type if category else None); missing category -> 'no existe', mismatch -> 'no corresponde'. Enforced application-side on every write path.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/movements.py",
+          "backend/app/schemas.py",
+          "backend/app/domain.py"
+        ],
+        "invariant": "PATCH validates the full resulting state (unset vs explicit null) and the date is a real calendar date; no state-machine/race/quantity bypass.",
+        "method": "source",
+        "result": "MovementUpdate uses model_dump(exclude_unset=True); explicitly-null fields are re-validated and rejected with 422, unspecified fields retain stored values. valid_date_str enforces calendar validity incl. leap years. No ownership/expiry/uniqueness state exists; concurrent PATCH is last-write-wins by design for a single-user app.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2Fmovements.py%23%2Fapi%2Fmovements%20%28GET%2CPOST%2CPATCH%2CDELETE%29::backend%2Fapp%2Fdomain.py%23validate_type%2Cvalidate_amount%2Cvalidate_date%2Cvalidate_note%2Cvalidate_category_match::backend::ATTACK-CLASSES.md%23Injection",
+    "canonical_refs": {
+      "surface": "backend/app/routers/movements.py#/api/movements (GET,POST,PATCH,DELETE)",
+      "boundary": "backend/app/domain.py#validate_type,validate_amount,validate_date,validate_note,validate_category_match",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Injection"
+    },
+    "surface": "backend/app/routers/movements.py#/api/movements (GET,POST,PATCH,DELETE)",
+    "boundary": "backend/app/domain.py#validate_type,validate_amount,validate_date,validate_note,validate_category_match",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Injection",
+    "starting_paths": [
+      "backend/app/routers/movements.py",
+      "backend/app/domain.py",
+      "backend/app/schemas.py",
+      "backend/app/models.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+        "reason": "No cookies, sessions, tokens or identity layer exists; nothing for CSRF/session/fixation to bind to."
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Request framing and desynchronization",
+        "reason": "Target speaks plain HTTP/JSON with no second parser, proxy hop or cache key to desynchronize; nginx is the only front end."
+      },
+      {
+        "block": "CLIENT-SIDE.md#DOM-based XSS",
+        "reason": "No client-side sink in this unit; that is unit backend+frontend/render."
+      },
+      {
+        "block": "SUPPLY-CHAIN-AND-RELEASE.md#Mutable and unbound build inputs",
+        "reason": "No dependency resolution or release handoff in this unit."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h1",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/models.py",
+      "backend/app/routers/movements.py",
+      "backend/app/schemas.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/movements.py",
+          "backend/app/domain.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "Untrusted movement fields reach no dangerous sink (SQL/shell/template/path/redirect/deserialization).",
+        "method": "source",
+        "result": "Every DB access uses SQLAlchemy bound parameters; only literal SQL is the static text('SELECT 1') in main.py health and static server_default/Index text() in models.py. No subprocess/os.system/eval/exec/pickle/HTML sink exists on the path.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h1",
+        "reviewed_paths": [
+          "backend/app/routers/movements.py",
+          "backend/app/domain.py",
+          "backend/app/schemas.py"
+        ],
+        "invariant": "Stored category_id/note/type are not re-used in a dangerous context by other backend code (second-order injection).",
+        "method": "source",
+        "result": "Movement rows are read back only into typed Pydantic schemas and integer stats arithmetic; note is a plain Text column never concatenated into SQL/HTML/shell/log/header strings. category_id is validated via bound lookup.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Frouters%2Fstats.py%23GET%20%2Fapi%2Fstats%2F%7Bsummary%2Cby-category%2Cmonthly%7D::backend%2Fapp%2Frouters%2Fstats.py%23summary%2Cby_category%2Cmonthly%2Cbackend%2Fapp%2Fdomain.py%23average_prev_months%2Ccategory_shares%2Cmonthly_totals%2Ccomparison%2Cmonth_key_of::backend::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/app/routers/stats.py#GET /api/stats/{summary,by-category,monthly}",
+      "boundary": "backend/app/routers/stats.py#summary,by_category,monthly,backend/app/domain.py#average_prev_months,category_shares,monthly_totals,comparison,month_key_of",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "backend/app/routers/stats.py#GET /api/stats/{summary,by-category,monthly}",
+    "boundary": "backend/app/routers/stats.py#summary,by_category,monthly,backend/app/domain.py#average_prev_months,category_shares,monthly_totals,comparison,month_key_of",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "backend/app/routers/stats.py",
+      "backend/app/domain.py",
+      "backend/app/schemas.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "DATA-ISOLATION-AND-LIFECYCLE.md#Missing tenant or owner enforcement",
+        "reason": "Single-user store; stats aggregate the one owner's records with no tenant scope."
+      },
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "Aggregations use bound parameters; month/end flow through month_bounds, not string SQL."
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 2,
+    "status": "covered",
+    "agent_id": "h5",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/routers/__init__.py",
+      "backend/app/routers/stats.py"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/routers/stats.py",
+          "backend/app/domain.py",
+          "backend/app/routers/__init__.py"
+        ],
+        "invariant": "summary/by-category/monthly aggregate the correct half-open month ranges and match the domain helpers.",
+        "method": "source",
+        "result": "Holds. summary window [prev_start,start) matches average_prev_months offsets 1..6; by-category groups gasto sums over [start,end) filtering total>0; monthly uses shift_month(end,-(months-1)) over [start,end_exclusive) matching monthly_totals.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/routers/stats.py",
+          "backend/app/domain.py"
+        ],
+        "invariant": "No input accepted for month/end/months makes a stats handler raise an uncaught exception beyond the already-recorded month_bounds year-0000 gap.",
+        "method": "source",
+        "result": "No distinct root cause. months bounded by Query(ge=1,le=24); end validated by month_bounds before shift_month -> 422; empty state yields total 0 / share 0.0 / 'na'. Year 0000 and '9999-12' 500 via the same month_bounds root cause already recorded -> not re-filed.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": []
+  },
+  {
+    "coverage_id": "backend%2Fapp%2Fseed.py%23python%20-m%20app.seed%20%2F%20SEED_ON_START::backend%2Fapp%2Fseed.py%23_seed%2Cbuild_movements::backend::ATTACK-CLASSES.md%23Business%20logic",
+    "canonical_refs": {
+      "surface": "backend/app/seed.py#python -m app.seed / SEED_ON_START",
+      "boundary": "backend/app/seed.py#_seed,build_movements",
+      "subsystem": "backend",
+      "attack_class": "ATTACK-CLASSES.md#Business logic"
+    },
+    "surface": "backend/app/seed.py#python -m app.seed / SEED_ON_START",
+    "boundary": "backend/app/seed.py#_seed,build_movements",
+    "subsystem": "backend",
+    "attack_class": "ATTACK-CLASSES.md#Business logic",
+    "starting_paths": [
+      "backend/app/seed.py"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [],
+    "excluded_blocks": [
+      {
+        "block": "CLIENT-SIDE.md#DOM-based XSS",
+        "reason": "No browser sink in a server-side CLI seed path."
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 2,
+    "status": "covered",
+    "agent_id": "h5",
+    "reviewed_paths": [
+      "backend/app/domain.py",
+      "backend/app/models.py",
+      "backend/app/seed.py",
+      "backend/scripts/entrypoint.sh",
+      "docker-compose.yml",
+      "docs/data-model.md"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/seed.py",
+          "docs/data-model.md",
+          "docker-compose.yml"
+        ],
+        "invariant": "Seeding is idempotent and never destroys or overwrites real data when not forced.",
+        "method": "source",
+        "result": "Does not hold for budgets (self-impact). _seed keys its guard only on the Movement count but also WRITES all 10 Budget.cap_cents; a DB with user budgets but zero movements will, on the next start with SEED_ON_START=true (compose default), re-inject the sample movements and reset every cap to sample values, contradicting docs/data-model.md rule 1.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/seed.py",
+          "backend/app/domain.py",
+          "backend/app/models.py"
+        ],
+        "invariant": "Seed-produced rows are valid under the same rules as CRUD/import.",
+        "method": "source",
+        "result": "Holds for current constants (amounts <= 35,000,000 < MAX_CENTS, day <= 24 valid in all months, types/categories valid), but build_movements/_seed bypass validate_* entirely and the tables have no upper-bound CHECK, so re-tuning the re-tunable sample constants could introduce out-of-range values.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/app/seed.py",
+          "backend/scripts/entrypoint.sh"
+        ],
+        "invariant": "Concurrent or mid-migration seeding cannot duplicate rows or run against a half-migrated schema.",
+        "method": "source",
+        "result": "Non-atomic count-then-insert with no advisory lock; two concurrent runs against an empty table could double-insert. The maintained compose deployment runs one api service and seeds only after alembic upgrade head -> not realized by default.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "seed.py: the idempotency guard keys only on the Movement count while _seed also resets Budget.cap_cents; a DB with user budgets but zero movements re-seeds and overwrites caps on the next start (SEED_ON_START defaults true in compose), contradicting docs/data-model.md rule 1. Gate on an explicit already-seeded marker or also check budgets.",
+      "seed.py: build_movements/_seed bypass validate_* and the tables have no upper-bound CHECK; current constants are in-range but are explicitly re-tunable (data-model.md rule 6) with no defensive validation.",
+      "seed.py + entrypoint.sh: seeding and alembic upgrade are non-atomic/unlocked at container start; not realized under the single-instance default, but a second replica or a manual `make seed` during startup could race. Consider a Postgres advisory lock if scaled."
+    ]
+  },
+  {
+    "coverage_id": "backend%2Fscripts%2Fentrypoint.sh%23container%20entrypoint%20%28db%20wait%20-%3E%20alembic%20upgrade%20head%20-%3E%20seed%20-%3E%20uvicorn%29::backend%2Fscripts%2Fentrypoint.sh%23alembic%20upgrade%20head%2Cpython%20-m%20app.seed%2Cbackend%2Falembic%2Fenv.py%23run_migrations_online%2Cbackend%2Falembic%2Fversions%2F0001_initial.py%23upgrade::deploy::CLOUD-AND-DEPLOYMENT.md%23Unexpected%20service%20or%20management-plane%20reachability",
+    "canonical_refs": {
+      "surface": "backend/scripts/entrypoint.sh#container entrypoint (db wait -> alembic upgrade head -> seed -> uvicorn)",
+      "boundary": "backend/scripts/entrypoint.sh#alembic upgrade head,python -m app.seed,backend/alembic/env.py#run_migrations_online,backend/alembic/versions/0001_initial.py#upgrade",
+      "subsystem": "deploy",
+      "attack_class": "CLOUD-AND-DEPLOYMENT.md#Unexpected service or management-plane reachability"
+    },
+    "surface": "backend/scripts/entrypoint.sh#container entrypoint (db wait -> alembic upgrade head -> seed -> uvicorn)",
+    "boundary": "backend/scripts/entrypoint.sh#alembic upgrade head,python -m app.seed,backend/alembic/env.py#run_migrations_online,backend/alembic/versions/0001_initial.py#upgrade",
+    "subsystem": "deploy",
+    "attack_class": "CLOUD-AND-DEPLOYMENT.md#Unexpected service or management-plane reachability",
+    "starting_paths": [
+      "backend/scripts/entrypoint.sh",
+      "backend/alembic/versions/0001_initial.py",
+      "backend/alembic/env.py",
+      "backend/alembic.ini",
+      "Makefile"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Business logic",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+      "CLOUD-AND-DEPLOYMENT.md#Unexpected service or management-plane reachability",
+      "CLOUD-AND-DEPLOYMENT.md#Security-control precedence drift",
+      "CLOUD-AND-DEPLOYMENT.md#Secret exposure across workload boundaries",
+      "CLOUD-AND-DEPLOYMENT.md#Universal moves",
+      "CLOUD-AND-DEPLOYMENT.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Workload identity and IAM attack classes",
+        "reason": "No cloud IAM, workload identity or instance-metadata service exists; Postgres is a local compose service."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Managed storage, events, and edge attack classes",
+        "reason": "No managed object storage, event source or edge runtime exists."
+      }
+    ],
+    "prior_status": "new",
+    "attempts": [],
+    "wave": 2,
+    "status": "covered",
+    "agent_id": "h5",
+    "reviewed_paths": [
+      "backend/Dockerfile",
+      "backend/alembic.ini",
+      "backend/alembic/env.py",
+      "backend/alembic/versions/0001_initial.py",
+      "backend/scripts/entrypoint.sh",
+      "docker-compose.yml"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/scripts/entrypoint.sh",
+          "backend/alembic/env.py",
+          "backend/alembic.ini",
+          "backend/Dockerfile"
+        ],
+        "invariant": "Startup is fail-closed: migrations run before serving, DB-unavailable/migration failure aborts startup, no secret reaches the logs.",
+        "method": "source",
+        "result": "Holds. set -euo pipefail; the wait loop exits 1 after DB_WAIT_TIMEOUT and omits both the exception and the URL; alembic upgrade head runs before uvicorn; uvicorn is exec'd last. alembic.ini leaves sqlalchemy.url empty and env.py resolves it at runtime with %-escaping, so no credentials live in the repo.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/alembic/versions/0001_initial.py",
+          "backend/alembic/env.py"
+        ],
+        "invariant": "Migration 0001 is re-runnable and its category data-seed is conflict-safe.",
+        "method": "source",
+        "result": "Holds. _seed_categories uses pg_insert(...).on_conflict_do_nothing on PostgreSQL with an existence-check fallback; upgrade builds the schema with CHECKs/FKs/indexes and downgrade drops in FK-safe order; a re-run does not duplicate categories.",
+        "artifact": null
+      },
+      {
+        "agent_id": "h5",
+        "reviewed_paths": [
+          "backend/scripts/entrypoint.sh",
+          "docker-compose.yml"
+        ],
+        "invariant": "The container start path exposes no management-plane/internal listener beyond the documented posture.",
+        "method": "source",
+        "result": "The entrypoint hardcodes uvicorn 0.0.0.0:8000; host reachability is governed solely by the compose mapping ${API_BIND:-127.0.0.1}. No admin/metrics/control-plane listener is started. Effective LAN reachability depends on the operator's .env and host firewall (not source-visible) - overlaps the compose-exposure unit.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "entrypoint.sh: uvicorn binds 0.0.0.0:8000 inside the container; host exposure relies solely on the compose mapping ${API_BIND:-127.0.0.1}. Documented posture; effective LAN reachability needs owner observation."
+    ]
+  },
+  {
+    "coverage_id": "docker-compose.yml%23web%2Fapi%2Fdb%20service%20exposure::docker-compose.yml%23ports%2Cenvironment::deploy::CLOUD-AND-DEPLOYMENT.md%23Unexpected%20service%20or%20management-plane%20reachability",
+    "canonical_refs": {
+      "surface": "docker-compose.yml#web/api/db service exposure",
+      "boundary": "docker-compose.yml#ports,environment",
+      "subsystem": "deploy",
+      "attack_class": "CLOUD-AND-DEPLOYMENT.md#Unexpected service or management-plane reachability"
+    },
+    "surface": "docker-compose.yml#web/api/db service exposure",
+    "boundary": "docker-compose.yml#ports,environment",
+    "subsystem": "deploy",
+    "attack_class": "CLOUD-AND-DEPLOYMENT.md#Unexpected service or management-plane reachability",
+    "starting_paths": [
+      "docker-compose.yml",
+      ".env.example",
+      "README.md",
+      "docs/architecture.md"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Access control",
+    "selected_companion_blocks": [
+      "CLOUD-AND-DEPLOYMENT.md#Core discipline",
+      "CLOUD-AND-DEPLOYMENT.md#Unexpected service or management-plane reachability",
+      "CLOUD-AND-DEPLOYMENT.md#Security-control precedence drift",
+      "CLOUD-AND-DEPLOYMENT.md#Secret exposure across workload boundaries",
+      "CLOUD-AND-DEPLOYMENT.md#Universal moves",
+      "CLOUD-AND-DEPLOYMENT.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Workload identity and IAM attack classes",
+        "reason": "No cloud IAM, workload identity, metadata service or Kubernetes object exists."
+      },
+      {
+        "block": "CLOUD-AND-DEPLOYMENT.md#Managed storage, events, and edge attack classes",
+        "reason": "No managed object storage, event source or edge runtime exists."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h4",
+    "reviewed_paths": [
+      ".env.example",
+      "README.md",
+      "docker-compose.yml",
+      "docs/architecture.md",
+      "frontend/nginx.conf"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h4",
+        "reviewed_paths": [
+          "docker-compose.yml",
+          ".env.example",
+          "README.md",
+          "docs/architecture.md",
+          "frontend/nginx.conf"
+        ],
+        "invariant": "A repository-controlled ingress/listener must not expose an admin/debug/metrics/control-plane/internal API beyond the documented exposure posture.",
+        "method": "source",
+        "result": "Established: db is unpublished; api publishes ${API_BIND:-127.0.0.1}:${API_PORT:-8000}:8000 (loopback default); web publishes ${WEB_PORT:-8080}:8080 with no host-IP restriction, and nginx proxies all of /api/ (including /api/docs and /api/openapi.json) to the unauthenticated API. This is the documented, deliberate posture (README and docs/architecture.md). No admin/metrics/control-plane surface exists beyond the by-design full-data API. Actual LAN reachability depends on the host firewall and the operator's real .env, which are not source-visible.",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "web is published as ${WEB_PORT:-8080}:8080 with no host-IP restriction, unlike api which honours API_BIND; consider a WEB_BIND control with a restricted default.",
+      "/api/docs and /api/openapi.json are reachable through the LAN-exposed web port with no toggle.",
+      "No container hardening on any service (no cap_drop, read_only rootfs, security_opt no-new-privileges, or userns remap)."
+    ]
+  },
+  {
+    "coverage_id": "frontend%2Fnginx.conf%23%2F%20and%20%2Fapi%2F%20and%20%2Fassets%2F%20locations::frontend%2Fnginx.conf%23add_header%2Clocation%20%2Fapi%2F::deploy::WEB-PROTOCOL-AND-AUTH.md%23Response-header%20injection",
+    "canonical_refs": {
+      "surface": "frontend/nginx.conf#/ and /api/ and /assets/ locations",
+      "boundary": "frontend/nginx.conf#add_header,location /api/",
+      "subsystem": "deploy",
+      "attack_class": "WEB-PROTOCOL-AND-AUTH.md#Response-header injection"
+    },
+    "surface": "frontend/nginx.conf#/ and /api/ and /assets/ locations",
+    "boundary": "frontend/nginx.conf#add_header,location /api/",
+    "subsystem": "deploy",
+    "attack_class": "WEB-PROTOCOL-AND-AUTH.md#Response-header injection",
+    "starting_paths": [
+      "frontend/nginx.conf",
+      "frontend/index.html"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Resource and file handling",
+    "selected_companion_blocks": [
+      "WEB-PROTOCOL-AND-AUTH.md#Core discipline",
+      "WEB-PROTOCOL-AND-AUTH.md#Response-header injection",
+      "WEB-PROTOCOL-AND-AUTH.md#Host and forwarded-header trust",
+      "WEB-PROTOCOL-AND-AUTH.md#Universal moves",
+      "WEB-PROTOCOL-AND-AUTH.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "ATTACK-CLASSES.md#Injection",
+        "reason": "nginx neither builds SQL nor renders HTML from input; it serves static files and proxies /api."
+      },
+      {
+        "block": "WEB-PROTOCOL-AND-AUTH.md#Web cache poisoning through unkeyed input",
+        "reason": "No upstream cache/CDN sits in front of nginx, and nginx does not cache proxied /api responses."
+      },
+      {
+        "block": "CLIENT-SIDE.md#Clickjacking",
+        "reason": "Frame protection is present (X-Frame-Options DENY plus CSP frame-ancestors none); no open UI-redress class."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h3",
+    "reviewed_paths": [
+      "backend/app/main.py",
+      "frontend/index.html",
+      "frontend/nginx.conf"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h3",
+        "reviewed_paths": [
+          "frontend/nginx.conf",
+          "frontend/index.html",
+          "backend/app/main.py"
+        ],
+        "invariant": "No response header is built from untrusted/request-controlled data with control characters or unsafe normalization.",
+        "method": "source",
+        "result": "All add_header directives use static literals with 'always'; none interpolates a variable. proxy_set_header writes request context to the upstream (never into a response header) and the API never reads Host/X-Forwarded-*. No directive emits Location from request data; the SPA fallback is an internal try_files. Location blocks define no add_header, so server-level security headers are inherited (asserted by the integration smoke test).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": [],
+    "hardening_notes": [
+      "nginx sets nosniff, Referrer-Policy, X-Frame-Options and CSP but not Strict-Transport-Security or Permissions-Policy; add them at the TLS terminator when exposing beyond localhost.",
+      "nginx forwards Host/X-Real-IP/X-Forwarded-For/X-Forwarded-Proto but the app never reads them; if they ever become trust inputs, add a stripping ingress plus TrustedHostMiddleware."
+    ]
+  },
+  {
+    "coverage_id": "frontend%2Fsrc%2FApp.tsx%23SPA%20render%20of%20%2Fapi%2F%2A%20JSON::frontend%2Fsrc%2Fcomponents%2FMovementsTable.tsx%2Cfrontend%2Fsrc%2Fcomponents%2FDonutChart.tsx%2Cfrontend%2Fsrc%2Fcomponents%2FBarsChart.tsx::frontend::CLIENT-SIDE.md%23DOM-based%20XSS",
+    "canonical_refs": {
+      "surface": "frontend/src/App.tsx#SPA render of /api/* JSON",
+      "boundary": "frontend/src/components/MovementsTable.tsx,frontend/src/components/DonutChart.tsx,frontend/src/components/BarsChart.tsx",
+      "subsystem": "frontend",
+      "attack_class": "CLIENT-SIDE.md#DOM-based XSS"
+    },
+    "surface": "frontend/src/App.tsx#SPA render of /api/* JSON",
+    "boundary": "frontend/src/components/MovementsTable.tsx,frontend/src/components/DonutChart.tsx,frontend/src/components/BarsChart.tsx",
+    "subsystem": "frontend",
+    "attack_class": "CLIENT-SIDE.md#DOM-based XSS",
+    "starting_paths": [
+      "frontend/src/App.tsx",
+      "frontend/src/components/MovementsTable.tsx",
+      "frontend/src/components/DonutChart.tsx",
+      "frontend/src/components/BarsChart.tsx",
+      "frontend/src/api/client.ts"
+    ],
+    "ordinary_attack_class_block": "ATTACK-CLASSES.md#Injection",
+    "selected_companion_blocks": [
+      "CLIENT-SIDE.md#Core discipline",
+      "CLIENT-SIDE.md#DOM-based XSS",
+      "CLIENT-SIDE.md#DOM clobbering",
+      "CLIENT-SIDE.md#Prototype pollution and gadget chain",
+      "CLIENT-SIDE.md#Browser-storage disclosure and stale authorization",
+      "CLIENT-SIDE.md#Universal moves",
+      "CLIENT-SIDE.md#Validation rules"
+    ],
+    "excluded_blocks": [
+      {
+        "block": "CLIENT-SIDE.md#Service-worker registration and scope takeover",
+        "reason": "No service worker or Cache Storage is registered by the app."
+      },
+      {
+        "block": "CLIENT-SIDE.md#postMessage origin and source trust",
+        "reason": "No postMessage/BroadcastChannel/WebSocket handlers exist."
+      }
+    ],
+    "prior_status": "none",
+    "attempts": [],
+    "wave": 1,
+    "status": "covered",
+    "agent_id": "h3",
+    "reviewed_paths": [
+      "frontend/src/App.tsx",
+      "frontend/src/api/client.ts",
+      "frontend/src/components/BarsChart.tsx",
+      "frontend/src/components/DonutChart.tsx",
+      "frontend/src/components/MovementsTable.tsx"
+    ],
+    "local_checks": [
+      {
+        "agent_id": "h3",
+        "reviewed_paths": [
+          "frontend/src/App.tsx",
+          "frontend/src/components/MovementsTable.tsx",
+          "frontend/src/components/DonutChart.tsx",
+          "frontend/src/components/BarsChart.tsx",
+          "frontend/src/api/client.ts"
+        ],
+        "invariant": "No API-controlled or browser-controlled string reaches an HTML/JS execution sink without framework escaping.",
+        "method": "source",
+        "result": "Every /api/* JSON field is rendered through React JSX text/attribute binding only. No dangerouslySetInnerHTML/innerHTML/outerHTML/document.write/eval/new Function/.html() exists. Notes render as JSX text and a React-controlled title attribute. Chart values are numeric geometry and constant palette strings. Only DOM construction is a Blob URL for the export download (not attacker-influenced HTML).",
+        "artifact": null
+      }
+    ],
+    "result_fingerprints": [],
+    "unresolved": []
+  }
+]

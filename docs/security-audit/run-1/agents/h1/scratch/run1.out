@@ -1,0 +1,9 @@
+2026-09 -> ('dates', datetime.date(2026, 9, 1), datetime.date(2026, 10, 1))
+0000-01 -> UNCAUGHT ValueError year 0 is out of range
+0000-12 -> UNCAUGHT ValueError year 0 is out of range
+9999-12 -> UNCAUGHT ValueError El mes debe tener el formato 'YYYY-MM'.
+0001-01 -> ('dates', datetime.date(1, 1, 1), datetime.date(1, 2, 1))
+----------------------------------------
+0000-01-01 valid_date_str= True fromisoformat UNCAUGHT ValueError year 0 is out of range
+0000-02-29 valid_date_str= True fromisoformat UNCAUGHT ValueError year 0 is out of range
+2026-02-31 valid_date_str= False fromisoformat UNCAUGHT ValueError day is out of range for month
