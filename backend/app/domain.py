@@ -43,6 +43,8 @@ def parse_month(month_key: str) -> tuple[int, int]:
     if len(month_part) != 2 or not month_part.isdigit():
         raise ValueError("El mes debe tener el formato 'YYYY-MM'.")
     year = int(year_part)
+    if year < 1 or year > 9999:
+        raise ValueError("El mes debe estar entre 0001-01 y 9999-12.")
     month = int(month_part)
     if month < 1 or month > 12:
         raise ValueError("El mes debe estar entre 01 y 12.")
@@ -54,6 +56,8 @@ def shift_month(month_key: str, delta: int) -> str:
     year, month = parse_month(month_key)
     total = year * 12 + (month - 1) + delta
     new_year = total // 12
+    if new_year < 1 or new_year > 9999:
+        raise ValueError("El mes está fuera del rango soportado.")
     new_month = total % 12 + 1
     return f"{new_year:04d}-{new_month:02d}"
 
@@ -80,6 +84,8 @@ def valid_date_str(value: object) -> bool:
     if len(day_part) != 2 or not day_part.isdigit():
         return False
     year = int(year_part)
+    if year < 1 or year > 9999:
+        return False
     month = int(month_part)
     day = int(day_part)
     if month < 1 or month > 12 or day < 1:

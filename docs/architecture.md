@@ -37,6 +37,7 @@ FinanciRDUS/
     ├── Dockerfile              # build multi-stage + nginx
     ├── nginx.conf              # sirve dist/ y proxea /api -> api:8000
     ├── package.json            # pnpm
+    ├── pnpm-workspace.yaml     # cooldown de releases nuevas (minimumReleaseAge: 1440 = 24 h)
     ├── src/
     │   ├── api/                # client.ts, types.ts, queries.ts (TanStack Query)
     │   ├── lib/                # money.ts, month.ts, chart.ts (puras, con tests)
@@ -51,7 +52,7 @@ FinanciRDUS/
 |---|---|---|---|
 | `db`   | `postgres:16-alpine` | no publicado | Datos, volumen `pgdata` |
 | `api`  | build `backend/`     | `127.0.0.1:8000` (configurable con `API_BIND`) | FastAPI + Uvicorn; migra y siembra al arrancar |
-| `web`  | build `frontend/`    | `0.0.0.0:8080` | nginx sin privilegios: sirve el SPA y proxea `/api` → `api:8000` |
+| `web`  | build `frontend/`    | `0.0.0.0:8080` (configurable con `WEB_BIND`) | nginx sin privilegios: sirve el SPA y proxea `/api` → `api:8000` |
 
 **Postura de exposición:** la app no tiene autenticación (decisión explícita: uso personal).
 Por eso la API se publica sólo en `127.0.0.1` y el único puerto realmente expuesto a la LAN es
@@ -61,8 +62,11 @@ tamaño de los imports). El README lo aclara también.
 
 - `api` espera a `db` con `depends_on: condition: service_healthy` (healthcheck `pg_isready`).
 - `web` espera a `api` con healthcheck propio sobre `/api/health`.
-- Al arrancar, `api` corre `alembic upgrade head`. Si `SEED_ON_START=true`, siembra
-  sólo cuando la tabla `movements` está vacía (idempotente, nunca pisa datos reales).
+- Bindings del host: `API_BIND` (API, default `127.0.0.1`) y `WEB_BIND` (frontend, default
+  `0.0.0.0`). El frontend se expone a la LAN a propósito porque proxea `/api` en el mismo origen.
+- Al arrancar, `api` corre `alembic upgrade head`. El seed lo decide `app.seed` leyendo
+  `SEED_ON_START` (única fuente de verdad) y es idempotente: siembra sólo cuando **no hay
+  movimientos ni presupuestos**, así nunca pisa datos del usuario.
 - El SPA habla con `/api` en el **mismo origen** a través de nginx: sin CORS en producción.
   CORS queda habilitado y configurable (`CORS_ORIGINS`) para el desarrollo con Vite.
 - `docker compose up --build` es el único comando necesario para tener todo andando.
@@ -71,8 +75,15 @@ tamaño de los imports). El README lo aclara también.
 
 `DATABASE_URL` (postgresql+psycopg://...), `POSTGRES_USER/PASSWORD/DB`,
 `APP_ENV` (development|production), `APP_TZ` (default `America/Argentina/Buenos_Aires`),
-`CORS_ORIGINS` (coma-separado), `SEED_ON_START` (true|false), `LOG_LEVEL`.
+`CORS_ORIGINS` (coma-separado), `SEED_ON_START` (true|false), `DOCS_ENABLED` (true|false,
+default `true`), `LOG_LEVEL`.
 Valores por defecto funcionales en `.env.example`; nunca hardcodear secretos en el código.
+
+**Validación al arrancar (fail-closed):** `Settings` valida la configuración al construirla, así
+que un valor inválido **impide el arranque** en vez de hacer fallar cada request con `500`. Una
+`APP_TZ` que no sea una zona horaria válida y un `APP_ENV` fuera de `development|production`
+abortan el arranque; con `APP_ENV=production`, un `CORS_ORIGINS` comodín (`*`) también se
+rechaza. `DOCS_ENABLED=false` apaga `/api/docs` y `/api/openapi.json` (ambos responden `404`).
 
 **Zona horaria:** el mes "actual" y la fecha "hoy" se calculan SIEMPRE con `APP_TZ`,
 nunca con la hora UTC del contenedor (si no, el mes cambia a las 21:00 hora local).

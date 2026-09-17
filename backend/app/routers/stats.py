@@ -14,11 +14,10 @@ from ..domain import (
     comparison,
     month_key_of,
     monthly_totals,
-    shift_month,
 )
 from ..models import Category, Movement
 from ..schemas import ByCategoryOut, MonthlyPointOut, SummaryOut
-from . import month_bounds
+from . import month_bounds, month_window_start
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -41,8 +40,9 @@ def summary(month: str | None = None, db: Session = Depends(get_db)) -> dict:
     income = sum(amount for type_value, amount in rows if type_value == "ingreso")
     expenses = sum(amount for type_value, amount in rows if type_value == "gasto")
 
-    # Average of the 6 months *before* the requested month.
-    prev_start, _ = month_bounds(shift_month(month_key, -6))
+    # Average of the 6 months *before* the requested month. The window start is
+    # guarded so an underflow (e.g. 0001-06) is a 422, never an uncaught 500.
+    prev_start, _ = month_bounds(month_window_start(month_key, 6))
     prev_rows = db.execute(
         select(Movement.date, Movement.amount_cents).where(
             Movement.type == "gasto",
@@ -113,10 +113,11 @@ def monthly(
     db: Session = Depends(get_db),
 ) -> list[dict]:
     end_key = end if end is not None else get_settings().current_month()
-    # Validate `end` first: month_bounds raises 422 on a malformed key, whereas
-    # shift_month would raise an uncaught ValueError (HTTP 500) on the same input.
+    # Validate `end` first: month_bounds raises 422 on a malformed key and also
+    # covers the upper bound (9999-12). The window start is guarded separately so
+    # a backwards underflow is a 422, never an uncaught 500.
     _, end_exclusive = month_bounds(end_key)
-    start_key = shift_month(end_key, -(months - 1))
+    start_key = month_window_start(end_key, months - 1)
     start, _ = month_bounds(start_key)
 
     rows = db.execute(

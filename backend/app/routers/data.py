@@ -138,14 +138,22 @@ def _validate_payload(payload: Any, category_types: dict[str, str]) -> tuple[lis
             )
 
         category_id = item.get("category_id")
-        if category_types.get(category_id) != type_value:
+        if not isinstance(category_id, str) or category_types.get(category_id) != type_value:
             raise HTTPException(
                 status_code=422,
                 detail=f"El movimiento {position} tiene una categoría inválida.",
             )
 
         note_value = item.get("note")
-        note = "" if note_value is None else str(note_value).strip()[:140]
+        note = "" if note_value is None else str(note_value).strip()
+        if len(note) > 140:
+            raise HTTPException(
+                status_code=422,
+                detail=(
+                    f"El movimiento {position} tiene una nota demasiado larga "
+                    "(máximo 140 caracteres)."
+                ),
+            )
 
         movements.append(
             {
@@ -161,7 +169,7 @@ def _validate_payload(payload: Any, category_types: dict[str, str]) -> tuple[lis
     raw_budgets = payload.get("budgets")
     if isinstance(raw_budgets, dict):
         for key, value in raw_budgets.items():
-            if category_types.get(key) != "gasto":
+            if not isinstance(key, str) or category_types.get(key) != "gasto":
                 raise HTTPException(
                     status_code=422,
                     detail=f'El presupuesto de la categoría "{key}" es inválido.',

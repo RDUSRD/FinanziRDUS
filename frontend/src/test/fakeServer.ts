@@ -165,7 +165,10 @@ function budgets(db: FakeDb, month: string): BudgetsResponse {
       const cap = db.budgets[category.id] ?? 0;
       const spent = groups[category.id] ?? 0;
       totalCap += cap;
-      totalSpent += cap > 0 ? spent : 0;
+      // Contract: total_spent_cents sums the spending of every expense
+      // category (whether or not it has a cap), mirroring get_budgets and the
+      // monthly expenses KPI. It is NOT limited to capped categories.
+      totalSpent += spent;
       return {
         category_id: category.id,
         label: category.label,

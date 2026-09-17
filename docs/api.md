@@ -5,7 +5,8 @@ Base: `/api`. JSON en `snake_case`. **Todo el dinero en centavos enteros**
 meses `YYYY-MM`. Porcentajes como fracción `0..1` en `share`/`pct` (el redondeo es
 responsabilidad del frontend).
 
-Documentación interactiva automática: `/api/docs` (Swagger) y `/api/openapi.json`.
+Documentación interactiva automática: `/api/docs` (Swagger) y `/api/openapi.json`. Se pueden
+apagar con `DOCS_ENABLED=false` (por defecto `true`); con `false`, ambos responden `404`.
 
 ## Convenciones
 
@@ -15,6 +16,19 @@ Documentación interactiva automática: `/api/docs` (Swagger) y `/api/openapi.js
   fecha inválida, import inválido) → `422` con `detail` como **string** legible.
 - `404` si el recurso no existe.
 - `204` sin cuerpo en los DELETE.
+- Parámetros de mes inválidos → `422`, nunca `500`: si `month` (o `end` en `/api/stats/monthly`)
+  no es un `YYYY-MM` válido o cae fuera de `0001-01 .. 9999-12`, la respuesta es
+  `422` con `{"detail":"El mes debe tener el formato 'YYYY-MM'."}`.
+- La **ventana de meses** que un endpoint necesita calcular también se valida → `422`, nunca
+  `500`: si no cabe en el rango soportado `0001-01 .. 9999-12`, la respuesta es `422` con
+  `{"detail":"El mes está fuera del rango soportado para la ventana pedida."}`. En concreto:
+  - `GET /api/stats/summary` necesita los **6 meses anteriores** al mes pedido, así que exige
+    `month >= 0001-07`; con `month` entre `0001-01` y `0001-06` responde `422`.
+  - `GET /api/stats/monthly` necesita los `months` meses que **terminan** en `end`, así que
+    exige `end - (months-1) >= 0001-01`: `end=0001-01&months=1` → `200`, pero
+    `end=0001-01&months=2` → `422`.
+  - El borde superior ya era `422`: `9999-12` no tiene mes siguiente, así que `month_bounds`
+    lo rechaza.
 - Listados: sin paginación (el volumen es personal), siempre ordenados de forma determinista.
 
 ## Endpoints
@@ -35,7 +49,8 @@ Sin `month` → devuelve todos. Orden: `date DESC`, luego `created_at DESC`.
 ### `POST /api/movements`
 Body: `{"type":"gasto","category_id":"ocio","amount_cents":4500000,"date":"2026-09-04","note":"Cine"}`
 Reglas: `amount_cents > 0`; `category_id` existente; `type` coherente con el de la categoría;
-`date` válida en el calendario real; `note` ≤ 140 caracteres (se recorta con `strip`).
+`date` válida en el calendario real (año entre `0001` y `9999`); `note` ≤ 140 caracteres
+(se recorta con `strip`).
 `201` → el movimiento creado (mismo shape que el listado).
 `422` → `{"detail":"La categoría no corresponde al tipo elegido."}` (u otro mensaje equivalente).
 
@@ -62,6 +77,8 @@ que no tengan tope), ordenadas como el catálogo. `status` ∈ `none|ok|warn|ove
 Body: `{"cap_cents": 12000000}`
 `200` → `{"category_id":"supermercado","cap_cents":12000000}`
 `422` si la categoría no es de gasto o `cap_cents <= 0`.
+Es idempotente: repetirlo deja el mismo tope, y dos `PUT` concurrentes que crean el tope por
+primera vez no fallan (el segundo reutiliza la fila creada por el primero).
 
 ### `DELETE /api/budgets/{category_id}`
 Borra el tope (equivale a "sin tope"). `204`.
@@ -109,8 +126,14 @@ Body: el mismo shape del export (`version`, `movements[]`, `budgets{}`).
 - `replace`: reemplaza TODOS los movimientos y presupuestos.
 - Todo dentro de una transacción: si algo falla, no se aplica nada.
 `200` → `{"mode":"merge","movements_imported":12,"movements_skipped":0,"budgets_imported":10}`
-`422` → `{"detail":"El movimiento 3 tiene una categoría inválida."}` (mensajes concretos:
-JSON inválido, `version` no soportada, `movements` no es lista, monto/fecha/categoría inválidos).
+`422` → `{"detail":"El movimiento 3 tiene una categoría inválida."}` (mensajes concretos y
+numerados: JSON inválido, `version` no soportada, `movements` no es lista, monto/fecha/categoría
+inválidos, `category_id` que no es string, y nota de más de 140 caracteres).
+
+**La nota no se trunca.** Si un movimiento del archivo trae más de 140 caracteres en `note`, se
+rechaza el import entero con `422` (`"El movimiento N tiene una nota demasiado larga (máximo
+140 caracteres)."`), igual que el CRUD de movimientos. Los exports que produce la app siempre
+tienen notas ≤ 140, así que el round-trip export → import sigue funcionando.
 
 ## Límites (defensa contra payloads absurdos)
 
@@ -124,6 +147,8 @@ desproporcionadas con límites explícitos y errores claros:
 | `amount_cents` en movimientos (POST/PATCH) | `1 .. 2147483647` | `422` "El monto es demasiado grande." |
 | `cap_cents` en presupuestos (PUT/import) | `1 .. 2147483647` | `422` "El tope es demasiado grande." |
 | `months` en `GET /api/stats/monthly` | `1 .. 24` | `422` (validación de query) |
+| `month` / `end` (query) en `/api/movements`, `/api/budgets`, `/api/stats/*` | `0001-01 .. 9999-12` | `422` `{"detail":"El mes debe tener el formato 'YYYY-MM'."}` |
+| `note` en movimientos (POST/PATCH e import) | ≤ 140 caracteres | `422` (el import **no** trunca; ver abajo) |
 
 Presupuestos en el import: `null`, `0` o `""` significan **sin tope** (se ignoran sin
 error, igual que dejar el input vacío en la UI). Una categoría desconocida, un valor no

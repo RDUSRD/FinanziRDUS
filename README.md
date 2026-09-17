@@ -31,12 +31,13 @@ docker compose up --build -d                      # o: make up
 ```
 
 - App: **http://localhost:8080**
-- Documentación interactiva de la API (Swagger): **http://localhost:8000/api/docs**
+- Documentación interactiva de la API (Swagger): **http://localhost:8000/api/docs** (se puede
+  apagar con `DOCS_ENABLED=false`; por defecto está activa)
 
 Al arrancar, el contenedor `api` espera a Postgres, aplica las migraciones y —si la base
-está vacía y `SEED_ON_START=true`— carga un **mes de ejemplo** con 44 movimientos repartidos
-en las 10 categorías, 6 meses de historial y 10 presupuestos, para que todos los gráficos
-tengan datos desde el primer minuto.
+no tiene movimientos ni presupuestos y `SEED_ON_START=true`— carga un **mes de ejemplo**
+con 44 movimientos repartidos en las 10 categorías, 6 meses de historial y 10 presupuestos,
+para que todos los gráficos tengan datos desde el primer minuto.
 
 ```bash
 make help          # lista todos los atajos
@@ -112,19 +113,19 @@ pnpm run dev                                  # SPA en :5173 con proxy a /api
 make test              # backend + frontend
 make test-backend      # pytest (en un contenedor descartable)
 make test-frontend     # vitest + tsc
-make test-integration  # contrato completo contra el stack levantado (144 checks; re-siembra solo)
+make test-integration  # contrato completo contra el stack levantado (148 checks; re-siembra solo)
 make lint              # ruff + eslint
 ```
 
-- **Backend (85 tests)**: unitarios de la lógica pura (aritmética de meses, bisiestos,
-  promedios, umbrales del 80%/100%, shares) y de API completos con `TestClient` y SQLite en
-  memoria: CRUD, validaciones, presupuestos, stats, export/import (merge, replace, inválidos
-  y límites). Hay además un test marcado `postgres` para correr contra la base real:
+- **Backend**: unitarios de la lógica pura (aritmética de meses, bisiestos, promedios,
+  umbrales del 80%/100%, shares) y de API completos con `TestClient` y SQLite en memoria:
+  CRUD, validaciones, presupuestos, stats, export/import (merge, replace, inválidos y
+  límites). Hay además un test marcado `postgres` para correr contra la base real:
   `TEST_DATABASE_URL=... pytest -m postgres`.
-- **Frontend (83 tests)**: `vitest` sobre la matemática de dinero/meses/gráficos y tests de
-  render e interacción (formulario, edición, borrado, presupuestos, navegación de mes, estados
-  de comparación y de error) contra un servidor falso.
-- **Integración (144 checks)**: [`tests/integration/api_smoke.py`](tests/integration/api_smoke.py)
+- **Frontend**: `vitest` sobre la matemática de dinero/meses/gráficos y tests de render e
+  interacción (formulario, edición, borrado, presupuestos, navegación de mes, estados de
+  comparación y de error) contra un servidor falso.
+- **Integración (148 checks)**: [`tests/integration/api_smoke.py`](tests/integration/api_smoke.py)
   pega contra el stack real (API + nginx) y verifica el contrato completo, los límites, el
   proxy, las cabeceras de seguridad y CORS. Es destructivo (usa import `replace`), por eso
   `make test-integration` re-siembra el ejemplo al terminar.
@@ -136,17 +137,20 @@ al puerto del frontend puede leer, modificar y borrar tus finanzas. Por eso:
 
 - Postgres **no** se publica al host (vive sólo en la red de Compose).
 - La API se publica únicamente en `127.0.0.1` (`API_BIND`), accesible desde tu máquina para
-  ver Swagger. El navegador entra por `web`, que proxea `/api` en el mismo origen.
+  ver Swagger. El navegador entra por `web`, que proxea `/api` en el mismo origen y se publica
+  en `0.0.0.0` por defecto (`WEB_BIND`).
 - Si algún día querés usarla desde otra máquina de tu LAN, poné `API_BIND=0.0.0.0` sólo si
   entendés el riesgo, o entrá por el puerto del frontend.
 - **No la expongas a Internet tal como está.** Si lo vas a hacer: TLS + un proxy delante,
   un secreto por header, sacá `SEED_ON_START`, cambiá las credenciales por defecto y apagá
-  `/api/docs`.
+  `/api/docs` (`DOCS_ENABLED=false`).
 
 El contenedor de la API corre como usuario sin privilegios (`appuser`), nginx corre sin
-privilegios (uid 101) y el SPA se sirve con CSP, `X-Frame-Options: DENY`, `nosniff` y
-`Referrer-Policy`. El import tiene tope de 5 MB y 20.000 movimientos por archivo, y los montos
-están acotados al rango de `INTEGER` de Postgres.
+privilegios (uid 101) y el SPA se sirve con CSP, `X-Frame-Options: DENY`, `nosniff`,
+`Referrer-Policy` y `Permissions-Policy` (deniega camera/microphone/geolocation/payment/usb).
+No se manda HSTS a propósito: en local la app se sirve por HTTP plano, sin TLS. El import tiene
+tope de 5 MB y 20.000 movimientos por archivo, y los montos están acotados al rango de
+`INTEGER` de Postgres.
 
 ### Checklist de producción web: qué aplica y qué no
 

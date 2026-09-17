@@ -123,6 +123,16 @@ check("monthly termina en el mes actual", mt[-1]["month"] == m, mt[-1]["month"])
 check("monthly ascendente y sin huecos", [x["month"] for x in mt] == sorted(x["month"] for x in mt) and all(x["expenses_cents"] > 0 for x in mt[:-1]))
 check("monthly[0] es 5 meses antes", mt[0]["month"] == shift_month(m, -5), mt[0]["month"])
 
+# ---------------- borde inferior de la ventana de meses (422, nunca 500) ----------------
+st, _, raw = req("GET", f"{API}/stats/summary?month=0001-06")
+check("summary ventana: month=0001-06 sin 6 meses previos => 422", st == 422, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/stats/summary?month=0001-07")
+check("summary ventana: month=0001-07 (borde inferior) => 200", st == 200, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/stats/monthly?end=0001-01&months=2")
+check("monthly ventana: end=0001-01&months=2 se sale del rango => 422", st == 422, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/stats/monthly?end=0001-01&months=1")
+check("monthly ventana: end=0001-01&months=1 (borde inferior) => 200", st == 200, (st, raw[:120]))
+
 # ---------------- budgets ----------------
 st, _, raw = req("GET", f"{API}/budgets?month={m}")
 bd = j(raw)
@@ -161,11 +171,10 @@ st, _, raw = req("POST", f"{API}/movements", {**new, "date":f"{m[:4]}-02-30"})
 check("POST 31-feb => 422", st == 422, (st, raw[:160]))
 st, _, raw = req("POST", f"{API}/movements", {**new, "category_id":"no-existe"})
 check("POST categoría inexistente => 422", st == 422, (st, raw[:160]))
+movs_before_long = len(j(req("GET", f"{API}/movements?month={m}")[2]))
 st, _, raw = req("POST", f"{API}/movements", {**new, "note":"x"*300})
-long_note = j(raw)
-check("POST nota de 300 caracteres: 422 o recortada", st == 422 or (st == 201 and len(long_note["note"]) <= 140), (st, raw[:160]))
-if st == 201:
-    req("DELETE", f"{API}/movements/{long_note['id']}")
+check("POST nota de 300 caracteres => 422 y no lo crea",
+      st == 422 and len(j(req("GET", f"{API}/movements?month={m}")[2])) == movs_before_long, (st, raw[:160]))
 
 st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"amount_cents": 999900})
 check("PATCH 200 y aplica", st == 200 and j(raw)["amount_cents"] == 999900, (st, raw[:160]))

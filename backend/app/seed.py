@@ -115,9 +115,10 @@ def build_movements(month_key: str) -> list[Movement]:
 
 
 def _seed(db: Session, force: bool, month_key: str) -> dict:
-    existing = db.scalar(select(func.count()).select_from(Movement)) or 0
-    if existing > 0 and not force:
-        return {"seeded": False, "reason": "already_has_movements", "movements": existing}
+    existing_movements = db.scalar(select(func.count()).select_from(Movement)) or 0
+    existing_budgets = db.scalar(select(func.count()).select_from(Budget)) or 0
+    if not force and (existing_movements > 0 or existing_budgets > 0):
+        return {"seeded": False, "reason": "already_has_data", "movements": existing_movements}
 
     if force:
         db.execute(delete(Budget))
@@ -160,6 +161,14 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    # Settings is the single source of truth for whether to seed; --force always wins.
+    if not args.force and not get_settings().seed_on_start:
+        print(
+            "Seed skipped: SEED_ON_START is disabled "
+            "(set SEED_ON_START=true or use --force)."
+        )
+        return
+
     result = seed(force=args.force)
     if result.get("seeded"):
         print(
@@ -167,7 +176,7 @@ def main() -> None:
             f"{result['budgets']} budgets for month {result['month']}."
         )
     else:
-        print("Seed skipped: the database already has movements (use --force to reseed).")
+        print("Seed skipped: the database already has data (use --force to reseed).")
 
 
 if __name__ == "__main__":

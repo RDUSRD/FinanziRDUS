@@ -26,6 +26,7 @@ services:
       APP_TZ: ${APP_TZ:-America/Argentina/Buenos_Aires}
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       SEED_ON_START: ${SEED_ON_START:-true}
+      DOCS_ENABLED: ${DOCS_ENABLED:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     depends_on:
       db:
@@ -44,7 +45,7 @@ services:
       api:
         condition: service_healthy
     ports:
-      - "${WEB_PORT:-8080}:8080"
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:8080"
     restart: unless-stopped
 
 volumes:

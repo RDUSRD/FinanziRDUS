@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, Response
 from sqlalchemy import func, select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from ..config import get_settings
@@ -93,10 +94,22 @@ def put_budget(
 
     budget = db.get(Budget, category_id)
     if budget is None:
-        db.add(Budget(category_id=category_id, cap_cents=cap_cents))
+        try:
+            db.add(Budget(category_id=category_id, cap_cents=cap_cents))
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            budget = db.get(Budget, category_id)
+            if budget is None:
+                # The row we lost the race to add also vanished: re-raise the
+                # original IntegrityError instead of masking it with an
+                # AttributeError -> HTTP 500.
+                raise
+            budget.cap_cents = cap_cents
+            db.commit()
     else:
         budget.cap_cents = cap_cents
-    db.commit()
+        db.commit()
     return {"category_id": category_id, "cap_cents": cap_cents}
 
 

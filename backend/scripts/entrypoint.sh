@@ -3,7 +3,8 @@
 # Container entrypoint for the FinanciRDUS API.
 #   1. Wait for the database (retry with timeout).
 #   2. Apply Alembic migrations (alembic upgrade head).
-#   3. Optionally seed sample data when SEED_ON_START=true (idempotent).
+#   3. Run the seed module, which decides idempotently based on Settings.seed_on_start
+#      (SEED_ON_START); with SEED_ON_START=false it skips and exits 0.
 #   4. Start Uvicorn on 0.0.0.0:8000.
 #
 set -euo pipefail
@@ -42,10 +43,8 @@ PY
 echo "[entrypoint] Applying database migrations..."
 alembic upgrade head
 
-if [ "${SEED_ON_START:-false}" = "true" ]; then
-  echo "[entrypoint] SEED_ON_START=true -> running seed (idempotent)..."
-  python -m app.seed
-fi
+echo "[entrypoint] Running seed (idempotent; gated by SEED_ON_START)..."
+python -m app.seed
 
 echo "[entrypoint] Starting Uvicorn..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000

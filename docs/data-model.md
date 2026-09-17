@@ -62,9 +62,12 @@ Sin fila = sin tope definido. Poner el input vacío borra la fila (nunca guarda 
 ## Seed de ejemplo (`app/seed.py`, `python -m app.seed`)
 
 Debe dejar la app usable al primer arranque, con datos repartidos para que TODOS los
-gráficos se vean. Reglas:
+gráficos se vean. El gate lo evalúa el propio `app.seed` leyendo `SEED_ON_START` (única fuente
+de verdad): con `SEED_ON_START=false` se saltea; `--force` siempre gana. Reglas:
 
-1. Es **idempotente**: si ya hay movimientos, no hace nada (salvo `--force`, que borra y resiembra).
+1. Es **idempotente**: si ya hay **movimientos o presupuestos**, no hace nada (salvo `--force`,
+   que borra y resiembra). Así una base con topes del usuario pero sin movimientos no recibe los
+   44 movimientos de ejemplo ni ve sobrescritos sus topes.
 2. Fechas **relativas al mes actual** calculado con `APP_TZ` (nunca fijas en el código).
 3. Mes actual: ~22 movimientos, con **las 10 categorías de gasto representadas al menos una vez**
    y 2 ingresos (un sueldo principal + un freelance). Montos realistas en ARS

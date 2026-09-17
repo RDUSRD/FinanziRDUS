@@ -30,9 +30,9 @@ def create_app() -> FastAPI:
     application = FastAPI(
         title="FinanciRDUS API",
         version=__version__,
-        docs_url="/api/docs",
+        docs_url="/api/docs" if settings.docs_enabled else None,
         redoc_url=None,
-        openapi_url="/api/openapi.json",
+        openapi_url="/api/openapi.json" if settings.docs_enabled else None,
     )
 
     application.add_middleware(

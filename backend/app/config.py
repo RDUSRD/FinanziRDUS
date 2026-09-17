@@ -7,7 +7,7 @@ from functools import lru_cache
 from typing import Annotated
 from zoneinfo import ZoneInfo
 
-from pydantic import field_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 
@@ -15,7 +15,8 @@ class Settings(BaseSettings):
     """Runtime configuration.
 
     Env vars (case-insensitive): ``DATABASE_URL``, ``APP_ENV``, ``APP_TZ``,
-    ``CORS_ORIGINS`` (comma-separated), ``SEED_ON_START``, ``LOG_LEVEL``.
+    ``CORS_ORIGINS`` (comma-separated), ``SEED_ON_START``, ``DOCS_ENABLED``,
+    ``LOG_LEVEL``.
     """
 
     model_config = SettingsConfigDict(
@@ -32,6 +33,7 @@ class Settings(BaseSettings):
     # validator below can split a comma-separated string.
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]
     seed_on_start: bool = False
+    docs_enabled: bool = True
     log_level: str = "info"
 
     @field_validator("cors_origins", mode="before")
@@ -40,6 +42,34 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             return [item.strip() for item in value.split(",") if item.strip()]
         return value
+
+    @field_validator("app_tz")
+    @classmethod
+    def _validate_app_tz(cls, value: str) -> str:
+        """Fail closed at boot: an invalid timezone must not reach the request path."""
+        try:
+            ZoneInfo(value)
+        except Exception as exc:  # noqa: BLE001 - any failure means an unusable timezone
+            raise ValueError(
+                f"APP_TZ inválida: {value!r} no es una zona horaria válida."
+            ) from exc
+        return value
+
+    @field_validator("app_env")
+    @classmethod
+    def _validate_app_env(cls, value: str) -> str:
+        allowed = {"development", "production"}
+        if value not in allowed:
+            raise ValueError(
+                f"APP_ENV inválido: {value!r}. Valores permitidos: {sorted(allowed)}."
+            )
+        return value
+
+    @model_validator(mode="after")
+    def _reject_wildcard_cors_in_production(self) -> Settings:
+        if self.app_env == "production" and "*" in self.cors_origins:
+            raise ValueError("CORS_ORIGINS no puede ser comodín ('*') con APP_ENV=production.")
+        return self
 
     @property
     def tz(self) -> ZoneInfo:

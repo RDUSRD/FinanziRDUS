@@ -31,6 +31,16 @@ class TestParseMonth:
         with pytest.raises(ValueError):
             parse_month(value)
 
+    @pytest.mark.parametrize("value", ["0000-01", "0000-12"])
+    def test_rejects_year_out_of_range(self, value: str) -> None:
+        # Year 0000 is not a valid Gregorian year -> must raise, never pass through.
+        with pytest.raises(ValueError):
+            parse_month(value)
+
+    def test_accepts_valid_year_bounds(self) -> None:
+        assert parse_month("0001-01") == (1, 1)
+        assert parse_month("9999-12") == (9999, 12)
+
 
 class TestShiftMonth:
     def test_previous_month_crossing_year(self) -> None:
@@ -53,6 +63,16 @@ class TestShiftMonth:
 
     def test_large_negative(self) -> None:
         assert shift_month("2024-01", -13) == shift_month("2024-01", -1 - 12)
+
+    def test_rejects_forward_overflow(self) -> None:
+        # 9999-12 + 1 month would be year 10000: never produce an out-of-range key.
+        with pytest.raises(ValueError):
+            shift_month("9999-12", 1)
+
+    def test_rejects_backward_underflow(self) -> None:
+        # 0001-01 - 1 month would be year 0000: never produce an out-of-range key.
+        with pytest.raises(ValueError):
+            shift_month("0001-01", -1)
 
 
 class TestMonthKeyOf:
@@ -85,6 +105,13 @@ class TestValidDateStr:
     )
     def test_invalid(self, value: str) -> None:
         assert valid_date_str(value) is False
+
+    def test_rejects_year_zero(self) -> None:
+        # Year 0000 does not exist; before the fix this reached date.fromisoformat.
+        assert valid_date_str("0000-01-01") is False
+
+    def test_accepts_year_one(self) -> None:
+        assert valid_date_str("0001-01-01") is True
 
 
 class TestAveragePrevMonths:
