@@ -1,7 +1,11 @@
 # FinanciRDUS — Arquitectura
 
 App personal para registrar gastos e ingresos del mes, con presupuestos por categoría,
-gráficos, comparación contra los 6 meses anteriores y export/import JSON.
+gráficos, comparación contra los 6 meses anteriores, export/import JSON y un panel con la
+metodología **25/15/50/10**. El dinero es **USD** (canónico); los registros se pueden cargar
+en bolívares indicando la tasa, y el backend guarda el equivalente en USD. Los movimientos
+pertenecen a **carteras** con nombre (`accounts`) y una cartera con saldo inicial negativo
+representa una **deuda** (pagar la deuda es la prioridad cuando existe).
 
 **Decisiones fijadas:** un solo usuario (sin login, pensado para uso local o LAN),
 PostgreSQL como base de datos, frontend React + TypeScript + Tailwind.
@@ -31,7 +35,7 @@ FinanciRDUS/
 │       ├── schemas.py          # Pydantic v2 request/response
 │       ├── domain.py           # lógica pura (sin DB): meses, promedios, umbrales, shares
 │       ├── seed.py             # datos de ejemplo + entrypoint `python -m app.seed`
-│       ├── routers/{movements,budgets,stats,data}.py
+│       ├── routers/{accounts,movements,budgets,stats,plan,data}.py
 │       └── tests/              # pytest
 └── frontend/                   # Vite + React + TS + Tailwind (dueño: agente frontend)
     ├── Dockerfile              # build multi-stage + nginx
@@ -74,7 +78,7 @@ tamaño de los imports). El README lo aclara también.
 ## Variables de entorno
 
 `DATABASE_URL` (postgresql+psycopg://...), `POSTGRES_USER/PASSWORD/DB`,
-`APP_ENV` (development|production), `APP_TZ` (default `America/Argentina/Buenos_Aires`),
+`APP_ENV` (development|production), `APP_TZ` (default `America/Caracas`),
 `CORS_ORIGINS` (coma-separado), `SEED_ON_START` (true|false), `DOCS_ENABLED` (true|false,
 default `true`), `LOG_LEVEL`.
 Valores por defecto funcionales en `.env.example`; nunca hardcodear secretos en el código.
@@ -167,6 +171,20 @@ host para que el texto no quede ilegible en mobile. Si todos los meses son 0: es
 - Dinero en **centavos enteros** de punta a punta (DB, API y estado del frontend).
   El parseo del input acepta `1.234,56` y `1234.56`; los grupos de 3 dígitos se leen como
   miles (`1.234` y `1,234` → 1234).
+- **Moneda canónica USD**: `amount_cents` es siempre centavos de dólar. Un movimiento se puede
+  cargar en bolívares con `entry_currency="VES"` + `rate_micros` (Bs por USD × 1e6); el backend
+  calcula el equivalente en USD (`round_half_up`) y guarda el monto original y la tasa. El
+  frontend no calcula la conversión: la hace el backend y la devuelve.
+- **Plan 25/15/50/10**: `jars` es un catálogo fijo (crecimiento 25, estabilidad 15, esencial 50,
+  recompensas 10) y `jar_categories` mapea cada categoría de gasto a un frasco (editable). El
+  objetivo por frasco es `pct × ingreso del mes` (el último absorbe el redondeo); el estado sale
+  de `budget_status`.
+- **Carteras y deuda**: `accounts` son carteras USD con nombre. El saldo **no se guarda**: se
+  calcula como `opening + Σ(ingreso) − Σ(gasto no pago) + Σ(pago de deuda)`. Una cartera con
+  `opening < 0` es una deuda; un pago (`is_debt_payment=true`, categoría system `deudas`) sube el
+  saldo hacia 0 y cuenta como gasto del mes. La prioridad cuando hay deuda la expone el panel de
+  deudas y el aviso del plan. Los presupuestos y el plan son globales; el selector de cartera sólo
+  filtra movimientos y sus vistas derivadas.
 - Meses como string `YYYY-MM` con aritmética entera (sin `Date` para la lógica).
   Fechas como string `YYYY-MM-DD` validadas contra el calendario real (bisiestos incluidos).
 - Promedio de los 6 meses **anteriores** al mes elegido (no incluye el mes actual),

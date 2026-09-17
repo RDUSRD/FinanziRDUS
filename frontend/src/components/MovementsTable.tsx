@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import type { Movement } from '../api/types';
-import { formatMoney } from '../lib/money';
+import { formatBss, formatMoney, formatRate } from '../lib/money';
 import { formatDateDisplay } from '../lib/month';
 
 interface MovementsTableProps {
   movements: Movement[];
   labelOf: (categoryId: string) => string;
+  accountNameOf: (movement: Movement) => string;
   filter: string;
   onFilterChange: (value: string) => void;
   onEdit: (movement: Movement) => void;
@@ -15,6 +16,7 @@ interface MovementsTableProps {
 export function MovementsTable({
   movements,
   labelOf,
+  accountNameOf,
   filter,
   onFilterChange,
   onEdit,
@@ -73,6 +75,7 @@ export function MovementsTable({
             <tr>
               <th scope="col">Fecha</th>
               <th scope="col">Tipo</th>
+              <th scope="col">Cartera</th>
               <th scope="col">Categoría</th>
               <th scope="col">Nota</th>
               <th scope="col" className="col-amount">
@@ -84,7 +87,7 @@ export function MovementsTable({
           <tbody>
             {visible.length === 0 ? (
               <tr>
-                <td colSpan={6} className="empty-state">
+                <td colSpan={7} className="empty-state">
                   {emptyMessage}
                 </td>
               </tr>
@@ -93,7 +96,15 @@ export function MovementsTable({
                 const isIncome = movement.type === 'ingreso';
                 const sign = isIncome ? '+' : '-';
                 const label = labelOf(movement.category_id);
-                const spoken = `${label}, ${formatMoney(movement.amount_cents)}, ${formatDateDisplay(movement.date)}`;
+                const isVes = movement.entry_currency === 'VES';
+                const rateText = formatRate(movement.rate_micros);
+                // VES entries keep their original Bs amount + rate as secondary detail.
+                const entryDetail = isVes
+                  ? `${formatBss(movement.entry_amount_cents)}${rateText ? ` @ ${rateText}` : ''}`
+                  : '';
+                const spoken = `${label}, ${formatMoney(movement.amount_cents, 'USD')}${
+                  entryDetail ? `, ${entryDetail}` : ''
+                }, ${formatDateDisplay(movement.date)}`;
                 return (
                   <tr key={movement.id}>
                     <td className="num">{formatDateDisplay(movement.date)}</td>
@@ -101,25 +112,37 @@ export function MovementsTable({
                       <span className={isIncome ? 'badge badge-ingreso' : 'badge'}>
                         {isIncome ? 'Ingreso' : 'Gasto'}
                       </span>
+                      {movement.is_debt_payment && (
+                        <span className="badge badge-debt">Pago de deuda</span>
+                      )}
                     </td>
+                    <td>{accountNameOf(movement)}</td>
                     <td>{label}</td>
                     <td className="note-cell" title={movement.note || ''}>
                       {movement.note || '—'}
                     </td>
                     <td className={isIncome ? 'col-amount amount amount-income' : 'col-amount amount amount-gasto'}>
-                      {sign}
-                      {formatMoney(movement.amount_cents)}
+                      <span className="block">
+                        {sign}
+                        {formatMoney(movement.amount_cents, 'USD')}
+                      </span>
+                      {entryDetail && (
+                        <span className="block text-[0.78rem] font-normal text-muted">{entryDetail}</span>
+                      )}
                     </td>
                     <td>
                       <div className="row-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          aria-label={`Editar movimiento: ${spoken}`}
-                          onClick={() => onEdit(movement)}
-                        >
-                          Editar
-                        </button>
+                        {/* Debt payments are managed from the accounts panel: no manual edit. */}
+                        {!movement.is_debt_payment && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            aria-label={`Editar movimiento: ${spoken}`}
+                            onClick={() => onEdit(movement)}
+                          >
+                            Editar
+                          </button>
+                        )}
                         <button
                           type="button"
                           className="btn btn-sm"

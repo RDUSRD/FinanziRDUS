@@ -7,15 +7,25 @@ integer arithmetic; dates are ``YYYY-MM-DD`` validated against a real calendar.
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from datetime import date, datetime
 from typing import Any
 
 VALID_TYPES = ("gasto", "ingreso")
 
+# Currencies in which a movement can be entered by the user. The canonical
+# storage currency is always USD (``amount_cents``); ``VES`` is an entry mode.
+ENTRY_CURRENCIES = ("USD", "VES")
+
 # Upper bound for money columns: PostgreSQL ``INTEGER`` maximum (2^31 - 1).
 # Values above this overflow the column and would crash the INSERT with a 500.
 MAX_CENTS = 2_147_483_647
+
+# Upper bound for the exchange rate (Bs per USD x 1_000_000). 1e15 micros is
+# 1_000_000_000 Bs/USD: far above any realistic value, kept as BIGINT-safe.
+MAX_RATE_MICROS = 10**15
+
+MICROS_PER_UNIT = 1_000_000
 
 
 class DomainError(ValueError):
@@ -25,6 +35,17 @@ class DomainError(ValueError):
 def _round_half_up(value: float) -> int:
     """Round half towards positive infinity (matches JavaScript ``Math.round``)."""
     return int(value + 0.5) if value >= 0 else -int(-value + 0.5)
+
+
+def _half_up_div(num: int, den: int) -> int:
+    """Integer division ``num / den`` rounded half towards positive infinity.
+
+    Pure integer arithmetic (no float) so large values never lose precision.
+    Generalizes :func:`_round_half_up` to arbitrary exact fractions.
+    """
+    if den <= 0:
+        raise ValueError("El denominador debe ser mayor a cero.")
+    return (2 * num + den) // (2 * den)
 
 
 # --------------------------------------------------------------------------- #
@@ -240,3 +261,224 @@ def validate_category_match(type_value: str, category_type: str | None) -> None:
         raise DomainError("La categoría no existe.")
     if category_type != type_value:
         raise DomainError("La categoría no corresponde al tipo elegido.")
+
+
+# --------------------------------------------------------------------------- #
+# Entry currency and VES <-> USD conversion
+# --------------------------------------------------------------------------- #
+def validate_entry_currency(value: object) -> str:
+    """Validate the currency in which the movement was entered."""
+    if value not in ENTRY_CURRENCIES:
+        raise DomainError("La moneda debe ser 'USD' o 'VES'.")
+    return str(value)
+
+
+def validate_rate_micros(value: object) -> int:
+    """Validate the exchange rate (Bs per USD x 1_000_000)."""
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise DomainError("La tasa debe ser un número entero de micros.")
+    if value <= 0:
+        raise DomainError("La tasa debe ser mayor a cero.")
+    if value > MAX_RATE_MICROS:
+        raise DomainError("La tasa es demasiado grande.")
+    return value
+
+
+def ves_to_usd_cents(ves_cents: int, rate_micros: int) -> int:
+    """Convert an amount in Bs céntimos to USD cents (half-up)."""
+    rate = validate_rate_micros(rate_micros)
+    return _half_up_div(ves_cents * MICROS_PER_UNIT, rate)
+
+
+def usd_to_ves_cents(usd_cents: int, rate_micros: int) -> int:
+    """Convert an amount in USD cents to Bs céntimos (half-up). Display only."""
+    rate = validate_rate_micros(rate_micros)
+    return _half_up_div(usd_cents * rate, MICROS_PER_UNIT)
+
+
+def compute_amount_cents(
+    entry_currency: object,
+    entry_amount_cents: object,
+    rate_micros: object,
+) -> int:
+    """Return the canonical USD cents for a movement entry.
+
+    ``'USD'`` returns the entered amount unchanged (a rate is forbidden);
+    ``'VES'`` requires a rate and converts ``entry_amount_cents`` (Bs céntimos)
+    to USD cents with half-up rounding. The result must fall in ``1..MAX_CENTS``.
+    """
+    currency = validate_entry_currency(entry_currency)
+    amount = validate_amount(entry_amount_cents)
+
+    if currency == "USD":
+        if rate_micros is not None:
+            raise DomainError("La tasa no aplica a los montos en dólares.")
+        return amount
+
+    if rate_micros is None:
+        raise DomainError("La tasa es obligatoria para los montos en bolívares.")
+    rate = validate_rate_micros(rate_micros)
+    result = ves_to_usd_cents(amount, rate)
+    if result < 1 or result > MAX_CENTS:
+        raise DomainError("El monto en dólares equivalente está fuera de rango.")
+    return result
+
+
+# --------------------------------------------------------------------------- #
+# Money jars (25/15/50/10 plan)
+# --------------------------------------------------------------------------- #
+def jar_targets(
+    income_cents: int,
+    jars: Sequence[Mapping[str, Any]],
+) -> list[dict[str, Any]]:
+    """Per-jar USD target for ``income_cents`` using each jar ``pct``.
+
+    The first ``N-1`` jars use half-up rounding; the last jar absorbs the
+    remainder so ``sum(targets) == income_cents`` exactly. A non-positive income
+    (or an empty catalogue) yields all-zero targets.
+    """
+    income = int(income_cents)
+    if income <= 0 or not jars:
+        return [{"jar_id": jar["id"], "target_cents": 0} for jar in jars]
+
+    targets: list[dict[str, Any]] = []
+    assigned = 0
+    last_index = len(jars) - 1
+    for index, jar in enumerate(jars):
+        if index == last_index:
+            target = income - assigned
+        else:
+            target = _half_up_div(income * int(jar["pct"]), 100)
+            assigned += target
+        targets.append({"jar_id": jar["id"], "target_cents": target})
+    return targets
+
+
+# --------------------------------------------------------------------------- #
+# Accounts (named USD wallets) and debts
+# --------------------------------------------------------------------------- #
+# Expense category reserved for debt payments; it is seeded as a system
+# category and never appears in the manual selector, budgets or jar mapping.
+DEBT_CATEGORY_ID = "deudas"
+
+# Upper bound for an account name (1..60 characters, after ``strip``).
+MAX_NAME_LEN = 60
+
+
+def validate_account_name(value: object) -> str:
+    """Validate an account name: a non-empty, trimmed string of 1..60 chars."""
+    if not isinstance(value, str):
+        raise DomainError("El nombre de la cartera debe ser un texto.")
+    name = value.strip()
+    if not name:
+        raise DomainError("El nombre de la cartera es obligatorio.")
+    if len(name) > MAX_NAME_LEN:
+        raise DomainError(
+            f"El nombre de la cartera no puede superar los {MAX_NAME_LEN} caracteres."
+        )
+    return name
+
+
+def validate_opening_balance(value: object) -> int:
+    """Validate a signed opening balance in cents (``abs <= MAX_CENTS``).
+
+    A negative value marks the account as a debt.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise DomainError("El saldo inicial debe ser un número entero de centavos.")
+    if value < -MAX_CENTS or value > MAX_CENTS:
+        raise DomainError("El saldo inicial está fuera de rango.")
+    return value
+
+
+def validate_is_debt_payment(value: object) -> bool:
+    """Validate that the debt-payment flag is a genuine boolean."""
+    if not isinstance(value, bool):
+        raise DomainError("El campo 'pago de deuda' debe ser booleano.")
+    return value
+
+
+def validate_debt_payment(
+    is_debt_payment: bool,
+    type_value: str,
+    opening_cents: int,
+) -> None:
+    """Business rule for a debt payment.
+
+    When ``is_debt_payment`` is true the movement must be a ``gasto`` and its
+    account must be a debt (``opening_cents < 0``); otherwise it is a no-op.
+    """
+    if not is_debt_payment:
+        return
+    if type_value != "gasto":
+        raise DomainError("Un pago de deuda debe ser un gasto.")
+    if int(opening_cents) >= 0:
+        raise DomainError(
+            "Solo se pueden registrar pagos de deuda en una cartera con saldo inicial negativo."
+        )
+
+
+def account_balance(opening_cents: int, movements: Iterable[tuple[str, int, bool]]) -> int:
+    """Balance of an account in cents.
+
+    ``balance = opening + Σ(ingreso) − Σ(gasto NO pago) + Σ(gasto pago)``.
+
+    ``movements`` is a sequence of ``(type, amount_cents, is_debt_payment)``.
+    """
+    balance = int(opening_cents)
+    for type_value, amount_cents, is_debt_payment in movements:
+        amount = int(amount_cents)
+        if type_value == "ingreso":
+            balance += amount
+        elif is_debt_payment:
+            balance += amount
+        else:
+            balance -= amount
+    return balance
+
+
+def _opening_balance_of(account: object) -> int:
+    """Read ``opening_balance_cents`` from a mapping or an object."""
+    if isinstance(account, Mapping):
+        value = account["opening_balance_cents"]
+    else:
+        value = account.opening_balance_cents  # type: ignore[union-attr]
+    return int(value)
+
+
+def account_balance_item(
+    account: Mapping[str, Any] | object,
+    movements: Iterable[tuple[str, int, bool]],
+) -> dict[str, Any]:
+    """Derived figures for an account: balance, debt flag, paid/remaining and %.
+
+    ``remaining_cents`` and ``pct_paid`` are only meaningful for debt accounts
+    (``opening_balance_cents < 0``); they are ``0`` otherwise.
+    """
+    movement_list = list(movements)
+    opening = _opening_balance_of(account)
+    balance = account_balance(opening, movement_list)
+    is_debt = opening < 0
+    paid_cents = sum(
+        int(amount)
+        for type_value, amount, is_debt_payment in movement_list
+        if type_value == "gasto" and is_debt_payment
+    )
+    if is_debt:
+        remaining_cents = -balance
+        pct_paid = (paid_cents / (-opening)) if opening != 0 else 0.0
+    else:
+        remaining_cents = 0
+        pct_paid = 0.0
+    return {
+        "balance_cents": balance,
+        "is_debt": is_debt,
+        "paid_cents": paid_cents,
+        "remaining_cents": remaining_cents,
+        "pct_paid": pct_paid,
+    }
+
+
+def total_debt_cents(balances: Iterable[int]) -> int:
+    """Total outstanding debt: the sum of the negative balances, made positive."""
+    return sum(-int(balance) for balance in balances if int(balance) < 0)

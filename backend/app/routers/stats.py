@@ -17,7 +17,7 @@ from ..domain import (
 )
 from ..models import Category, Movement
 from ..schemas import ByCategoryOut, MonthlyPointOut, SummaryOut
-from . import month_bounds, month_window_start
+from . import account_id_param, month_bounds, month_window_start
 
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
@@ -27,29 +27,36 @@ def _month_key(month: str | None) -> str:
 
 
 @router.get("/summary", response_model=SummaryOut)
-def summary(month: str | None = None, db: Session = Depends(get_db)) -> dict:
+def summary(
+    month: str | None = None,
+    account: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
     month_key = _month_key(month)
     start, end = month_bounds(month_key)
+    account_id = account_id_param(account)
 
-    rows = db.execute(
-        select(Movement.type, Movement.amount_cents).where(
-            Movement.date >= start,
-            Movement.date < end,
-        )
-    ).all()
+    current = select(Movement.type, Movement.amount_cents).where(
+        Movement.date >= start,
+        Movement.date < end,
+    )
+    if account_id is not None:
+        current = current.where(Movement.account_id == account_id)
+    rows = db.execute(current).all()
     income = sum(amount for type_value, amount in rows if type_value == "ingreso")
     expenses = sum(amount for type_value, amount in rows if type_value == "gasto")
 
     # Average of the 6 months *before* the requested month. The window start is
     # guarded so an underflow (e.g. 0001-06) is a 422, never an uncaught 500.
     prev_start, _ = month_bounds(month_window_start(month_key, 6))
-    prev_rows = db.execute(
-        select(Movement.date, Movement.amount_cents).where(
-            Movement.type == "gasto",
-            Movement.date >= prev_start,
-            Movement.date < start,
-        )
-    ).all()
+    previous = select(Movement.date, Movement.amount_cents).where(
+        Movement.type == "gasto",
+        Movement.date >= prev_start,
+        Movement.date < start,
+    )
+    if account_id is not None:
+        previous = previous.where(Movement.account_id == account_id)
+    prev_rows = db.execute(previous).all()
     monthly_expenses: dict[str, int] = {}
     for movement_date, amount in prev_rows:
         key = month_key_of(movement_date)
@@ -68,11 +75,16 @@ def summary(month: str | None = None, db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/by-category", response_model=ByCategoryOut)
-def by_category(month: str | None = None, db: Session = Depends(get_db)) -> dict:
+def by_category(
+    month: str | None = None,
+    account: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+) -> dict:
     month_key = _month_key(month)
     start, end = month_bounds(month_key)
+    account_id = account_id_param(account)
 
-    rows = db.execute(
+    stmt = (
         select(Movement.category_id, func.sum(Movement.amount_cents))
         .where(
             Movement.type == "gasto",
@@ -80,7 +92,10 @@ def by_category(month: str | None = None, db: Session = Depends(get_db)) -> dict
             Movement.date < end,
         )
         .group_by(Movement.category_id)
-    ).all()
+    )
+    if account_id is not None:
+        stmt = stmt.where(Movement.account_id == account_id)
+    rows = db.execute(stmt).all()
     by_cat = {category_id: int(total) for category_id, total in rows if total and total > 0}
 
     labels = {
@@ -110,6 +125,7 @@ def by_category(month: str | None = None, db: Session = Depends(get_db)) -> dict
 def monthly(
     end: str | None = None,
     months: int = Query(default=6, ge=1, le=24),
+    account: str | None = Query(default=None),
     db: Session = Depends(get_db),
 ) -> list[dict]:
     end_key = end if end is not None else get_settings().current_month()
@@ -119,13 +135,15 @@ def monthly(
     _, end_exclusive = month_bounds(end_key)
     start_key = month_window_start(end_key, months - 1)
     start, _ = month_bounds(start_key)
+    account_id = account_id_param(account)
 
-    rows = db.execute(
-        select(Movement.date, Movement.type, Movement.amount_cents).where(
-            Movement.date >= start,
-            Movement.date < end_exclusive,
-        )
-    ).all()
+    stmt = select(Movement.date, Movement.type, Movement.amount_cents).where(
+        Movement.date >= start,
+        Movement.date < end_exclusive,
+    )
+    if account_id is not None:
+        stmt = stmt.where(Movement.account_id == account_id)
+    rows = db.execute(stmt).all()
 
     expenses_by_month: dict[str, int] = {}
     income_by_month: dict[str, int] = {}

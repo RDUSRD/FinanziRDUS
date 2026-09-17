@@ -7,6 +7,12 @@
 
 export type MovementType = 'gasto' | 'ingreso';
 
+/**
+ * Currency the movement was typed in. `amount_cents` is always the canonical
+ * USD value; `entry_*` preserve what the user entered (USD cents or Bs céntimos).
+ */
+export type EntryCurrency = 'USD' | 'VES';
+
 export type BudgetStatus = 'none' | 'ok' | 'warn' | 'over';
 
 export type ComparisonDirection = 'above' | 'below' | 'equal' | 'na';
@@ -16,13 +22,62 @@ export interface Category {
   type: MovementType;
   label: string;
   sort_order: number;
+  /** System categories ("Deudas") are hidden from manual selectors. */
+  is_system: boolean;
 }
+
+/** A named USD wallet. A negative opening balance means the wallet holds a debt. */
+export interface Account {
+  id: number;
+  name: string;
+  /** Signed cents: negative means the wallet was opened with a debt. */
+  opening_balance_cents: number;
+  /** opening + income - expenses (non payments) + debt payments. */
+  balance_cents: number;
+  is_debt: boolean;
+  /** Sum of the debt payments registered against this wallet. */
+  paid_cents: number;
+  /** Outstanding debt (0 for non-debt wallets). */
+  remaining_cents: number;
+  /** Fraction 0..1 of the opening debt already paid (0 without debt). */
+  pct_paid: number;
+}
+
+export interface AccountsResponse {
+  total_debt_cents: number;
+  items: Account[];
+}
+
+export interface AccountInput {
+  name: string;
+  opening_balance_cents: number;
+}
+
+export interface AccountUpdateInput {
+  name?: string;
+  opening_balance_cents?: number;
+}
+
+/** Movement/stats filter: "all" (consolidated) or a specific wallet id. */
+export type AccountFilter = number | 'all';
 
 export interface Movement {
   id: number;
   type: MovementType;
   category_id: string;
+  account_id: number;
+  /** Wallet name, resolved by the API. */
+  account_name?: string;
+  /** True for a debt payment (forced to category "deudas" and type "gasto"). */
+  is_debt_payment: boolean;
+  /** Canonical amount in USD cents. */
   amount_cents: number;
+  /** Currency the movement was entered in. */
+  entry_currency: EntryCurrency;
+  /** Amount as typed, in its own currency minor units. */
+  entry_amount_cents: number;
+  /** Bs per 1 USD x 1e6; only present for `VES` entries. */
+  rate_micros: number | null;
   date: string;
   note: string;
   created_at: string;
@@ -30,8 +85,16 @@ export interface Movement {
 
 export interface MovementInput {
   type: MovementType;
-  category_id: string;
-  amount_cents: number;
+  /**
+   * Required for a regular movement. Must be omitted when `is_debt_payment`
+   * is true: the backend forces the system "deudas" category and type "gasto".
+   */
+  category_id?: string;
+  account_id: number;
+  is_debt_payment?: boolean;
+  entry_currency: EntryCurrency;
+  entry_amount_cents: number;
+  rate_micros: number | null;
   date: string;
   note?: string;
 }
@@ -58,6 +121,37 @@ export interface BudgetsResponse {
 export interface PutBudgetResponse {
   category_id: string;
   cap_cents: number;
+}
+
+/** A single money jar of the 25/15/50/10 plan. */
+export interface Jar {
+  jar_id: string;
+  label: string;
+  /** Share of the monthly income, as a whole percentage (25/15/50/10). */
+  pct: number;
+  /** Target for the month in USD cents (pct x income). */
+  target_cents: number;
+  spent_cents: number;
+  remaining_cents: number;
+  /** Fraction spent/target (0 when there is no target). */
+  used: number;
+  status: BudgetStatus;
+  category_ids: string[];
+}
+
+export interface PlanResponse {
+  month: string;
+  income_cents: number;
+  jars: Jar[];
+}
+
+export interface JarAssignInput {
+  jar_id: string;
+}
+
+export interface JarAssignResponse {
+  category_id: string;
+  jar_id: string;
 }
 
 export interface AveragePrev {
@@ -100,10 +194,23 @@ export interface MonthlyStat {
   income_cents: number;
 }
 
+/** Wallet as carried by a v3 export (matched by name on import). */
+export interface ExportAccount {
+  name: string;
+  opening_balance_cents: number;
+}
+
 export interface ExportMovement {
   type: MovementType;
   category_id: string;
   amount_cents: number;
+  /** Entry fields (v2 exports); absent in v1 payloads. */
+  entry_currency?: EntryCurrency;
+  entry_amount_cents?: number;
+  rate_micros?: number | null;
+  /** Wallet fields (v3 exports); absent in v1/v2 payloads. */
+  account_id?: number;
+  is_debt_payment?: boolean;
   date: string;
   note: string;
 }
@@ -111,8 +218,11 @@ export interface ExportMovement {
 export interface ExportPayload {
   version: number;
   exported_at?: string;
+  /** Wallets (v3 exports only). */
+  accounts?: ExportAccount[];
   movements: ExportMovement[];
   budgets: Record<string, number>;
+  jar_categories?: Record<string, string>;
 }
 
 export type ImportMode = 'merge' | 'replace';
@@ -122,6 +232,8 @@ export interface ImportResult {
   movements_imported: number;
   movements_skipped: number;
   budgets_imported: number;
+  /** Wallets created/linked by the import (v3). */
+  accounts_imported?: number;
 }
 
 export interface HealthResponse {

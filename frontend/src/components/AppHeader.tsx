@@ -1,5 +1,5 @@
 import { useRef, type ChangeEvent } from 'react';
-import type { ImportMode } from '../api/types';
+import type { Account, AccountFilter, ImportMode } from '../api/types';
 
 interface AppHeaderProps {
   monthLabel: string;
@@ -8,6 +8,9 @@ interface AppHeaderProps {
   onCurrentMonth: () => void;
   onExport: () => void;
   onImport: (file: File, mode: ImportMode) => void;
+  accounts: Account[];
+  account: AccountFilter;
+  onAccountChange: (value: AccountFilter) => void;
   busy?: boolean;
 }
 
@@ -18,6 +21,9 @@ export function AppHeader({
   onCurrentMonth,
   onExport,
   onImport,
+  accounts,
+  account,
+  onAccountChange,
   busy = false,
 }: AppHeaderProps) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -37,10 +43,15 @@ export function AppHeader({
   return (
     <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
+        <p className="m-0 mb-1 text-[.78rem] font-bold uppercase tracking-[.08em] text-muted">
+          Cartera en USD
+        </p>
         <h1 className="m-0 mb-1 text-[clamp(1.35rem,1rem+1.4vw,1.75rem)] tracking-[-.01em]">
           Gastos e ingresos
         </h1>
-        <p className="m-0 text-[.92rem] text-muted">Registro personal del mes, guardado en la base de datos.</p>
+        <p className="m-0 text-[.92rem] text-muted">
+          Cargá en dólares o en bolívares con su tasa; el total siempre se muestra en USD.
+        </p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -62,6 +73,24 @@ export function AppHeader({
           aria-label="Archivo JSON a importar"
           onChange={handleFileChange}
         />
+
+        <div className="filter-field" role="group" aria-label="Filtro de cartera">
+          <label htmlFor="filter-account">Cartera</label>
+          <select
+            id="filter-account"
+            value={account === 'all' ? 'all' : String(account)}
+            onChange={(event) =>
+              onAccountChange(event.target.value === 'all' ? 'all' : Number(event.target.value))
+            }
+          >
+            <option value="all">Todas</option>
+            {accounts.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        </div>
 
         <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Navegación por mes">
           <button type="button" className="btn icon-btn" onClick={onPrev} aria-label="Mes anterior">

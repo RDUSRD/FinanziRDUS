@@ -35,7 +35,7 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const amount = await screen.findByLabelText('Monto en pesos');
+    const amount = await screen.findByLabelText('Monto en dólares');
     await user.type(amount, '1000');
     await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
 
@@ -52,7 +52,7 @@ describe('App mutations', () => {
     const movements = await screen.findByRole('region', { name: /Movimientos/ });
     await user.click(within(movements).getByRole('button', { name: /Editar movimiento: Supermercado/ }));
 
-    const amount = screen.getByLabelText('Monto en pesos');
+    const amount = screen.getByLabelText('Monto en dólares');
     await waitFor(() => expect(amount).toHaveValue('85000'));
     await user.clear(amount);
     await user.type(amount, '50000');
@@ -138,11 +138,11 @@ describe('App mutations', () => {
     const movements = await screen.findByRole('region', { name: /Movimientos/ });
     await user.click(within(movements).getByRole('button', { name: /Editar movimiento: Supermercado/ }));
 
-    const amount = screen.getByLabelText('Monto en pesos');
+    const amount = screen.getByLabelText('Monto en dólares');
     await waitFor(() => expect(amount).toHaveValue('85000'));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
-    await waitFor(() => expect(screen.getByLabelText('Monto en pesos')).toHaveValue(''));
+    await waitFor(() => expect(screen.getByLabelText('Monto en dólares')).toHaveValue(''));
     expect(screen.getByText('Nuevo movimiento')).toBeInTheDocument();
   });
 
@@ -177,5 +177,46 @@ describe('App mutations', () => {
     await waitFor(() =>
       expect(liveStatusText()).toContain(`Presupuesto borrado. Te queda ${money(93_300_000)}.`),
     );
+  });
+
+  it('previews the USD equivalent of a VES entry and stores the original Bs + rate', async () => {
+    const user = userEvent.setup();
+    renderAppTree(<App />);
+
+    // Switch the entry currency to bolívares.
+    await user.click(await screen.findByRole('radio', { name: 'VES' }));
+
+    const amount = screen.getByLabelText('Monto en bolívares');
+    await user.type(amount, '4.000,00');
+    await user.type(screen.getByLabelText('Tasa (Bs por USD)'), '40');
+
+    // 4.000,00 Bs at 40 Bs/USD = $100.
+    expect(await screen.findByText('= $ 100 (a Bs 40/USD)')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
+
+    await waitFor(() => expect(server.db.movements).toHaveLength(6));
+    const created = server.db.movements.find((movement) => movement.id === 6);
+    expect(created).toMatchObject({
+      entry_currency: 'VES',
+      entry_amount_cents: 400_000,
+      rate_micros: 40_000_000,
+      amount_cents: 10_000,
+    });
+  });
+
+  it('requires a rate before saving a VES entry and focuses the field', async () => {
+    const user = userEvent.setup();
+    renderAppTree(<App />);
+
+    await user.click(await screen.findByRole('radio', { name: 'VES' }));
+    await user.type(screen.getByLabelText('Monto en bolívares'), '4000');
+    await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
+
+    expect(
+      await screen.findByText('Error: Ingresá una tasa válida en Bs por USD (por ejemplo 40).'),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText('Tasa (Bs por USD)')).toHaveFocus();
+    expect(server.db.movements).toHaveLength(5);
   });
 });

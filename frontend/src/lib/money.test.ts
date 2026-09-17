@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, formatPercent, shortMoney, toCents } from './money';
+import { formatBss, formatMoney, formatPercent, formatRate, shortMoney, toCents } from './money';
 
 /** Remove the non-breaking spaces Intl inserts so assertions are portable. */
 function plain(text: string): string {
@@ -51,18 +51,26 @@ describe('toCents', () => {
 });
 
 describe('formatMoney', () => {
-  it('formats integer cents as ARS with es-AR grouping', () => {
+  it('formats USD cents with es-VE grouping and the "$" prefix', () => {
     expect(plain(formatMoney(123456))).toBe('$ 1.234,56');
     expect(plain(formatMoney(1234 * 100))).toBe('$ 1.234');
     expect(plain(formatMoney(0))).toBe('$ 0');
   });
 
-  it('formats negatives with a leading minus', () => {
+  it('formats VES céntimos with the "Bs" prefix and two decimals', () => {
+    expect(plain(formatMoney(400000, 'VES'))).toBe('Bs 4.000,00');
+    expect(plain(formatMoney(123456, 'VES'))).toBe('Bs 1.234,56');
+    expect(plain(formatBss(400000))).toBe('Bs 4.000,00');
+  });
+
+  it('formats negatives with a leading minus before the symbol', () => {
     expect(plain(formatMoney(-5000000))).toBe('-$ 50.000');
+    expect(plain(formatMoney(-400000, 'VES'))).toBe('-Bs 4.000,00');
   });
 
   it('coerces non-finite input to zero', () => {
     expect(plain(formatMoney(Number.NaN))).toBe('$ 0');
+    expect(plain(formatMoney(Number.NaN, 'VES'))).toBe('Bs 0,00');
   });
 });
 
@@ -72,6 +80,24 @@ describe('shortMoney', () => {
     expect(shortMoney(1_200_000 * 100)).toBe('$1,2M');
     expect(shortMoney(15_000_000 * 100)).toBe('$15M');
     expect(shortMoney(900 * 100)).toBe('$900');
+  });
+
+  it('uses the per-currency symbol for VES', () => {
+    expect(shortMoney(4_000_000_000, 'VES')).toBe('Bs40M');
+    expect(shortMoney(85000 * 100, 'VES')).toBe('Bs85k');
+  });
+});
+
+describe('formatRate', () => {
+  it('renders Bs-per-USD micros as a plain number', () => {
+    expect(formatRate(40_000_000)).toBe('40');
+    expect(formatRate(36_500_000)).toBe('36,5');
+  });
+
+  it('returns an empty string for missing or invalid rates', () => {
+    expect(formatRate(null)).toBe('');
+    expect(formatRate(undefined)).toBe('');
+    expect(formatRate(0)).toBe('');
   });
 });
 

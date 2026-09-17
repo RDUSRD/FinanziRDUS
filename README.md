@@ -2,7 +2,18 @@
 
 Registro personal de gastos e ingresos del mes: cargás movimientos, definís topes por
 categoría y la app te dice cuánto te queda, en qué se te va la plata, cómo venís contra los
-6 meses anteriores y si te estás pasando de algún presupuesto.
+6 meses anteriores y si te estás pasando de algún presupuesto. También trae un panel con la
+metodología **25/15/50/10** (crecimiento, estabilidad, esencial, recompensas) que compara el
+objetivo de cada frasco contra lo gastado.
+
+**Todo se maneja en dólares (USD)**, que es la moneda de la cartera. Podés cargar un movimiento
+en **bolívares**: escribís el monto en Bs y la tasa (Bs por USD) y la app calcula y guarda el
+equivalente en USD, conservando el monto original y la tasa para mostrarlos como detalle.
+
+Además podés crear **varias carteras USD con nombre** (por ejemplo "Binance", "Cartera USD") y
+registrar **deudas**: una cartera con **saldo inicial negativo** es una deuda, y cada pago la
+acerca a 0 (el pago cuenta como gasto del mes). Mientras haya deuda, **pagarla es la prioridad
+#1**: hay un panel de deudas destacado y el plan 25/15/50/10 lo avisa.
 
 Es la evolución a proyecto completo de una app de un solo archivo HTML: ahora tiene backend
 Python con base de datos real, frontend React tipado y todo se levanta con Docker Compose.
@@ -36,8 +47,10 @@ docker compose up --build -d                      # o: make up
 
 Al arrancar, el contenedor `api` espera a Postgres, aplica las migraciones y —si la base
 no tiene movimientos ni presupuestos y `SEED_ON_START=true`— carga un **mes de ejemplo**
-con 44 movimientos repartidos en las 10 categorías, 6 meses de historial y 10 presupuestos,
-para que todos los gráficos tengan datos desde el primer minuto.
+con movimientos repartidos en las 10 categorías de gasto (incluido uno cargado en bolívares a una
+tasa), 6 meses de historial, 10 presupuestos y **3 carteras** (dos con deuda: `Binance` y
+`Cartera USD normal`, con un pago de deuda de ejemplo), para que todos los gráficos y paneles
+tengan datos desde el primer minuto.
 
 ```bash
 make help          # lista todos los atajos
@@ -49,8 +62,10 @@ make clean         # bajar y borrar el volumen de datos
 
 ## Qué hace
 
-- **Alta, edición y borrado de movimientos** (gasto o ingreso) con monto, categoría, fecha y nota.
-  Podés editar y borrar sin tocar código.
+- **Alta, edición y borrado de movimientos** (gasto o ingreso) con monto, categoría, fecha y
+  nota. El monto se carga en **USD o en Bs**: si elegís bolívares indicás la tasa (Bs por USD)
+  y la app calcula el equivalente en dólares; la tabla muestra el monto en USD y, para las
+  entradas en Bs, el detalle `Bs … @ tasa`. Podés editar y borrar sin tocar código.
 - **Tres KPIs grandes**: ingresos del mes, gastos del mes y cuánto queda (en rojo si es negativo).
 - **Comparación histórica**: el gasto del mes contra el promedio de los 6 meses anteriores,
   con el porcentaje de más/menos y el detalle de en cuántos meses se basó.
@@ -58,6 +73,12 @@ make clean         # bajar y borrar el volumen de datos
 - **Barras de los últimos 6 meses** con el mes que estás mirando destacado.
 - **Presupuestos por categoría**: un tope mensual por categoría con barra de progreso que se
   pone **ámbar** al 80% y **roja** cuando lo superás.
+- **Plan 25/15/50/10**: cuatro frascos (crecimiento, estabilidad, esencial, recompensas) que
+  reparten el ingreso del mes según su porcentaje y comparan el objetivo contra lo gastado de las
+  categorías asignadas; cada categoría se puede reasignar a otro frasco desde el panel.
+- **Carteras y deudas**: creás carteras USD con nombre y cada movimiento se asigna a una. Una
+  cartera con **saldo inicial negativo** es una deuda; registrás pagos y el panel muestra cuánto
+  falta y el porcentaje pagado. El selector de cartera filtra los movimientos y sus gráficos.
 - **Export e import JSON**: descargás todo tu historial y lo volvés a subir, fusionando o
   reemplazando (el import es transaccional: si algo falla, no se toca nada).
 - **Categorías**: 10 de gasto (supermercado, comidas afuera, transporte, alquiler y servicios,
@@ -81,11 +102,16 @@ límites y formas de error) y **`docs/data-model.md`** (tablas y seed).
 
 Decisiones de diseño que vale la pena conocer:
 
-- **El dinero son centavos enteros** de punta a punta (base, API y estado del frontend). Nunca floats.
+- **El dinero son centavos enteros** de punta a punta (base, API y estado del frontend). Nunca
+  floats. La moneda canónica es **USD**; una entrada en Bs guarda el monto original y la tasa, y
+  el backend calcula el equivalente en dólares (`round_half_up`).
+- **Una deuda es un saldo negativo**: el saldo de una cartera es
+  `saldo inicial + ingresos − gastos + pagos de deuda` y no se guarda, se calcula. Un pago de
+  deuda sube el saldo hacia 0 y a la vez **cuenta como gasto del mes**.
 - **El backend calcula, el frontend formatea**: los totales, porcentajes, promedios y estados
   de presupuesto salen de `/api/stats/*` y `/api/budgets`. El frontend no recalcula negocio.
 - **Los meses son strings `YYYY-MM`** con aritmética entera, y "hoy" se calcula con `APP_TZ`
-  (`America/Argentina/Buenos_Aires` por defecto), nunca con la hora UTC del contenedor.
+  (`America/Caracas` por defecto), nunca con la hora UTC del contenedor.
 - **El promedio es de los 6 meses anteriores** al mes que estás mirando, promediando sólo los
   meses con gastos, e informa en cuántos se basó.
 
@@ -125,7 +151,7 @@ make lint              # ruff + eslint
 - **Frontend**: `vitest` sobre la matemática de dinero/meses/gráficos y tests de render e
   interacción (formulario, edición, borrado, presupuestos, navegación de mes, estados de
   comparación y de error) contra un servidor falso.
-- **Integración (148 checks)**: [`tests/integration/api_smoke.py`](tests/integration/api_smoke.py)
+- **Integración (contrato completo)**: [`tests/integration/api_smoke.py`](tests/integration/api_smoke.py)
   pega contra el stack real (API + nginx) y verifica el contrato completo, los límites, el
   proxy, las cabeceras de seguridad y CORS. Es destructivo (usa import `replace`), por eso
   `make test-integration` re-siembra el ejemplo al terminar.
@@ -168,8 +194,12 @@ cabeceras de seguridad en el HTML.
 
 - Los listados no tienen paginación (el volumen es personal y la UI siempre consulta por mes;
   el export sí devuelve todo por diseño).
-- La moneda está fija en ARS (`Intl.NumberFormat('es-AR')`); cambiarla es una línea en el
-  frontend y la etiqueta del formulario.
+- La moneda de la cartera es USD; las entradas en bolívares se convierten con la tasa que cargás
+  en cada movimiento (no hay tasa global ni cotización automática). El detalle `Bs … @ tasa` se
+  muestra junto al monto en USD, pero no hay un total mensual en bolívares.
+- Cada cartera tiene **un** saldo (una deuda); para deudas separadas, creá carteras separadas. No
+  hay transferencias entre carteras ni saldo histórico por mes: el saldo se calcula con los
+  movimientos cargados.
 - Los tests del frontend corren contra un servidor falso; el contrato real se verifica con la
   suite de integración que se corre contra el stack levantado (health, CRUD, presupuestos,
   stats, export/import, límites, proxy, cabeceras y CORS).

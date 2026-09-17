@@ -26,6 +26,7 @@ class CategoryOut(BaseModel):
     type: str
     label: str
     sort_order: int
+    is_system: bool
 
 
 class MovementOut(BaseModel):
@@ -34,7 +35,13 @@ class MovementOut(BaseModel):
     id: int
     type: str
     category_id: str
+    account_id: int
+    account_name: str
+    is_debt_payment: bool
     amount_cents: int
+    entry_currency: str
+    entry_amount_cents: int
+    rate_micros: int | None
     date: date
     note: str
     created_at: datetime
@@ -46,8 +53,12 @@ class MovementOut(BaseModel):
 
 class MovementCreate(BaseModel):
     type: str
-    category_id: str
-    amount_cents: int
+    category_id: str | None = None
+    account_id: int
+    is_debt_payment: bool = False
+    entry_currency: str = "USD"
+    entry_amount_cents: int
+    rate_micros: int | None = None
     date: str
     note: str = ""
 
@@ -55,9 +66,39 @@ class MovementCreate(BaseModel):
 class MovementUpdate(BaseModel):
     type: str | None = None
     category_id: str | None = None
-    amount_cents: int | None = None
+    account_id: int | None = None
+    is_debt_payment: bool | None = None
+    entry_currency: str | None = None
+    entry_amount_cents: int | None = None
+    rate_micros: int | None = None
     date: str | None = None
     note: str | None = None
+
+
+class AccountOut(BaseModel):
+    id: int
+    name: str
+    opening_balance_cents: int
+    balance_cents: int
+    is_debt: bool
+    paid_cents: int
+    remaining_cents: int
+    pct_paid: float
+
+
+class AccountCreate(BaseModel):
+    name: str
+    opening_balance_cents: int = 0
+
+
+class AccountUpdate(BaseModel):
+    name: str | None = None
+    opening_balance_cents: int | None = None
+
+
+class AccountsOut(BaseModel):
+    total_debt_cents: int
+    items: list[AccountOut]
 
 
 class BudgetCapIn(BaseModel):
@@ -128,3 +169,33 @@ class ImportResultOut(BaseModel):
     movements_imported: int
     movements_skipped: int
     budgets_imported: int
+    accounts_imported: int
+
+
+class JarOut(BaseModel):
+    jar_id: str
+    label: str
+    pct: int
+    sort_order: int
+
+
+class PlanJarOut(BaseModel):
+    jar_id: str
+    label: str
+    pct: int
+    target_cents: int
+    spent_cents: int
+    remaining_cents: int
+    used: float
+    status: str
+    category_ids: list[str]
+
+
+class PlanOut(BaseModel):
+    month: str
+    income_cents: int
+    jars: list[PlanJarOut]
+
+
+class JarAssignIn(BaseModel):
+    jar_id: str

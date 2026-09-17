@@ -28,7 +28,7 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://financirdus:financirdus@localhost:5432/financirdus"
     app_env: str = "development"
-    app_tz: str = "America/Argentina/Buenos_Aires"
+    app_tz: str = "America/Caracas"
     # NoDecode keeps pydantic-settings from JSON-parsing the raw env value so the
     # validator below can split a comma-separated string.
     cors_origins: Annotated[list[str], NoDecode] = ["http://localhost:5173"]

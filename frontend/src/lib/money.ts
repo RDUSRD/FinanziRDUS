@@ -57,41 +57,73 @@ export function toCents(raw: string | number | null | undefined): number {
   return Math.round(n * 100);
 }
 
-const MONEY_FORMATTER_OPTIONS: Intl.NumberFormatOptions = {
-  style: 'currency',
-  currency: 'ARS',
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
+/** The app's canonical currency plus the bolívar entry currency. */
+export type MoneyCurrency = 'USD' | 'VES';
+
+/**
+ * Explicit per-currency symbols. We never rely on the symbol the runtime ICU
+ * data injects (it drifts across Node/browser builds), so the prefix is ours.
+ */
+const MONEY_SYMBOLS: Record<MoneyCurrency, string> = {
+  USD: '$',
+  VES: 'Bs',
 };
 
-let moneyFormatter: Intl.NumberFormat | null = null;
+/**
+ * Grouping/decimals are locale-based ("es-VE": "." thousands, "," decimals).
+ * USD is the canonical wallet and usually holds whole amounts, so the trailing
+ * ",00" is dropped. The bolívar is quoted with its céntimos, which keeps the
+ * Bs figure readable next to its USD equivalent.
+ */
+const MONEY_NUMBER_OPTIONS: Record<MoneyCurrency, Intl.NumberFormatOptions> = {
+  USD: { minimumFractionDigits: 0, maximumFractionDigits: 2 },
+  VES: { minimumFractionDigits: 2, maximumFractionDigits: 2 },
+};
 
-function getMoneyFormatter(): Intl.NumberFormat {
-  if (!moneyFormatter) moneyFormatter = new Intl.NumberFormat('es-AR', MONEY_FORMATTER_OPTIONS);
-  return moneyFormatter;
+const moneyFormatters = new Map<MoneyCurrency, Intl.NumberFormat>();
+
+function getMoneyFormatter(currency: MoneyCurrency): Intl.NumberFormat {
+  let formatter = moneyFormatters.get(currency);
+  if (!formatter) {
+    formatter = new Intl.NumberFormat('es-VE', MONEY_NUMBER_OPTIONS[currency]);
+    moneyFormatters.set(currency, formatter);
+  }
+  return formatter;
 }
 
-function fallbackMoney(value: number): string {
-  const negative = value < 0;
+/** Manual grouping fallback ("1.234,56") used when Intl is unavailable. */
+function fallbackNumber(value: number, currency: MoneyCurrency): string {
   const fixed = (Math.round(Math.abs(value) * 100) / 100).toFixed(2);
   const [intPart, centsPart] = fixed.split('.');
   const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  const body = centsPart === '00' ? grouped : `${grouped},${centsPart}`;
-  return `${negative ? '-' : ''}$${body}`;
+  const body = currency === 'VES' || centsPart !== '00' ? `${grouped},${centsPart}` : grouped;
+  return body;
 }
 
-/** Format integer cents as ARS currency using es-AR locale. */
-export function formatMoney(cents: number): string {
+/**
+ * Format integer cents as a currency amount, e.g. "$ 1.234,56" or
+ * "Bs 4.000,00". Negative values get a leading minus before the symbol.
+ */
+export function formatMoney(cents: number, currency: MoneyCurrency = 'USD'): string {
   const value = (Number(cents) || 0) / 100;
+  const negative = value < 0;
+  const symbol = MONEY_SYMBOLS[currency] ?? MONEY_SYMBOLS.USD;
+  let body: string;
   try {
-    return getMoneyFormatter().format(value);
+    body = getMoneyFormatter(currency).format(Math.abs(value));
   } catch {
-    return fallbackMoney(value);
+    body = fallbackNumber(value, currency);
   }
+  return `${negative ? '-' : ''}${symbol} ${body}`;
 }
 
-/** Short money for chart labels, e.g. "$85k", "$1,2M". */
-export function shortMoney(cents: number): string {
+/** Format integer céntimos as bolívares. Shortcut for `formatMoney(cents, 'VES')`. */
+export function formatBss(cents: number): string {
+  return formatMoney(cents, 'VES');
+}
+
+/** Short money for chart labels, e.g. "$85k", "$1,2M", "Bs40M". */
+export function shortMoney(cents: number, currency: MoneyCurrency = 'USD'): string {
   const value = Math.abs(Number(cents) || 0) / 100;
   let out: string;
   if (value >= 1_000_000) {
@@ -101,7 +133,17 @@ export function shortMoney(cents: number): string {
   } else {
     out = String(Math.round(value));
   }
-  return `$${out}`;
+  return `${MONEY_SYMBOLS[currency] ?? MONEY_SYMBOLS.USD}${out}`;
+}
+
+/**
+ * Rate in "Bs per 1 USD" as a plain number. `rate_micros` is Bs/USD x 1e6, so
+ * `40_000_000` renders as "40" and `36_500_000` as "36,5". Empty when absent.
+ */
+export function formatRate(rateMicros: number | null | undefined): string {
+  if (!rateMicros || rateMicros <= 0) return '';
+  const value = rateMicros / 1_000_000;
+  return (Math.round(value * 100) / 100).toString().replace('.', ',');
 }
 
 const percentFormatters = new Map<number, Intl.NumberFormat>();
@@ -115,7 +157,7 @@ export function formatPercent(fraction: number, maxFractionDigits = 1): string {
   try {
     let formatter = percentFormatters.get(maxFractionDigits);
     if (!formatter) {
-      formatter = new Intl.NumberFormat('es-AR', {
+      formatter = new Intl.NumberFormat('es-VE', {
         style: 'percent',
         maximumFractionDigits: maxFractionDigits,
       });

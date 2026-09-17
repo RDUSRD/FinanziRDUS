@@ -7,15 +7,32 @@ from datetime import date
 import pytest
 
 from app.domain import (
+    DEBT_CATEGORY_ID,
+    MAX_CENTS,
+    MAX_NAME_LEN,
+    DomainError,
+    account_balance,
+    account_balance_item,
     average_prev_months,
     budget_status,
     category_shares,
     comparison,
+    compute_amount_cents,
+    jar_targets,
     month_key_of,
     monthly_totals,
     parse_month,
     shift_month,
+    total_debt_cents,
+    usd_to_ves_cents,
     valid_date_str,
+    validate_account_name,
+    validate_debt_payment,
+    validate_entry_currency,
+    validate_is_debt_payment,
+    validate_opening_balance,
+    validate_rate_micros,
+    ves_to_usd_cents,
 )
 
 
@@ -233,3 +250,222 @@ class TestComparison:
         result = comparison(100, 100)
         assert result["direction"] == "equal"
         assert result["pct"] == 0.0
+
+
+class TestEntryCurrencyAndRate:
+    @pytest.mark.parametrize("value", ["USD", "VES"])
+    def test_valid_currency(self, value: str) -> None:
+        assert validate_entry_currency(value) == value
+
+    @pytest.mark.parametrize("value", ["ARS", "usd", "", "EUR", None, 1])
+    def test_invalid_currency(self, value: object) -> None:
+        with pytest.raises(DomainError):
+            validate_entry_currency(value)
+
+    def test_valid_rate(self) -> None:
+        assert validate_rate_micros(40_000_000) == 40_000_000
+
+    @pytest.mark.parametrize("value", [0, -1, True, "40000000", None])
+    def test_invalid_rate(self, value: object) -> None:
+        with pytest.raises(DomainError):
+            validate_rate_micros(value)
+
+
+class TestConversion:
+    def test_ves_to_usd_contract_example(self) -> None:
+        # 4.000,00 Bs = 400_000 céntimos at 40 Bs/USD -> $100,00.
+        assert ves_to_usd_cents(400_000, 40_000_000) == 10_000
+
+    def test_usd_to_ves_contract_example(self) -> None:
+        assert usd_to_ves_cents(10_000, 40_000_000) == 400_000
+
+    def test_round_trip(self) -> None:
+        assert usd_to_ves_cents(ves_to_usd_cents(400_000, 40_000_000), 40_000_000) == 400_000
+
+    @pytest.mark.parametrize(
+        ("ves_cents", "rate_micros", "expected"),
+        [
+            (3, 2_000_000, 2),      # 1.5 -> half up
+            (1, 2_000_000, 1),      # 0.5 -> half up
+            (1, 3_000_000, 0),      # 0.333 -> 0
+            (5, 2_000_000, 3),      # 2.5 -> half up
+        ],
+    )
+    def test_rounding_half_up(self, ves_cents: int, rate_micros: int, expected: int) -> None:
+        assert ves_to_usd_cents(ves_cents, rate_micros) == expected
+
+    def test_zero_rate_is_rejected(self) -> None:
+        with pytest.raises(DomainError):
+            ves_to_usd_cents(100, 0)
+
+
+class TestComputeAmountCents:
+    def test_usd_is_identity(self) -> None:
+        assert compute_amount_cents("USD", 12345, None) == 12345
+
+    def test_usd_forbids_rate(self) -> None:
+        with pytest.raises(DomainError):
+            compute_amount_cents("USD", 100, 40_000_000)
+
+    def test_ves_requires_rate(self) -> None:
+        with pytest.raises(DomainError):
+            compute_amount_cents("VES", 400_000, None)
+
+    def test_ves_conversion(self) -> None:
+        assert compute_amount_cents("VES", 400_000, 40_000_000) == 10_000
+
+    def test_ves_half_up(self) -> None:
+        assert compute_amount_cents("VES", 3, 2_000_000) == 2
+
+    def test_invalid_currency(self) -> None:
+        with pytest.raises(DomainError):
+            compute_amount_cents("ARS", 100, None)
+
+    def test_ves_equivalent_zero_is_out_of_range(self) -> None:
+        with pytest.raises(DomainError):
+            compute_amount_cents("VES", 1, 10**15)
+
+    def test_entry_amount_upper_bound(self) -> None:
+        with pytest.raises(DomainError):
+            compute_amount_cents("USD", MAX_CENTS + 1, None)
+
+    @pytest.mark.parametrize("value", [0, -1])
+    def test_entry_amount_must_be_positive(self, value: int) -> None:
+        with pytest.raises(DomainError):
+            compute_amount_cents("USD", value, None)
+
+
+class TestJarTargets:
+    JARS = [
+        {"id": "crecimiento", "pct": 25},
+        {"id": "estabilidad", "pct": 15},
+        {"id": "esencial", "pct": 50},
+        {"id": "recompensas", "pct": 10},
+    ]
+
+    @pytest.mark.parametrize("income", [0, 1, 99, 100, 100_001, 1_234_567])
+    def test_targets_sum_to_income(self, income: int) -> None:
+        targets = jar_targets(income, self.JARS)
+        assert sum(item["target_cents"] for item in targets) == income
+
+    def test_specific_values_with_remainder_absorption(self) -> None:
+        targets = {item["jar_id"]: item["target_cents"] for item in jar_targets(100_001, self.JARS)}
+        assert targets == {
+            "crecimiento": 25_000,
+            "estabilidad": 15_000,
+            "esencial": 50_001,   # half-up of 50000.5
+            "recompensas": 10_000,  # absorbs the remainder
+        }
+
+    @pytest.mark.parametrize("income", [0, -5])
+    def test_non_positive_income_is_all_zero(self, income: int) -> None:
+        targets = jar_targets(income, self.JARS)
+        assert all(item["target_cents"] == 0 for item in targets)
+
+    def test_empty_catalogue(self) -> None:
+        assert jar_targets(1000, []) == []
+
+
+class TestAccountBalance:
+    def test_asset_account(self) -> None:
+        # opening 0, income 1000, expense 200 -> 800
+        movements = [("ingreso", 100_000, False), ("gasto", 20_000, False)]
+        assert account_balance(0, movements) == 80_000
+
+    def test_debt_account_payment_raises_balance(self) -> None:
+        # opening -500, debt payment 100 -> -400 (the debt went down)
+        assert account_balance(-50_000, [("gasto", 10_000, True)]) == -40_000
+
+    def test_normal_expense_on_debt_account_lowers_balance(self) -> None:
+        assert account_balance(-50_000, [("gasto", 10_000, False)]) == -60_000
+
+    def test_empty_movements_returns_opening(self) -> None:
+        assert account_balance(-12_345, []) == -12_345
+
+
+class TestAccountBalanceItem:
+    def test_debt_item(self) -> None:
+        item = account_balance_item(
+            {"opening_balance_cents": -60_000}, [("gasto", 20_000, True)]
+        )
+        assert item == {
+            "balance_cents": -40_000,
+            "is_debt": True,
+            "paid_cents": 20_000,
+            "remaining_cents": 40_000,
+            "pct_paid": pytest.approx(20_000 / 60_000),
+        }
+
+    def test_asset_item_has_zero_remaining_and_pct(self) -> None:
+        item = account_balance_item(
+            {"opening_balance_cents": 0}, [("ingreso", 82_000, False)]
+        )
+        assert item == {
+            "balance_cents": 82_000,
+            "is_debt": False,
+            "paid_cents": 0,
+            "remaining_cents": 0,
+            "pct_paid": 0.0,
+        }
+
+    def test_accepts_object_with_attribute(self) -> None:
+        class Stub:
+            opening_balance_cents = -1_000
+
+        item = account_balance_item(Stub(), [])
+        assert item["balance_cents"] == -1_000
+        assert item["is_debt"] is True
+        assert item["remaining_cents"] == 1_000
+
+
+class TestTotalDebt:
+    def test_sums_only_negative_balances(self) -> None:
+        assert total_debt_cents([-40_000, 82_000, -20_000]) == 60_000
+
+    def test_no_debt(self) -> None:
+        assert total_debt_cents([100, 200]) == 0
+
+    def test_empty(self) -> None:
+        assert total_debt_cents([]) == 0
+
+
+class TestAccountValidation:
+    def test_valid_name_is_trimmed(self) -> None:
+        assert validate_account_name("  Binance  ") == "Binance"
+
+    @pytest.mark.parametrize("value", ["", "   ", "x" * (MAX_NAME_LEN + 1), None, 1])
+    def test_invalid_name(self, value: object) -> None:
+        with pytest.raises(DomainError):
+            validate_account_name(value)
+
+    def test_name_at_limit_is_accepted(self) -> None:
+        assert len(validate_account_name("x" * MAX_NAME_LEN)) == MAX_NAME_LEN
+
+    def test_valid_opening_balance(self) -> None:
+        assert validate_opening_balance(0) == 0
+        assert validate_opening_balance(-MAX_CENTS) == -MAX_CENTS
+        assert validate_opening_balance(MAX_CENTS) == MAX_CENTS
+
+    @pytest.mark.parametrize("value", [MAX_CENTS + 1, -MAX_CENTS - 1, True, "0", None])
+    def test_invalid_opening_balance(self, value: object) -> None:
+        with pytest.raises(DomainError):
+            validate_opening_balance(value)
+
+    def test_is_debt_payment_requires_bool(self) -> None:
+        assert validate_is_debt_payment(True) is True
+        assert validate_is_debt_payment(False) is False
+        with pytest.raises(DomainError):
+            validate_is_debt_payment(1)
+
+    def test_debt_payment_rule(self) -> None:
+        # Not a debt payment -> no-op regardless of the inputs.
+        validate_debt_payment(False, "ingreso", 0)
+        # A debt payment must be a gasto on a debt account.
+        validate_debt_payment(True, "gasto", -1)
+        with pytest.raises(DomainError):
+            validate_debt_payment(True, "ingreso", -1)
+        with pytest.raises(DomainError):
+            validate_debt_payment(True, "gasto", 0)
+
+    def test_debt_category_constant(self) -> None:
+        assert DEBT_CATEGORY_ID == "deudas"

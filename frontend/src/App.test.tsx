@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { App } from './App';
 import { createFakeServer, type FakeServer } from './test/fakeServer';
 import { renderAppTree } from './test/render';
-import { MONTH, buildSeed, money } from './test/seed';
+import { MONTH, buildSeed, day, money } from './test/seed';
 import { todayStr } from './lib/month';
 
 let server: FakeServer;
@@ -76,7 +76,7 @@ describe('App', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const amount = await screen.findByLabelText('Monto en pesos');
+    const amount = await screen.findByLabelText('Monto en dólares');
     await user.type(amount, 'abc');
     await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
 
@@ -141,15 +141,21 @@ describe('App', () => {
       const blob = createObjectURL.mock.calls[0][0];
       const payload = JSON.parse(await blob.text()) as {
         version: number;
+        accounts: Array<{ name: string; opening_balance_cents: number }>;
         movements: unknown[];
         budgets: Record<string, number>;
       };
-      expect(payload.version).toBe(1);
+      expect(payload.version).toBe(3);
+      expect(payload.accounts).toEqual([{ name: 'Cartera USD', opening_balance_cents: 0 }]);
       expect(payload.movements).toHaveLength(5);
       expect(payload.movements[0]).toMatchObject({
         type: expect.any(String),
         category_id: expect.any(String),
+        account_id: expect.any(Number),
+        is_debt_payment: expect.any(Boolean),
         amount_cents: expect.any(Number),
+        entry_currency: expect.any(String),
+        entry_amount_cents: expect.any(Number),
         date: expect.any(String),
         note: expect.any(String),
       });
@@ -160,5 +166,36 @@ describe('App', () => {
       URL.createObjectURL = originalCreate;
       URL.revokeObjectURL = originalRevoke;
     }
+  });
+
+  it('shows the Bs amount and rate as secondary detail for a VES movement', async () => {
+    server = createFakeServer({
+      ...buildSeed(MONTH),
+      movements: [
+        {
+          id: 1,
+          type: 'gasto',
+          category_id: 'supermercado',
+          account_id: 1,
+          account_name: 'Cartera USD',
+          is_debt_payment: false,
+          amount_cents: 10_000,
+          entry_currency: 'VES',
+          entry_amount_cents: 400_000,
+          rate_micros: 40_000_000,
+          date: day(MONTH, 3),
+          note: 'En Bs',
+          created_at: `${day(MONTH, 3)}T10:00:00-03:00`,
+        },
+      ],
+    });
+    vi.stubGlobal('fetch', server.fetchMock);
+
+    renderAppTree(<App />);
+
+    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    // The amount column stays USD; the Bs + rate is a secondary line.
+    expect(within(movements).getByText('-$ 100')).toBeInTheDocument();
+    expect(within(movements).getByText('Bs 4.000,00 @ 40')).toBeInTheDocument();
   });
 });

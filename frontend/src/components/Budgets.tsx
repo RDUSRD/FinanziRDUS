@@ -46,14 +46,14 @@ function BudgetRow({
   }, [capCents]);
 
   const valueText = hasCap
-    ? `${label}: ${formatMoney(spentCents)} de ${formatMoney(capCents)}, ${formatPercent(pct)}${
+    ? `${label}: ${formatMoney(spentCents, 'USD')} de ${formatMoney(capCents, 'USD')}, ${formatPercent(pct)}${
         status === 'over' ? ', excedido' : ''
       }`
-    : `${label}: ${formatMoney(spentCents)}, sin tope definido`;
+    : `${label}: ${formatMoney(spentCents, 'USD')}, sin tope definido`;
 
   const metaText = hasCap
-    ? `${formatMoney(spentCents)} de ${formatMoney(capCents)} — ${formatPercent(pct)}`
-    : `${formatMoney(spentCents)} — sin tope`;
+    ? `${formatMoney(spentCents, 'USD')} de ${formatMoney(capCents, 'USD')} — ${formatPercent(pct)}`
+    : `${formatMoney(spentCents, 'USD')} — sin tope`;
 
   function commit(raw: string) {
     const cents = toCents(raw);

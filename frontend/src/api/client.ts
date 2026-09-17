@@ -1,15 +1,22 @@
 import type {
+  Account,
+  AccountFilter,
+  AccountInput,
+  AccountsResponse,
+  AccountUpdateInput,
   BudgetsResponse,
   Category,
   ExportPayload,
   HealthResponse,
   ImportMode,
   ImportResult,
+  JarAssignResponse,
   MonthlyStat,
   Movement,
   MovementInput,
   MovementPatch,
   MovementType,
+  PlanResponse,
   PutBudgetResponse,
   StatsByCategory,
   StatsSummary,
@@ -56,6 +63,11 @@ function toQuery(params: Record<string, string | number | boolean | undefined>):
   }
   const query = search.toString();
   return query ? `?${query}` : '';
+}
+
+/** "all" means no param (the API defaults to the consolidated view). */
+function accountParam(account: AccountFilter | undefined): number | undefined {
+  return typeof account === 'number' ? account : undefined;
 }
 
 interface RequestOptions {
@@ -119,8 +131,22 @@ export const api = {
 
   categories: () => request<Category[]>('/categories'),
 
-  movements: (params: { month?: string; category?: string; type?: MovementType } = {}) =>
-    request<Movement[]>(`/movements${toQuery(params)}`),
+  accounts: () => request<AccountsResponse>('/accounts'),
+  createAccount: (input: AccountInput) =>
+    request<Account>('/accounts', { method: 'POST', body: input }),
+  updateAccount: (id: number, patch: AccountUpdateInput) =>
+    request<Account>(`/accounts/${id}`, { method: 'PATCH', body: patch }),
+  deleteAccount: (id: number) => request<void>(`/accounts/${id}`, { method: 'DELETE' }),
+
+  movements: (params: { month?: string; account?: AccountFilter; category?: string; type?: MovementType } = {}) =>
+    request<Movement[]>(
+      `/movements${toQuery({
+        month: params.month,
+        category: params.category,
+        type: params.type,
+        account: accountParam(params.account),
+      })}`,
+    ),
   createMovement: (input: MovementInput) =>
     request<Movement>('/movements', { method: 'POST', body: input }),
   updateMovement: (id: number, patch: MovementPatch) =>
@@ -136,10 +162,25 @@ export const api = {
   deleteBudget: (categoryId: string) =>
     request<void>(`/budgets/${encodeURIComponent(categoryId)}`, { method: 'DELETE' }),
 
-  summary: (month?: string) => request<StatsSummary>(`/stats/summary${toQuery({ month })}`),
-  byCategory: (month?: string) => request<StatsByCategory>(`/stats/by-category${toQuery({ month })}`),
-  monthly: (params: { end?: string; months?: number } = {}) =>
-    request<MonthlyStat[]>(`/stats/monthly${toQuery(params)}`),
+  plan: (month?: string) => request<PlanResponse>(`/plan${toQuery({ month })}`),
+  assignJar: (categoryId: string, jarId: string) =>
+    request<JarAssignResponse>(`/plan/categories/${encodeURIComponent(categoryId)}`, {
+      method: 'PUT',
+      body: { jar_id: jarId },
+    }),
+
+  summary: (month?: string, account?: AccountFilter) =>
+    request<StatsSummary>(`/stats/summary${toQuery({ month, account: accountParam(account) })}`),
+  byCategory: (month?: string, account?: AccountFilter) =>
+    request<StatsByCategory>(`/stats/by-category${toQuery({ month, account: accountParam(account) })}`),
+  monthly: (params: { end?: string; months?: number; account?: AccountFilter } = {}) =>
+    request<MonthlyStat[]>(
+      `/stats/monthly${toQuery({
+        end: params.end,
+        months: params.months,
+        account: accountParam(params.account),
+      })}`,
+    ),
 
   exportData: () => requestText('/data/export'),
   importData: (mode: ImportMode, payload: ExportPayload | unknown) =>

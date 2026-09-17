@@ -76,21 +76,36 @@ def test_migrations_seed_categories_and_api_flow(migrated_app: TestClient) -> No
     assert health.json()["db"] == "ok"
 
     categories = migrated_app.get("/api/categories").json()
-    assert len(categories) == 14
+    assert len(categories) == 15
+    deudas = next(category for category in categories if category["id"] == "deudas")
+    assert deudas["is_system"] is True
+
+    # Migration 0003 seeds the default wallet.
+    accounts = migrated_app.get("/api/accounts").json()
+    assert [account["name"] for account in accounts["items"]] == ["Cartera USD"]
+    default_account_id = accounts["items"][0]["id"]
 
     created = migrated_app.post(
         "/api/movements",
         json={
             "type": "gasto",
             "category_id": "ocio",
-            "amount_cents": 123400,
+            "account_id": default_account_id,
+            "entry_currency": "USD",
+            "entry_amount_cents": 123400,
             "date": f"{current_month}-05",
             "note": "Postgres",
         },
     )
     assert created.status_code == 201
     movement_id = created.json()["id"]
-    assert created.json()["created_at"].endswith("-03:00") or "+" in created.json()["created_at"]
+    assert created.json()["account_id"] == default_account_id
+    assert created.json()["account_name"] == "Cartera USD"
+    assert created.json()["entry_currency"] == "USD"
+    assert created.json()["entry_amount_cents"] == 123400
+    # Serialized in the application timezone (ISO 8601 with a UTC offset).
+    created_at = created.json()["created_at"]
+    assert created_at[-6] in "+-" and created_at[-3] == ":"
 
     assert migrated_app.put("/api/budgets/ocio", json={"cap_cents": 100000}).status_code == 200
     budgets = migrated_app.get("/api/budgets").json()
@@ -102,7 +117,39 @@ def test_migrations_seed_categories_and_api_flow(migrated_app: TestClient) -> No
     assert summary["expenses_cents"] == 123400
     assert summary["balance_cents"] == -123400
 
+    # Migration 0002 seeds the money-jars catalogue and the default mapping.
+    plan = migrated_app.get("/api/plan").json()
+    assert [jar["jar_id"] for jar in plan["jars"]] == [
+        "crecimiento",
+        "estabilidad",
+        "esencial",
+        "recompensas",
+    ]
+    assert plan["income_cents"] == 0
+
+    # A movement entered in bolívares is converted to the canonical USD amount.
+    ves = migrated_app.post(
+        "/api/movements",
+        json={
+            "type": "gasto",
+            "category_id": "supermercado",
+            "account_id": default_account_id,
+            "entry_currency": "VES",
+            "entry_amount_cents": 400000,
+            "rate_micros": 40000000,
+            "date": f"{current_month}-06",
+            "note": "Bs",
+        },
+    )
+    assert ves.status_code == 201
+    assert ves.json()["amount_cents"] == 10000
+    assert ves.json()["rate_micros"] == 40000000
+    assert migrated_app.delete(f"/api/movements/{ves.json()['id']}").status_code == 204
+
     export = migrated_app.get("/api/data/export").json()
-    assert export["version"] == 1
+    assert export["version"] == 3
+    assert export["jar_categories"]["supermercado"] == "esencial"
+    assert export["accounts"] == [{"name": "Cartera USD", "opening_balance_cents": 0}]
+    assert export["movements"][0]["account_name"] == "Cartera USD"
 
     assert migrated_app.delete(f"/api/movements/{movement_id}").status_code == 204

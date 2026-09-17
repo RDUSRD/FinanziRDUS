@@ -8,12 +8,12 @@ export function DonutChart({ data }: { data: StatsByCategory }) {
   const segments = donutSegments(items.map((item) => item.share));
   const circumference = 2 * Math.PI * DONUT.r;
 
-  const centerText = formatMoney(totalCents);
-  const centerValue = centerText.length > 9 ? shortMoney(totalCents) : centerText;
+  const centerText = formatMoney(totalCents, 'USD');
+  const centerValue = centerText.length > 9 ? shortMoney(totalCents, 'USD') : centerText;
 
   const ariaLabel =
     totalCents > 0
-      ? `Gastos por categoría. Total ${formatMoney(totalCents)}. El detalle está en la lista que sigue.`
+      ? `Gastos por categoría. Total ${formatMoney(totalCents, 'USD')}. El detalle está en la lista que sigue.`
       : 'Sin gastos este mes.';
 
   return (
@@ -82,7 +82,7 @@ export function DonutChart({ data }: { data: StatsByCategory }) {
             <li key={item.category_id}>
               <span className="dot" aria-hidden="true" style={{ background: palette[index] }} />
               <span className="lg-name">{item.label}</span>
-              <span className="lg-amt num">{formatMoney(item.cents)}</span>
+              <span className="lg-amt num">{formatMoney(item.cents, 'USD')}</span>
               <span className="lg-pct num">{formatPercent(item.share)}</span>
             </li>
           ))

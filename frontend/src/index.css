@@ -465,6 +465,61 @@
     color: var(--color-muted);
   }
 
+  /* Money jars (plan 25/15/50/10) */
+  .jar-row {
+    padding: 12px 0;
+    border-top: 1px solid var(--color-border);
+  }
+  .jar-row:first-of-type {
+    border-top: 0;
+  }
+  .jar-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .jar-name {
+    font-weight: 700;
+    font-size: 0.95rem;
+    margin-right: auto;
+  }
+  .jar-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+    font-size: 0.82rem;
+    color: var(--color-muted);
+  }
+  .jar-cats {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .jar-cats li {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.86rem;
+  }
+  .jar-cat-name {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .jar-cats select {
+    width: auto;
+    min-width: 150px;
+  }
+
   /* Movements table */
   .movements-head {
     display: flex;
@@ -561,6 +616,91 @@
     padding: 26px 16px;
     text-align: center;
     color: var(--color-muted);
+  }
+
+  /* Accounts & debt (named USD wallets) */
+  .debt-objective,
+  .debt-warning {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 14px;
+    margin: 0 0 14px;
+    border-radius: 12px;
+    border: 1px solid hsl(0 80% 65% / 0.5);
+    background: hsl(0 80% 65% / 0.12);
+  }
+  .debt-objective-value {
+    font-size: clamp(1.4rem, 1rem + 2vw, 2rem);
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+    color: var(--color-danger);
+    overflow-wrap: anywhere;
+  }
+  .debt-warning strong {
+    color: var(--color-danger);
+  }
+  .debt-warning span {
+    font-size: 0.88rem;
+    color: var(--color-text);
+  }
+
+  .accounts-list {
+    list-style: none;
+    margin: 0 0 14px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .account-row {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 14px;
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    background: var(--color-surface-2);
+    min-width: 0;
+  }
+  .account-head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .account-name {
+    font-weight: 700;
+    margin-right: auto;
+    overflow-wrap: anywhere;
+  }
+  .account-balance {
+    font-weight: 700;
+    white-space: nowrap;
+  }
+  .account-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    font-size: 0.82rem;
+    color: var(--color-muted);
+  }
+  .badge-debt {
+    color: var(--color-danger);
+    border-color: hsl(0 80% 65% / 0.5);
+    background: hsl(0 80% 65% / 0.12);
+  }
+  .inline-form {
+    border-top: 1px solid var(--color-border);
+    padding-top: 12px;
+    margin-top: 4px;
+    min-width: 0;
+  }
+  .inline-form h3 {
+    margin: 0 0 10px;
+    font-size: 0.92rem;
   }
 
   /* Messages */

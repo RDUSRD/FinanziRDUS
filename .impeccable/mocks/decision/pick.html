@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<title>Libreta de control · FinanciRDUS</title>
+<style>
+/* ==========================================================================
+   LIBRETA DE CONTROL — FinanciRDUS
+   Visual world: an old savings passbook / ruled columnar ledger page.
+   One printed form on one sheet: no cards, no rounded corners, no shadows
+   (except the inner shadow inside the punched binding holes).
+   ========================================================================== */
+
+/* ---- self-hosted fonts (files already on disk) ---- */
+@font-face{font-family:"Courier Prime";font-style:normal;font-weight:400;font-display:block;
+  src:url("../../fonts/courier-prime-latin-400-normal.woff2") format("woff2"),
+      url("../fonts/courier-prime-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"Courier Prime";font-style:normal;font-weight:700;font-display:block;
+  src:url("../../fonts/courier-prime-latin-700-normal.woff2") format("woff2"),
+      url("../fonts/courier-prime-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"Courier Prime";font-style:italic;font-weight:400;font-display:block;
+  src:url("../../fonts/courier-prime-latin-400-italic.woff2") format("woff2"),
+      url("../fonts/courier-prime-latin-400-italic.woff2") format("woff2")}
+@font-face{font-family:"Bitter";font-style:normal;font-weight:600;font-display:block;
+  src:url("../../fonts/bitter-latin-600-normal.woff2") format("woff2"),
+      url("../fonts/bitter-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Bitter";font-style:normal;font-weight:700;font-display:block;
+  src:url("../../fonts/bitter-latin-700-normal.woff2") format("woff2"),
+      url("../fonts/bitter-latin-700-normal.woff2") format("woff2")}
+
+:root{
+  /* security-tint paper (cool green-grey, NOT cream) */
+  --paper:#cfd8cd; --paper-hi:#d7ddd2; --paper-lo:#c9d3c6; --paper-deep:#b6c1b2;
+  /* printed oxblood rules & headings */
+  --ox:#7a2a24; --ox-2:#8c332b; --ox-line:rgba(122,42,36,.66); --ox-hair:rgba(122,42,36,.4);
+  /* black typewriter ink */
+  --ink:#1c1f1c; --ink-2:rgba(28,31,28,.72); --ink-3:rgba(28,31,28,.7);
+  /* single rubber-stamp red + income green-ink */
+  --stamp:#a3312a; --income:#2f5d3a;
+  --slab:"Bitter",Georgia,"Times New Roman",serif;
+  --type:"Courier Prime",ui-monospace,"Courier New",monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:#9caa98;
+  color:var(--ink);
+  font-family:var(--type);
+  font-size:15px;
+  line-height:1.5;
+  font-variant-numeric:tabular-nums;
+  overflow-x:hidden;
+  padding:clamp(14px,2.6vw,34px) clamp(10px,2.4vw,30px);
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+h1,h2,h3{margin:0}
+p{margin:0}
+ul,ol{margin:0;padding:0;list-style:none}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---- the sheet of stationery ---- */
+.sheet{
+  position:relative;
+  max-width:1220px;
+  margin:0 auto;
+  background:linear-gradient(179deg,var(--paper-hi),var(--paper) 42%,var(--paper-lo));
+  overflow:hidden;
+  border:1px solid rgba(28,31,28,.28);
+}
+/* paper fibre grain, drawn inline with feTurbulence at very low opacity */
+.fibre{
+  position:absolute; inset:0; z-index:0; pointer-events:none;
+  opacity:.55; mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='260' height='260'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='260' height='260' filter='url(%23p)' opacity='0.06'/></svg>");
+}
+
+/* ---- punched binding holes down the left margin ---- */
+.holes{position:absolute; z-index:2; top:clamp(66px,11vh,132px); bottom:clamp(66px,11vh,132px);
+  left:clamp(12px,2.6vw,36px); display:flex; flex-direction:column;
+  justify-content:space-between; align-items:center; pointer-events:none}
+.holes i{display:block; width:clamp(11px,1.6vw,15px); height:clamp(11px,1.6vw,15px);
+  border-radius:50%;
+  background:radial-gradient(circle at 38% 32%,#aab5a6,#93a08f 72%);
+  box-shadow:inset 0 2px 3px rgba(18,24,18,.5), inset 0 -1px 2px rgba(255,255,255,.35)}
+
+/* ---- perforated stub at the outer (right) edge ---- */
+.stub{position:absolute; z-index:2; top:0; bottom:0; right:0;
+  width:clamp(14px,3vw,42px); border-left:2px dashed rgba(122,42,36,.42);
+  display:flex; align-items:center; justify-content:center; pointer-events:none}
+.stub span{writing-mode:vertical-rl; transform:rotate(180deg);
+  font-family:var(--slab); font-size:.58rem; letter-spacing:.3em; text-transform:uppercase;
+  color:var(--ox-2); white-space:nowrap}
+
+/* content clears the holes (left) and the tear line (right) */
+.inner{position:relative; z-index:1;
+  padding:clamp(26px,3.4vw,46px) clamp(30px,5.4vw,74px) clamp(30px,4vw,54px) clamp(46px,8.6vw,104px)}
+
+/* ---- printed rules between blocks ---- */
+.rule{height:4px; border:0; border-top:1.5px solid var(--ox-line); border-bottom:1.5px solid var(--ox-line); margin:0}
+.block{padding:clamp(20px,2.6vw,30px) 0}
+.block:first-child{padding-top:0}
+.block:last-child{padding-bottom:0}
+.row-2col{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:clamp(22px,3.4vw,48px); align-items:start}
+
+/* ---- printed form labels (slab) ---- */
+.sec-title{font-family:var(--slab); font-weight:600; font-size:.78rem; line-height:1.25;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ox); margin-bottom:12px}
+.lbl{font-family:var(--slab); font-weight:600; font-size:.6rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--ox)}
+.note{font-size:.86rem; color:var(--ink-2); max-width:80ch}
+.note b{color:var(--ink)}
+.note .hl{color:var(--stamp)}
+
+/* ==========================================================================
+   header
+   ========================================================================== */
+.head{display:flex; flex-wrap:wrap; gap:20px 30px; justify-content:space-between; align-items:flex-start}
+.brand h1{font-family:var(--slab); font-weight:700; font-size:clamp(1.5rem,1.05rem+1.7vw,2.15rem);
+  line-height:1; letter-spacing:-.01em; text-transform:uppercase; color:var(--ink)}
+.brand .tagline{margin-top:7px; font-size:.78rem; letter-spacing:.04em; color:var(--ink-2)}
+.actions{display:flex; flex-wrap:wrap; gap:12px 14px; align-items:flex-end; justify-content:flex-end}
+
+.group{border:1.5px solid var(--ox-line); margin:0; padding:9px 11px 11px;
+  display:flex; flex-wrap:wrap; gap:8px; align-items:center; border-radius:0}
+.group legend{padding:0 7px; font-family:var(--slab); font-weight:600; font-size:.58rem;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ox)}
+
+.field-inline{display:flex; flex-direction:column; gap:5px}
+
+.btn{appearance:none; cursor:pointer; font-family:var(--type); font-weight:700;
+  font-size:.76rem; letter-spacing:.07em; text-transform:uppercase; line-height:1;
+  color:var(--ink); background:transparent; border:1.5px solid rgba(28,31,28,.55);
+  border-radius:0; padding:9px 13px; min-height:40px; display:inline-flex; align-items:center}
+.btn:hover{color:var(--ox); border-color:var(--ox); background:rgba(122,42,36,.08)}
+.btn-primary{
+  font-size:.82rem; letter-spacing:.09em; padding:13px 20px; min-height:50px;
+  color:#f3f6ef; background:var(--ox); border:2px solid #4d1712}
+.btn-primary:hover{color:#fff; background:#66211b; border-color:#3d120e}
+.btn-small{font-size:.68rem; padding:7px 11px; min-height:34px}
+
+.sel{appearance:none; -webkit-appearance:none; font-family:var(--type); font-size:.8rem;
+  color:var(--ink); background-color:#dbe2d9; border:1.5px solid rgba(28,31,28,.56);
+  border-radius:0; padding:9px 30px 9px 11px; min-height:40px; cursor:pointer;
+  background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8'><path d='M1 1.5l5 5 5-5' fill='none' stroke='%237a2a24' stroke-width='1.6'/></svg>");
+  background-repeat:no-repeat; background-position:right 10px center}
+
+/* ==========================================================================
+   month date band
+   ========================================================================== */
+.band{display:flex; flex-wrap:wrap; gap:12px 16px; align-items:center; justify-content:space-between; margin-top:18px}
+.monthnav{display:flex; flex-wrap:wrap; gap:8px; align-items:center}
+.navb{appearance:none; cursor:pointer; width:42px; height:42px; flex:0 0 auto;
+  display:inline-flex; align-items:center; justify-content:center;
+  font-family:var(--type); font-size:1.15rem; line-height:1; color:var(--ink);
+  background:transparent; border:1.5px solid rgba(28,31,28,.56); border-radius:0}
+.navb:hover{color:var(--ox); border-color:var(--ox); background:rgba(122,42,36,.08)}
+.dateband{display:flex; flex-wrap:wrap; align-items:center; gap:9px;
+  border:1.5px solid var(--ox-line); padding:8px 13px; border-radius:0;
+  font-family:var(--slab); text-transform:uppercase; letter-spacing:.14em; line-height:1;
+  font-size:clamp(.68rem,.5rem+1.4vw,.82rem)}
+.dateband .prev{color:var(--ox-2)}
+.dateband .div{color:var(--ox-2)}
+.dateband .cur{font-weight:700; color:var(--ox)}
+
+/* ==========================================================================
+   KPI figure boxes
+   ========================================================================== */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(168px,1fr)); gap:14px 22px; margin-bottom:16px}
+.kpi{border:1.5px solid var(--ox-line); border-radius:0; padding:13px 15px 14px}
+.kpi .kpi-label{display:block; font-family:var(--slab); font-weight:600; font-size:.6rem;
+  letter-spacing:.2em; text-transform:uppercase; color:var(--ox)}
+.kpi .kpi-value{display:block; margin-top:8px; font-weight:700; color:var(--ink);
+  font-size:clamp(1.35rem,1.05rem+1.6vw,2rem); line-height:1; letter-spacing:-.01em}
+.kpi.is-left .kpi-value{color:var(--income)}
+
+/* ==========================================================================
+   ruled tables (budget · plan · wallets · ledger)
+   ========================================================================== */
+table.ruled{width:100%; border-collapse:collapse}
+.ruled caption{caption-side:top; text-align:left; padding-bottom:9px;
+  font-family:var(--slab); font-weight:600; font-size:.6rem; letter-spacing:.2em;
+  text-transform:uppercase; color:var(--ox-2)}
+.ruled thead th{text-align:left; padding:0 14px 8px 0;
+  font-family:var(--slab); font-weight:600; font-size:.62rem; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--ox); border-bottom:1.5px solid var(--ox-line)}
+.ruled tbody th[scope=row], .ruled tbody td{border-bottom:1px dashed var(--ox-hair);
+  padding:9px 14px 9px 0; vertical-align:top; text-align:left; font-weight:400}
+.ruled tbody tr:last-child th[scope=row], .ruled tbody tr:last-child td{border-bottom:0}
+.ruled tbody th[scope=row]{font-weight:700; color:var(--ink)}
+.ta-r{text-align:right}
+td.num,th.num{font-variant-numeric:tabular-nums}
+.pos{color:var(--income); font-weight:700}
+.neg{color:var(--stamp); font-weight:700}
+
+/* progress drawn as a printed rule-that-fills (square oxblood bar) */
+.meter{display:block; position:relative; height:7px; margin-top:7px;
+  background:rgba(122,42,36,.14); overflow:hidden; border-radius:0}
+.meter i{position:absolute; inset:0 auto 0 0; display:block; background:var(--ox)}
+.row-over .meter i{background:var(--stamp)}
+
+/* the row label carries its category + the fill rule */
+.ruled tbody th .cats{display:block; margin-top:6px; font-family:var(--type);
+  font-weight:400; font-size:.72rem; line-height:1.4; color:var(--ink-3)}
+
+/* rubber stamps — rotated, double-ruled, paper showing through the open fill */
+.stamp{display:inline-block; transform:rotate(-3deg); white-space:nowrap; line-height:1.15;
+  font-family:var(--slab); font-weight:700; font-size:.68rem; letter-spacing:.13em;
+  text-transform:uppercase; padding:3px 9px; border:2px double currentColor;
+  border-radius:0; color:var(--stamp); background:transparent}
+.stamp-ok,.stamp-warn{color:var(--ox-2)}
+
+/* ==========================================================================
+   donut + 7-month chart
+   ========================================================================== */
+.donut-row{display:flex; flex-wrap:wrap; gap:22px 26px; align-items:center}
+.donut-row svg{width:184px; max-width:100%; height:auto; flex:0 0 auto}
+.legend{flex:1 1 250px; min-width:0}
+.legend li{display:flex; align-items:baseline; gap:10px; padding:6px 0;
+  border-bottom:1px dashed var(--ox-hair); font-size:.82rem}
+.legend li:last-child{border-bottom:0}
+.legend .swatch{width:12px; height:12px; flex:0 0 auto; align-self:center;
+  background:var(--sw); border:1px solid rgba(28,31,28,.25)}
+.legend .l-name{flex:1 1 auto; min-width:0; color:var(--ink)}
+.legend .l-val{flex:0 0 auto; color:var(--ink-2); font-size:.8rem}
+.legend .l-pct{flex:0 0 auto; min-width:52px; text-align:right; font-weight:700; color:var(--ink)}
+
+.bars-wrap{max-width:620px}
+.bars-wrap svg{display:block; width:100%; height:auto}
+
+/* ==========================================================================
+   carteras
+   ========================================================================== */
+.warnline{display:flex; flex-wrap:wrap; gap:10px 16px; align-items:center;
+  border:2px double var(--stamp); border-radius:0; padding:11px 15px;
+  background:rgba(163,49,42,.06)}
+.warnline p{flex:1 1 240px; font-size:.9rem; color:var(--ink)}
+.warnline b{color:var(--stamp); font-weight:700}
+
+/* ==========================================================================
+   movimientos ledger
+   ========================================================================== */
+.ledger-table td .sub{display:block; margin-top:2px; font-size:.72rem;
+  font-weight:400; color:var(--ink-3)}
+.kind{display:inline-block; font-family:var(--slab); font-weight:600; font-size:.58rem;
+  letter-spacing:.12em; text-transform:uppercase; line-height:1.25;
+  color:var(--ox-2); border:1px solid var(--ox-line); border-radius:0; padding:2px 6px}
+.kind-in{color:var(--income); border-color:rgba(47,93,58,.45)}
+tr.row-income th[scope=row], tr.row-income td{background:rgba(47,93,58,.055)}
+
+/* form footer */
+.form-foot{margin-top:22px; padding-top:12px; border-top:1.5px solid var(--ox-line);
+  display:flex; flex-wrap:wrap; gap:6px 22px; justify-content:space-between;
+  font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ox-2)}
+
+/* ==========================================================================
+   focus visibility everywhere
+   ========================================================================== */
+a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,
+[tabindex]:focus-visible,summary:focus-visible{
+  outline:2px solid var(--ox); outline-offset:2px}
+
+/* ==========================================================================
+   responsive
+   ========================================================================== */
+@media (max-width:900px){
+  .row-2col{grid-template-columns:minmax(0,1fr)}
+}
+@media (max-width:720px){
+  .stub span{display:none}
+  .actions{justify-content:flex-start}
+}
+/* tables collapse into stacked ruled lists (label above value) */
+@media (max-width:640px){
+  .stack thead{position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+    overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0}
+  .stack, .stack tbody, .stack tr, .stack th, .stack td{display:block; width:100%}
+  .stack tbody tr{border-bottom:1.5px solid var(--ox-line); padding:12px 0}
+  .stack tbody tr:last-child{border-bottom:0}
+  .stack tbody th[scope=row]{border:0; padding:0 0 8px; font-size:.95rem}
+  .stack tbody td{border:0; padding:6px 0; text-align:left}
+  .stack tbody td::before{content:attr(data-label); display:block; margin-bottom:1px;
+    font-family:var(--slab); font-weight:600; font-size:.56rem; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--ox)}
+  .stack tbody td.ta-r{text-align:left}
+  .stack .meter{max-width:220px}
+}
+</style>
+</head>
+<body>
+
+<main class="sheet" aria-label="Libreta de control de FinanciRDUS">
+  <div class="fibre" aria-hidden="true"></div>
+
+  <!-- punched binding holes, left margin -->
+  <div class="holes" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+
+  <!-- perforated stub, outer edge -->
+  <div class="stub" aria-hidden="true"><span>comprobante · sept 2026</span></div>
+
+  <div class="inner">
+
+    <!-- ============================ HEADER ============================ -->
+    <header class="head">
+      <div class="brand">
+        <h1>FinanciRDUS</h1>
+        <p class="tagline">libreta de control · cartera en USD</p>
+      </div>
+      <div class="actions">
+        <fieldset class="group">
+          <legend>Datos</legend>
+          <button type="button" class="btn">Exportar JSON</button>
+          <button type="button" class="btn">Importar y fusionar</button>
+          <button type="button" class="btn">Importar y reemplazar</button>
+        </fieldset>
+        <div class="field-inline">
+          <label class="lbl" for="wallet-filter">Filtro de cartera</label>
+          <select class="sel" id="wallet-filter">
+            <option selected>Todas</option>
+            <option>Cartera USD</option>
+            <option>Binance</option>
+            <option>Cartera USD normal</option>
+          </select>
+        </div>
+        <button type="button" class="btn btn-primary">Anotar movimiento</button>
+      </div>
+    </header>
+
+    <!-- month selector printed as a date band -->
+    <div class="band">
+      <nav class="monthnav" aria-label="Navegación de mes">
+        <button type="button" class="navb" aria-label="Mes anterior">&#8249;</button>
+        <span class="dateband">
+          <span class="prev">agosto 2026</span>
+          <span class="div" aria-hidden="true">|</span>
+          <span class="cur">septiembre 2026</span>
+        </span>
+        <button type="button" class="navb" aria-label="Mes siguiente">&#8250;</button>
+        <button type="button" class="btn">Mes actual</button>
+      </nav>
+    </div>
+
+    <hr class="rule" style="margin-top:20px" />
+
+    <!-- ============================ KPIs ============================ -->
+    <section class="block" aria-labelledby="h-kpi">
+      <h2 class="sec-title" id="h-kpi">Resumen del mes</h2>
+      <div class="kpis">
+        <div class="kpi">
+          <span class="kpi-label">Ingresos del mes</span>
+          <span class="kpi-value num">$ 1.380</span>
+        </div>
+        <div class="kpi">
+          <span class="kpi-label">Gastos del mes</span>
+          <span class="kpi-value num">$ 762</span>
+        </div>
+        <div class="kpi is-left">
+          <span class="kpi-label">Te queda</span>
+          <span class="kpi-value num">$ 618</span>
+        </div>
+      </div>
+      <p class="note">Este mes gastaste <b class="hl">111,2% más</b> que el promedio de los 6 meses
+        anteriores (promedio: <b>$ 360,83</b>, basado en 6 meses).</p>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ===================== PRESUPUESTOS POR CATEGORÍA ===================== -->
+    <section class="block" aria-labelledby="h-budget">
+      <h2 class="sec-title" id="h-budget">Presupuestos por categoría</h2>
+      <table class="ruled stack">
+        <caption>Topes mensuales, gasto real y estado</caption>
+        <thead>
+          <tr>
+            <th scope="col">Categoría</th>
+            <th scope="col" class="ta-r">Tope</th>
+            <th scope="col" class="ta-r">Gastado</th>
+            <th scope="col" class="ta-r">%</th>
+            <th scope="col">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="row-over">
+            <th scope="row">Supermercado<span class="meter" aria-hidden="true"><i style="width:100%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 150</td>
+            <td class="ta-r num" data-label="Gastado">$ 255</td>
+            <td class="ta-r num" data-label="%">170,0%</td>
+            <td data-label="Estado"><span class="stamp">Excedido</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Alquiler y servicios<span class="meter" aria-hidden="true"><i style="width:83.3%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 300</td>
+            <td class="ta-r num" data-label="Gastado">$ 250</td>
+            <td class="ta-r num" data-label="%">83,3%</td>
+            <td data-label="Estado"><span class="stamp stamp-warn">Cerca</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Ahorro<span class="meter" aria-hidden="true"><i style="width:83.3%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 60</td>
+            <td class="ta-r num" data-label="Gastado">$ 50</td>
+            <td class="ta-r num" data-label="%">83,3%</td>
+            <td data-label="Estado"><span class="stamp stamp-warn">Cerca</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Comidas afuera<span class="meter" aria-hidden="true"><i style="width:90%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 50</td>
+            <td class="ta-r num" data-label="Gastado">$ 45</td>
+            <td class="ta-r num" data-label="%">90,0%</td>
+            <td data-label="Estado"><span class="stamp stamp-warn">Cerca</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Transporte<span class="meter" aria-hidden="true"><i style="width:86%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 50</td>
+            <td class="ta-r num" data-label="Gastado">$ 43</td>
+            <td class="ta-r num" data-label="%">86,0%</td>
+            <td data-label="Estado"><span class="stamp stamp-warn">Cerca</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Ropa<span class="meter" aria-hidden="true"><i style="width:80%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 60</td>
+            <td class="ta-r num" data-label="Gastado">$ 48</td>
+            <td class="ta-r num" data-label="%">80,0%</td>
+            <td data-label="Estado"><span class="stamp stamp-warn">Cerca</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Salud<span class="meter" aria-hidden="true"><i style="width:80%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 30</td>
+            <td class="ta-r num" data-label="Gastado">$ 24</td>
+            <td class="ta-r num" data-label="%">80,0%</td>
+            <td data-label="Estado"><span class="stamp stamp-warn">Cerca</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Ocio<span class="meter" aria-hidden="true"><i style="width:73.3%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 30</td>
+            <td class="ta-r num" data-label="Gastado">$ 22</td>
+            <td class="ta-r num" data-label="%">73,3%</td>
+            <td data-label="Estado"><span class="stamp stamp-ok">Al día</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Suscripciones<span class="meter" aria-hidden="true"><i style="width:68%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 25</td>
+            <td class="ta-r num" data-label="Gastado">$ 17</td>
+            <td class="ta-r num" data-label="%">68,0%</td>
+            <td data-label="Estado"><span class="stamp stamp-ok">Al día</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Otros<span class="meter" aria-hidden="true"><i style="width:40%"></i></span></th>
+            <td class="ta-r num" data-label="Tope">$ 20</td>
+            <td class="ta-r num" data-label="Gastado">$ 8</td>
+            <td class="ta-r num" data-label="%">40,0%</td>
+            <td data-label="Estado"><span class="stamp stamp-ok">Al día</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ============ GASTOS POR CATEGORÍA  ·  ÚLTIMOS 7 MESES ============ -->
+    <div class="block row-2col">
+      <section aria-labelledby="h-spend">
+        <h2 class="sec-title" id="h-spend">Gastos por categoría</h2>
+        <p class="note" style="margin-bottom:14px">Total del mes: <b>$ 762</b></p>
+        <div class="donut-row">
+          <svg viewBox="0 0 200 200" role="img" aria-label="Anillo de gastos por categoría, total 762 dólares">
+            <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(28,31,28,.12)" stroke-width="26"/>
+            <g transform="rotate(-90 100 100)" fill="none" stroke-width="26">
+              <circle cx="100" cy="100" r="68" stroke="#41170f" stroke-dasharray="143.1 284.16" stroke-dashoffset="0"/>
+              <circle cx="100" cy="100" r="68" stroke="#5f2118" stroke-dasharray="140.1 287.16" stroke-dashoffset="-143.1"/>
+              <circle cx="100" cy="100" r="68" stroke="#71281d" stroke-dasharray="28.2 399.06" stroke-dashoffset="-283.2"/>
+              <circle cx="100" cy="100" r="68" stroke="#7f3023" stroke-dasharray="26.9 400.36" stroke-dashoffset="-311.4"/>
+              <circle cx="100" cy="100" r="68" stroke="#8b3a2b" stroke-dasharray="25.2 402.06" stroke-dashoffset="-338.3"/>
+              <circle cx="100" cy="100" r="68" stroke="#964436" stroke-dasharray="23.9 403.36" stroke-dashoffset="-363.5"/>
+              <circle cx="100" cy="100" r="68" stroke="#a04d40" stroke-dasharray="13.2 414.06" stroke-dashoffset="-387.4"/>
+              <circle cx="100" cy="100" r="68" stroke="#a8574a" stroke-dasharray="12.4 414.86" stroke-dashoffset="-400.6"/>
+              <circle cx="100" cy="100" r="68" stroke="#ad6054" stroke-dasharray="9.4 417.86" stroke-dashoffset="-413.0"/>
+              <circle cx="100" cy="100" r="68" stroke="#ab6155" stroke-dasharray="4.3 422.96" stroke-dashoffset="-422.4"/>
+            </g>
+            <text x="100" y="96" text-anchor="middle" font-family="Bitter, serif" font-size="12"
+              letter-spacing="2" fill="#7a2a24">GASTOS</text>
+            <text x="100" y="126" text-anchor="middle" font-family="'Courier Prime', monospace"
+              font-size="30" font-weight="700" fill="#1c1f1c">$ 762</text>
+          </svg>
+          <ul class="legend" aria-label="Detalle de gastos por categoría">
+            <li><span class="swatch" style="--sw:#41170f"></span><span class="l-name">Supermercado</span><span class="l-val num">$ 255</span><span class="l-pct num">33,5%</span></li>
+            <li><span class="swatch" style="--sw:#5f2118"></span><span class="l-name">Alquiler y servicios</span><span class="l-val num">$ 250</span><span class="l-pct num">32,8%</span></li>
+            <li><span class="swatch" style="--sw:#71281d"></span><span class="l-name">Ahorro</span><span class="l-val num">$ 50</span><span class="l-pct num">6,6%</span></li>
+            <li><span class="swatch" style="--sw:#7f3023"></span><span class="l-name">Ropa</span><span class="l-val num">$ 48</span><span class="l-pct num">6,3%</span></li>
+            <li><span class="swatch" style="--sw:#8b3a2b"></span><span class="l-name">Comidas afuera</span><span class="l-val num">$ 45</span><span class="l-pct num">5,9%</span></li>
+            <li><span class="swatch" style="--sw:#964436"></span><span class="l-name">Transporte</span><span class="l-val num">$ 43</span><span class="l-pct num">5,6%</span></li>
+            <li><span class="swatch" style="--sw:#a04d40"></span><span class="l-name">Salud</span><span class="l-val num">$ 24</span><span class="l-pct num">3,1%</span></li>
+            <li><span class="swatch" style="--sw:#a8574a"></span><span class="l-name">Ocio</span><span class="l-val num">$ 22</span><span class="l-pct num">2,9%</span></li>
+            <li><span class="swatch" style="--sw:#ad6054"></span><span class="l-name">Suscripciones</span><span class="l-val num">$ 17</span><span class="l-pct num">2,2%</span></li>
+            <li><span class="swatch" style="--sw:#ab6155"></span><span class="l-name">Otros</span><span class="l-val num">$ 8</span><span class="l-pct num">1,0%</span></li>
+          </ul>
+        </div>
+      </section>
+
+      <section aria-labelledby="h-hist">
+        <h2 class="sec-title" id="h-hist">Últimos 7 meses</h2>
+        <p class="note" style="margin-bottom:14px">Gastos por mes, escala hasta <b>$ 800</b>.
+          Septiembre es el más alto: <b class="hl">$ 762</b>.</p>
+        <figure class="bars-wrap" style="margin:0">
+          <svg viewBox="0 0 520 250" role="img"
+            aria-label="Gastos de los últimos siete meses: marzo 330, abril 348, mayo 380, junio 340, julio 401, agosto 366, septiembre 762">
+            <g stroke="rgba(122,42,36,.30)" stroke-width="1" stroke-dasharray="2 4">
+              <line x1="46" y1="30" x2="510" y2="30"/>
+              <line x1="46" y1="113" x2="510" y2="113"/>
+              <line x1="46" y1="196" x2="510" y2="196"/>
+            </g>
+            <g font-family="'Courier Prime', monospace" font-size="15" fill="rgba(28,31,28,.72)" text-anchor="end">
+              <text x="40" y="35">$ 800</text>
+              <text x="40" y="118">$ 400</text>
+              <text x="40" y="201">$ 0</text>
+            </g>
+            <g fill="none" stroke="#7a2a24" stroke-width="1.6">
+              <rect x="57.1"  y="127.5" width="44" height="68.5"/>
+              <rect x="123.4" y="123.8" width="44" height="72.2"/>
+              <rect x="189.7" y="117.2" width="44" height="78.8"/>
+              <rect x="256.0" y="125.5" width="44" height="70.5"/>
+              <rect x="322.3" y="112.8" width="44" height="83.2"/>
+              <rect x="388.6" y="120.1" width="44" height="75.9"/>
+            </g>
+            <rect x="454.9" y="37.9" width="44" height="158.1" fill="#7a2a24"/>
+            <g font-family="'Courier Prime', monospace" font-size="16" fill="rgba(28,31,28,.72)" text-anchor="middle">
+              <text x="79.1"  y="216">mar</text>
+              <text x="145.4" y="216">abr</text>
+              <text x="211.7" y="216">may</text>
+              <text x="278.0" y="216">jun</text>
+              <text x="344.3" y="216">jul</text>
+              <text x="410.6" y="216">ago</text>
+            </g>
+            <text x="476.9" y="216" font-family="'Courier Prime', monospace" font-size="16"
+              font-weight="700" fill="#7a2a24" text-anchor="middle">sep</text>
+            <text x="476.9" y="234" font-family="'Courier Prime', monospace" font-size="13"
+              fill="rgba(122,42,36,.92)" text-anchor="middle">este mes</text>
+          </svg>
+          <figcaption class="vh">Barras de gasto mensual. Septiembre, mes seleccionado, alcanza 762 dólares.</figcaption>
+        </figure>
+      </section>
+    </div>
+
+    <hr class="rule" />
+
+    <!-- ===================== PLAN 25/15/50/10 ===================== -->
+    <section class="block" aria-labelledby="h-plan">
+      <h2 class="sec-title" id="h-plan">Plan 25/15/50/10</h2>
+      <table class="ruled stack">
+        <caption>Reparto por frasco: objetivo, gastado y restante</caption>
+        <thead>
+          <tr>
+            <th scope="col">Frasco</th>
+            <th scope="col" class="ta-r">%</th>
+            <th scope="col" class="ta-r">Objetivo</th>
+            <th scope="col" class="ta-r">Gastado</th>
+            <th scope="col" class="ta-r">Restante</th>
+            <th scope="col">Estado</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Esencial<span class="cats">Supermercado · Transporte · Comidas afuera</span></th>
+            <td class="ta-r num" data-label="%">50%</td>
+            <td class="ta-r num" data-label="Objetivo">$ 690</td>
+            <td class="ta-r num" data-label="Gastado">$ 343</td>
+            <td class="ta-r num" data-label="Restante">$ 347</td>
+            <td data-label="Estado"><span class="stamp stamp-ok">Al día</span></td>
+          </tr>
+          <tr class="row-over">
+            <th scope="row">Estabilidad<span class="cats">Alquiler y servicios · Salud · Suscripciones</span></th>
+            <td class="ta-r num" data-label="%">15%</td>
+            <td class="ta-r num" data-label="Objetivo">$ 207</td>
+            <td class="ta-r num" data-label="Gastado">$ 291</td>
+            <td class="ta-r num neg" data-label="Restante">−$ 84</td>
+            <td data-label="Estado"><span class="stamp">Excedido</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Recompensas<span class="cats">Ocio · Ropa · Otros</span></th>
+            <td class="ta-r num" data-label="%">10%</td>
+            <td class="ta-r num" data-label="Objetivo">$ 138</td>
+            <td class="ta-r num" data-label="Gastado">$ 78</td>
+            <td class="ta-r num" data-label="Restante">$ 60</td>
+            <td data-label="Estado"><span class="stamp stamp-ok">Al día</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Crecimiento<span class="cats">Ahorro</span></th>
+            <td class="ta-r num" data-label="%">25%</td>
+            <td class="ta-r num" data-label="Objetivo">$ 345</td>
+            <td class="ta-r num" data-label="Gastado">$ 50</td>
+            <td class="ta-r num" data-label="Restante">$ 295</td>
+            <td data-label="Estado"><span class="stamp stamp-ok">Al día</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ===================== CARTERAS ===================== -->
+    <section class="block" aria-labelledby="h-wallets">
+      <h2 class="sec-title" id="h-wallets">Carteras</h2>
+      <div class="warnline" style="margin-bottom:16px">
+        <span class="stamp">Deuda</span>
+        <p><b class="num">$ 600</b> de deuda pendiente. Pagarla es la prioridad antes de repartir los frascos.</p>
+        <button type="button" class="btn btn-small">Pagar deuda</button>
+      </div>
+      <table class="ruled stack">
+        <caption>Saldos y deuda por cartera</caption>
+        <thead>
+          <tr>
+            <th scope="col">Cartera</th>
+            <th scope="col" class="ta-r">Saldo</th>
+            <th scope="col">Detalle</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Cartera USD</th>
+            <td class="ta-r num pos" data-label="Saldo">$ 618</td>
+            <td class="num" data-label="Detalle">ingresos $ 1.380 − gastos $ 762</td>
+          </tr>
+          <tr class="row-over">
+            <th scope="row">Binance</th>
+            <td class="ta-r num neg" data-label="Saldo">−$ 400</td>
+            <td class="num" data-label="Detalle">apertura −$ 600 · pagado $ 200 = 33%</td>
+          </tr>
+          <tr class="row-over">
+            <th scope="row">Cartera USD normal</th>
+            <td class="ta-r num neg" data-label="Saldo">−$ 200</td>
+            <td class="num" data-label="Detalle">apertura −$ 200 · pagado $ 0 = 0%</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <hr class="rule" />
+
+    <!-- ===================== MOVIMIENTOS ===================== -->
+    <section class="block" aria-labelledby="h-mov">
+      <h2 class="sec-title" id="h-mov">Movimientos · 23 en el mes</h2>
+      <table class="ruled stack ledger-table">
+        <caption>Septiembre 2026 · 11 movimientos más recientes de 23</caption>
+        <thead>
+          <tr>
+            <th scope="col">Fecha</th>
+            <th scope="col">Tipo</th>
+            <th scope="col">Cartera</th>
+            <th scope="col">Categoría</th>
+            <th scope="col">Nota</th>
+            <th scope="col" class="ta-r">Monto</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="num" data-label="Fecha">26/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto (Bs)</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Supermercado</td>
+            <td data-label="Nota">Compra en bolívares (@ 40 Bs/USD)</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 100<span class="sub num">Bs 4.000,00 @ 40</span></td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">24/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Supermercado</td>
+            <td data-label="Nota">Compra del finde</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 25</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">23/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Binance</td>
+            <td data-label="Categoría">Ropa</td>
+            <td data-label="Nota">Campera</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 18</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">22/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Transporte</td>
+            <td data-label="Nota">Service</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 15</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">21/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Binance</td>
+            <td data-label="Categoría">Comidas afuera</td>
+            <td data-label="Nota">Café y panadería</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 8</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">20/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto (pago de deuda)</span></td>
+            <td data-label="Cartera">Binance</td>
+            <td data-label="Categoría">Deudas</td>
+            <td data-label="Nota">Abono mensual</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 200</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">20/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Ocio</td>
+            <td data-label="Nota">Libro</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 7</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">19/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Salud</td>
+            <td data-label="Nota">Consulta copago</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 6</td>
+          </tr>
+          <tr>
+            <td class="num" data-label="Fecha">16/09</td>
+            <td data-label="Tipo"><span class="kind">Gasto</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Otros</td>
+            <td data-label="Nota">Regalo</td>
+            <td class="ta-r num neg" data-label="Monto">−$ 8</td>
+          </tr>
+          <tr class="row-income">
+            <td class="num" data-label="Fecha">12/09</td>
+            <td data-label="Tipo"><span class="kind kind-in">Ingreso</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Freelance</td>
+            <td data-label="Nota">Proyecto web</td>
+            <td class="ta-r num pos" data-label="Monto">+$ 180</td>
+          </tr>
+          <tr class="row-income">
+            <td class="num" data-label="Fecha">01/09</td>
+            <td data-label="Tipo"><span class="kind kind-in">Ingreso</span></td>
+            <td data-label="Cartera">Cartera USD</td>
+            <td data-label="Categoría">Sueldo</td>
+            <td data-label="Nota">Sueldo del mes</td>
+            <td class="ta-r num pos" data-label="Monto">+$ 1.200</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <footer class="form-foot">
+      <span>FinanciRDUS · libreta de control</span>
+      <span>mes seleccionado · septiembre 2026</span>
+      <span>cartera en USD · impreso 30/09/2026</span>
+    </footer>
+
+  </div><!-- /.inner -->
+</main>
+
+</body>
+</html>

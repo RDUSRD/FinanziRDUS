@@ -1,39 +1,85 @@
 import { vi } from 'vitest';
 import type {
+  Account,
+  AccountInput,
+  AccountsResponse,
   BudgetsResponse,
   Category,
+  EntryCurrency,
   ExportPayload,
   ImportMode,
   MonthlyStat,
   Movement,
+  MovementInput,
+  PlanResponse,
   StatsByCategory,
   StatsSummary,
 } from '../api/types';
 
-/** The 14 catalogue categories from docs/data-model.md. */
+/** The 15 catalogue categories from docs/data-model.md (11 expense, "deudas" is system). */
 export const CATEGORIES: Category[] = [
-  { id: 'supermercado', type: 'gasto', label: 'Supermercado', sort_order: 1 },
-  { id: 'comidas-afuera', type: 'gasto', label: 'Comidas afuera', sort_order: 2 },
-  { id: 'transporte', type: 'gasto', label: 'Transporte', sort_order: 3 },
-  { id: 'alquiler-servicios', type: 'gasto', label: 'Alquiler y servicios', sort_order: 4 },
-  { id: 'salud', type: 'gasto', label: 'Salud', sort_order: 5 },
-  { id: 'suscripciones', type: 'gasto', label: 'Suscripciones', sort_order: 6 },
-  { id: 'ropa', type: 'gasto', label: 'Ropa', sort_order: 7 },
-  { id: 'ocio', type: 'gasto', label: 'Ocio', sort_order: 8 },
-  { id: 'ahorro', type: 'gasto', label: 'Ahorro', sort_order: 9 },
-  { id: 'otros', type: 'gasto', label: 'Otros', sort_order: 10 },
-  { id: 'sueldo', type: 'ingreso', label: 'Sueldo', sort_order: 11 },
-  { id: 'freelance', type: 'ingreso', label: 'Freelance', sort_order: 12 },
-  { id: 'inversiones', type: 'ingreso', label: 'Inversiones', sort_order: 13 },
-  { id: 'otros-ingresos', type: 'ingreso', label: 'Otros', sort_order: 14 },
+  { id: 'supermercado', type: 'gasto', label: 'Supermercado', sort_order: 1, is_system: false },
+  { id: 'comidas-afuera', type: 'gasto', label: 'Comidas afuera', sort_order: 2, is_system: false },
+  { id: 'transporte', type: 'gasto', label: 'Transporte', sort_order: 3, is_system: false },
+  { id: 'alquiler-servicios', type: 'gasto', label: 'Alquiler y servicios', sort_order: 4, is_system: false },
+  { id: 'salud', type: 'gasto', label: 'Salud', sort_order: 5, is_system: false },
+  { id: 'suscripciones', type: 'gasto', label: 'Suscripciones', sort_order: 6, is_system: false },
+  { id: 'ropa', type: 'gasto', label: 'Ropa', sort_order: 7, is_system: false },
+  { id: 'ocio', type: 'gasto', label: 'Ocio', sort_order: 8, is_system: false },
+  { id: 'ahorro', type: 'gasto', label: 'Ahorro', sort_order: 9, is_system: false },
+  { id: 'otros', type: 'gasto', label: 'Otros', sort_order: 10, is_system: false },
+  { id: 'deudas', type: 'gasto', label: 'Deudas', sort_order: 11, is_system: true },
+  { id: 'sueldo', type: 'ingreso', label: 'Sueldo', sort_order: 11, is_system: false },
+  { id: 'freelance', type: 'ingreso', label: 'Freelance', sort_order: 12, is_system: false },
+  { id: 'inversiones', type: 'ingreso', label: 'Inversiones', sort_order: 13, is_system: false },
+  { id: 'otros-ingresos', type: 'ingreso', label: 'Otros', sort_order: 14, is_system: false },
 ];
+
+/** Stored wallet (the API adds the derived balance/debt fields). */
+export interface StoredAccount {
+  id: number;
+  name: string;
+  opening_balance_cents: number;
+  sort_order: number;
+}
 
 export interface FakeDb {
   categories: Category[];
+  accounts: StoredAccount[];
   movements: Movement[];
   budgets: Record<string, number>;
+  /** category_id -> jar_id (plan 25/15/50/10). */
+  jarCategories: Record<string, string>;
   nextId: number;
+  nextAccountId: number;
 }
+
+/** The wallet created for a fresh database (mirrors the migration seed). */
+export const DEFAULT_ACCOUNTS: StoredAccount[] = [
+  { id: 1, name: 'Cartera USD', opening_balance_cents: 0, sort_order: 1 },
+];
+
+/** The four money jars (id / label / pct / order), mirroring JAR_SEED. */
+export const JARS = [
+  { jar_id: 'crecimiento', label: 'Crecimiento', pct: 25 },
+  { jar_id: 'estabilidad', label: 'Estabilidad', pct: 15 },
+  { jar_id: 'esencial', label: 'Esencial', pct: 50 },
+  { jar_id: 'recompensas', label: 'Recompensas', pct: 10 },
+] as const;
+
+/** Default category -> jar mapping (mirrors JAR_CATEGORY_SEED). */
+export const DEFAULT_JAR_CATEGORIES: Record<string, string> = {
+  supermercado: 'esencial',
+  'comidas-afuera': 'recompensas',
+  transporte: 'esencial',
+  'alquiler-servicios': 'esencial',
+  salud: 'esencial',
+  suscripciones: 'esencial',
+  ropa: 'recompensas',
+  ocio: 'recompensas',
+  ahorro: 'crecimiento',
+  otros: 'estabilidad',
+};
 
 /* ------------------------------------------------------------------ *
  * Minimal Response shim: only the surface the client actually uses.
@@ -72,9 +118,23 @@ function monthOf(date: string): string {
   return date.slice(0, 7);
 }
 
-function sumByType(db: FakeDb, type: string, month: string): number {
+/** null means "all wallets" (consolidated). */
+type AccountParam = number | null;
+
+function inAccount(movement: Movement, account: AccountParam): boolean {
+  return account === null || movement.account_id === account;
+}
+
+/** Parse the `account` query param ("all"/absent -> null, otherwise the id). */
+function parseAccount(raw: string | null, db: FakeDb): AccountParam {
+  if (raw === null || raw === '' || raw === 'all') return null;
+  const id = Number(raw);
+  return Number.isFinite(id) && db.accounts.some((account) => account.id === id) ? id : null;
+}
+
+function sumByType(db: FakeDb, type: string, month: string, account: AccountParam): number {
   return db.movements
-    .filter((movement) => movement.type === type && monthOf(movement.date) === month)
+    .filter((movement) => movement.type === type && monthOf(movement.date) === month && inAccount(movement, account))
     .reduce((acc, movement) => acc + movement.amount_cents, 0);
 }
 
@@ -89,22 +149,28 @@ function budgetStatus(spent: number, cap: number): 'none' | 'ok' | 'warn' | 'ove
   return 'ok';
 }
 
-function expensesByCategory(db: FakeDb, month: string): Record<string, number> {
+function expensesByCategory(db: FakeDb, month: string, account: AccountParam): Record<string, number> {
   const out: Record<string, number> = {};
   for (const movement of db.movements) {
-    if (movement.type !== 'gasto' || monthOf(movement.date) !== month || movement.amount_cents <= 0) continue;
+    if (
+      movement.type !== 'gasto' ||
+      monthOf(movement.date) !== month ||
+      movement.amount_cents <= 0 ||
+      !inAccount(movement, account)
+    )
+      continue;
     out[movement.category_id] = (out[movement.category_id] ?? 0) + movement.amount_cents;
   }
   return out;
 }
 
-function summary(db: FakeDb, month: string): StatsSummary {
-  const income = sumByType(db, 'ingreso', month);
-  const expenses = sumByType(db, 'gasto', month);
+function summary(db: FakeDb, month: string, account: AccountParam): StatsSummary {
+  const income = sumByType(db, 'ingreso', month, account);
+  const expenses = sumByType(db, 'gasto', month, account);
   let total = 0;
   let monthsUsed = 0;
   for (let back = 1; back <= 6; back++) {
-    const value = sumByType(db, 'gasto', shift(month, -back));
+    const value = sumByType(db, 'gasto', shift(month, -back), account);
     if (value > 0) {
       total += value;
       monthsUsed++;
@@ -128,8 +194,8 @@ function summary(db: FakeDb, month: string): StatsSummary {
   };
 }
 
-function byCategory(db: FakeDb, month: string): StatsByCategory {
-  const groups = expensesByCategory(db, month);
+function byCategory(db: FakeDb, month: string, account: AccountParam): StatsByCategory {
+  const groups = expensesByCategory(db, month, account);
   const total = Object.values(groups).reduce((acc, value) => acc + value, 0);
   const items = Object.entries(groups)
     .map(([categoryId, cents]) => ({
@@ -142,25 +208,25 @@ function byCategory(db: FakeDb, month: string): StatsByCategory {
   return { month, total_cents: total, items };
 }
 
-function monthly(db: FakeDb, end: string, months: number): MonthlyStat[] {
+function monthly(db: FakeDb, end: string, months: number, account: AccountParam): MonthlyStat[] {
   const out: MonthlyStat[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const month = shift(end, -i);
     out.push({
       month,
-      expenses_cents: sumByType(db, 'gasto', month),
-      income_cents: sumByType(db, 'ingreso', month),
+      expenses_cents: sumByType(db, 'gasto', month, account),
+      income_cents: sumByType(db, 'ingreso', month, account),
     });
   }
   return out;
 }
 
 function budgets(db: FakeDb, month: string): BudgetsResponse {
-  const groups = expensesByCategory(db, month);
+  const groups = expensesByCategory(db, month, null);
   let totalCap = 0;
   let totalSpent = 0;
   const items = db.categories
-    .filter((category) => category.type === 'gasto')
+    .filter((category) => category.type === 'gasto' && !category.is_system)
     .map((category) => {
       const cap = db.budgets[category.id] ?? 0;
       const spent = groups[category.id] ?? 0;
@@ -181,6 +247,114 @@ function budgets(db: FakeDb, month: string): BudgetsResponse {
   return { month, total_cap_cents: totalCap, total_spent_cents: totalSpent, items };
 }
 
+/* ------------------------------------------------------------------ *
+ * Wallets: balance and debt are derived from the stored movements.
+ * ------------------------------------------------------------------ */
+function accountBalance(opening: number, movements: Movement[]): number {
+  let balance = opening;
+  for (const movement of movements) {
+    // Debt payments add to the balance (they reduce a negative debt); plain
+    // expenses subtract; income adds.
+    if (movement.type === 'ingreso' || movement.is_debt_payment) balance += movement.amount_cents;
+    else balance -= movement.amount_cents;
+  }
+  return balance;
+}
+
+function accountView(db: FakeDb, stored: StoredAccount): Account {
+  const movements = db.movements.filter((movement) => movement.account_id === stored.id);
+  const balance = accountBalance(stored.opening_balance_cents, movements);
+  const isDebt = stored.opening_balance_cents < 0;
+  const paid = movements.filter((movement) => movement.is_debt_payment).reduce((acc, m) => acc + m.amount_cents, 0);
+  return {
+    id: stored.id,
+    name: stored.name,
+    opening_balance_cents: stored.opening_balance_cents,
+    balance_cents: balance,
+    is_debt: isDebt,
+    paid_cents: paid,
+    remaining_cents: isDebt ? -balance : 0,
+    pct_paid: isDebt ? paid / -stored.opening_balance_cents : 0,
+  };
+}
+
+function accountsResponse(db: FakeDb): AccountsResponse {
+  const items = db.accounts.map((stored) => accountView(db, stored));
+  const totalDebt = items
+    .filter((item) => item.balance_cents < 0)
+    .reduce((acc, item) => acc + -item.balance_cents, 0);
+  return { total_debt_cents: totalDebt, items };
+}
+
+/** Split the monthly income across the four jars (last jar absorbs the rest). */
+function jarTargets(income: number): Record<string, number> {
+  const targets: Record<string, number> = {};
+  let allocated = 0;
+  JARS.forEach((jar, index) => {
+    const isLast = index === JARS.length - 1;
+    const target = isLast ? income - allocated : Math.round((income * jar.pct) / 100);
+    targets[jar.jar_id] = target;
+    if (!isLast) allocated += target;
+  });
+  return targets;
+}
+
+function plan(db: FakeDb, month: string): PlanResponse {
+  const income = sumByType(db, 'ingreso', month, null);
+  const targets = jarTargets(income);
+  const groups = expensesByCategory(db, month, null);
+  const jars = JARS.map((jar) => {
+    const categoryIds = db.categories
+      .filter(
+        (category) =>
+          category.type === 'gasto' && !category.is_system && db.jarCategories[category.id] === jar.jar_id,
+      )
+      .map((category) => category.id);
+    const spent = categoryIds.reduce((acc, id) => acc + (groups[id] ?? 0), 0);
+    const target = targets[jar.jar_id] ?? 0;
+    return {
+      jar_id: jar.jar_id,
+      label: jar.label,
+      pct: jar.pct,
+      target_cents: target,
+      spent_cents: spent,
+      remaining_cents: target - spent,
+      used: target > 0 ? spent / target : 0,
+      status: budgetStatus(spent, target),
+      category_ids: categoryIds,
+    };
+  });
+  return { month, income_cents: income, jars };
+}
+
+/** Build a movement, deriving the canonical USD cents from the entry fields. */
+function buildMovement(db: FakeDb, id: number, body: Partial<MovementInput>, createdAt: string): Movement {
+  const entryCurrency: EntryCurrency = body.entry_currency ?? 'USD';
+  const entryAmountCents = body.entry_amount_cents ?? 0;
+  const rateMicros = entryCurrency === 'VES' ? body.rate_micros ?? null : null;
+  const amountCents =
+    entryCurrency === 'VES' && rateMicros ? Math.round((entryAmountCents * 1_000_000) / rateMicros) : entryAmountCents;
+  // A debt payment always lands in the system "deudas" category as an expense.
+  const isDebtPayment = body.is_debt_payment === true;
+  const accountId = body.account_id ?? db.accounts[0]?.id ?? 0;
+  const accountName = db.accounts.find((account) => account.id === accountId)?.name;
+  return {
+    id,
+    type: isDebtPayment ? 'gasto' : body.type ?? 'gasto',
+    category_id: isDebtPayment ? 'deudas' : body.category_id ?? '',
+    account_id: accountId,
+    account_name: accountName,
+    is_debt_payment: isDebtPayment,
+    amount_cents: amountCents,
+    entry_currency: entryCurrency,
+    entry_amount_cents: entryAmountCents,
+    rate_micros: rateMicros,
+    date: body.date ?? '',
+    note: body.note ?? '',
+    created_at: createdAt,
+  };
+}
+
 function currentMonth(): string {
   const now = new Date();
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
@@ -197,11 +371,19 @@ export interface FakeServer {
 export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
   const db: FakeDb = {
     categories: CATEGORIES,
+    accounts: DEFAULT_ACCOUNTS,
     movements: [],
     budgets: {},
+    jarCategories: { ...DEFAULT_JAR_CATEGORIES },
     nextId: 1,
+    nextAccountId: 2,
     ...seed,
   };
+  // Clone the stored wallets so mutations never leak into the caller's fixture.
+  db.accounts = db.accounts.map((account) => ({ ...account }));
+  if (seed.nextAccountId === undefined) {
+    db.nextAccountId = db.accounts.reduce((max, account) => Math.max(max, account.id), 0) + 1;
+  }
 
   const fetchMock = vi.fn(async (input: unknown, init?: RequestInit): Promise<FakeResponse> => {
     const raw = typeof input === 'string' ? input : input instanceof URL ? input.href : String(input);
@@ -209,27 +391,78 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
     const method = (init?.method ?? 'GET').toUpperCase();
     const path = url.pathname;
     const month = url.searchParams.get('month') ?? currentMonth();
+    const accountParam = parseAccount(url.searchParams.get('account'), db);
 
     if (method === 'GET' && path === '/api/categories') return json(db.categories);
+
+    if (path === '/api/accounts') {
+      if (method === 'GET') return json(accountsResponse(db));
+      if (method === 'POST') {
+        const body = JSON.parse(String(init?.body ?? '{}')) as Partial<AccountInput>;
+        const name = String(body.name ?? '').trim();
+        if (name.length === 0) return json({ detail: 'El nombre es obligatorio.' }, 422);
+        if (db.accounts.some((account) => account.name === name)) {
+          return json({ detail: 'Ya existe una cartera con ese nombre.' }, 422);
+        }
+        const opening = Number(body.opening_balance_cents ?? 0);
+        const stored: StoredAccount = {
+          id: db.nextAccountId++,
+          name,
+          opening_balance_cents: Number.isFinite(opening) ? opening : 0,
+          sort_order: db.accounts.length + 1,
+        };
+        db.accounts.push(stored);
+        return json(accountView(db, stored), 201);
+      }
+    }
+
+    const accountId = /^\/api\/accounts\/(\d+)$/.exec(path);
+    if (accountId) {
+      const id = Number(accountId[1]);
+      const index = db.accounts.findIndex((account) => account.id === id);
+      if (index < 0) return json({ detail: 'La cartera no existe.' }, 404);
+      if (method === 'DELETE') {
+        const hasMovements = db.movements.some((movement) => movement.account_id === id);
+        if (hasMovements) return json({ detail: 'La cartera tiene movimientos.' }, 409);
+        if (db.accounts.length <= 1) return json({ detail: 'No podés borrar la última cartera.' }, 409);
+        db.accounts.splice(index, 1);
+        return noContent();
+      }
+      if (method === 'PATCH') {
+        const patch = JSON.parse(String(init?.body ?? '{}')) as Partial<AccountInput>;
+        const current = db.accounts[index];
+        if (patch.name !== undefined) {
+          const name = String(patch.name).trim();
+          if (name.length === 0) return json({ detail: 'El nombre es obligatorio.' }, 422);
+          if (db.accounts.some((account) => account.id !== id && account.name === name)) {
+            return json({ detail: 'Ya existe una cartera con ese nombre.' }, 422);
+          }
+          current.name = name;
+        }
+        if (patch.opening_balance_cents !== undefined) {
+          current.opening_balance_cents = Number(patch.opening_balance_cents);
+        }
+        return json(accountView(db, current));
+      }
+    }
 
     if (path === '/api/movements' && method === 'GET') {
       const list = db.movements
         .filter((movement) => !url.searchParams.get('month') || monthOf(movement.date) === month)
+        .filter((movement) => inAccount(movement, accountParam))
         .sort((a, b) => (a.date === b.date ? b.created_at.localeCompare(a.created_at) : a.date < b.date ? 1 : -1));
       return json(list);
     }
 
     if (path === '/api/movements' && method === 'POST') {
-      const body = JSON.parse(String(init?.body ?? '{}')) as Partial<Movement>;
-      const created: Movement = {
-        id: db.nextId++,
-        type: body.type ?? 'gasto',
-        category_id: body.category_id ?? '',
-        amount_cents: body.amount_cents ?? 0,
-        date: body.date ?? '',
-        note: body.note ?? '',
-        created_at: new Date().toISOString(),
-      };
+      const body = JSON.parse(String(init?.body ?? '{}')) as Partial<MovementInput>;
+      if (body.is_debt_payment === true) {
+        const target = db.accounts.find((account) => account.id === body.account_id);
+        if (!target || target.opening_balance_cents >= 0) {
+          return json({ detail: 'La cartera no tiene deuda.' }, 422);
+        }
+      }
+      const created = buildMovement(db, db.nextId++, body, new Date().toISOString());
       db.movements.push(created);
       return json(created, 201);
     }
@@ -244,8 +477,9 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
       }
       if (method === 'PATCH') {
         if (index < 0) return json({ detail: 'El movimiento no existe.' }, 404);
-        const patch = JSON.parse(String(init?.body ?? '{}')) as Partial<Movement>;
-        db.movements[index] = { ...db.movements[index], ...patch };
+        const patch = JSON.parse(String(init?.body ?? '{}')) as Partial<MovementInput>;
+        const current = db.movements[index];
+        db.movements[index] = buildMovement(db, current.id, { ...current, ...patch }, current.created_at);
         return json(db.movements[index]);
       }
     }
@@ -266,13 +500,32 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
       }
     }
 
+    const planCategoryId = /^\/api\/plan\/categories\/([^/]+)$/.exec(path);
+    if (planCategoryId) {
+      const categoryId = decodeURIComponent(planCategoryId[1]);
+      if (method === 'PUT') {
+        const body = JSON.parse(String(init?.body ?? '{}')) as { jar_id?: string };
+        const jarId = body.jar_id ?? '';
+        if (!JARS.some((jar) => jar.jar_id === jarId)) {
+          return json({ detail: 'El frasco no existe.' }, 422);
+        }
+        const category = db.categories.find((item) => item.id === categoryId);
+        if (!category || category.type !== 'gasto') {
+          return json({ detail: 'La categoría no es de gasto.' }, 422);
+        }
+        db.jarCategories[categoryId] = jarId;
+        return json({ category_id: categoryId, jar_id: jarId });
+      }
+    }
+
     if (method === 'GET' && path === '/api/budgets') return json(budgets(db, month));
-    if (method === 'GET' && path === '/api/stats/summary') return json(summary(db, month));
-    if (method === 'GET' && path === '/api/stats/by-category') return json(byCategory(db, month));
+    if (method === 'GET' && path === '/api/plan') return json(plan(db, month));
+    if (method === 'GET' && path === '/api/stats/summary') return json(summary(db, month, accountParam));
+    if (method === 'GET' && path === '/api/stats/by-category') return json(byCategory(db, month, accountParam));
     if (method === 'GET' && path === '/api/stats/monthly') {
       const end = url.searchParams.get('end') ?? currentMonth();
       const months = Number(url.searchParams.get('months') ?? 6);
-      return json(monthly(db, end, months));
+      return json(monthly(db, end, months, accountParam));
     }
 
     if (method === 'GET' && path === '/api/data/export') {
@@ -281,11 +534,26 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
         .map((movement) => ({
           type: movement.type,
           category_id: movement.category_id,
+          account_id: movement.account_id,
+          is_debt_payment: movement.is_debt_payment,
           amount_cents: movement.amount_cents,
+          entry_currency: movement.entry_currency,
+          entry_amount_cents: movement.entry_amount_cents,
+          rate_micros: movement.rate_micros,
           date: movement.date,
           note: movement.note,
         }));
-      return json({ version: 1, exported_at: new Date().toISOString(), movements, budgets: db.budgets });
+      return json({
+        version: 3,
+        exported_at: new Date().toISOString(),
+        accounts: db.accounts.map((account) => ({
+          name: account.name,
+          opening_balance_cents: account.opening_balance_cents,
+        })),
+        movements,
+        budgets: db.budgets,
+        jar_categories: db.jarCategories,
+      });
     }
 
     if (method === 'POST' && path === '/api/data/import') {
@@ -294,15 +562,60 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
       const incoming = Array.isArray(payload.movements) ? payload.movements : [];
       const budgetsPayload =
         payload.budgets && typeof payload.budgets === 'object' ? payload.budgets : {};
-      const imported: Movement[] = incoming.map((entry) => ({
-        id: db.nextId++,
-        type: entry.type ?? 'gasto',
-        category_id: entry.category_id ?? '',
-        amount_cents: entry.amount_cents ?? 0,
-        date: entry.date ?? '',
-        note: entry.note ?? '',
-        created_at: new Date().toISOString(),
-      }));
+      const accountsPayload = Array.isArray(payload.accounts) ? payload.accounts : null;
+
+      let accountsImported = 0;
+      const ensureAccount = (name: string, opening: number): StoredAccount => {
+        let account = db.accounts.find((item) => item.name === name);
+        if (!account) {
+          account = {
+            id: db.nextAccountId++,
+            name,
+            opening_balance_cents: Number.isFinite(opening) ? opening : 0,
+            sort_order: db.accounts.length + 1,
+          };
+          db.accounts.push(account);
+          accountsImported++;
+        }
+        return account;
+      };
+
+      if (mode === 'replace' && accountsPayload) {
+        const names = accountsPayload.map((entry) => String(entry.name));
+        db.accounts = db.accounts.filter((account) => names.includes(account.name));
+      }
+      if (accountsPayload) {
+        for (const entry of accountsPayload) {
+          ensureAccount(String(entry.name), Number(entry.opening_balance_cents ?? 0));
+        }
+      }
+
+      const defaultAccount = (): StoredAccount => ensureAccount(db.accounts[0]?.name ?? 'Cartera USD', 0);
+
+      const imported: Movement[] = incoming.map((entry) => {
+        // v3 maps the movement to a named wallet; v1/v2 fall back to the default.
+        let accountId: number | undefined;
+        if (entry.account_id !== undefined && accountsPayload) {
+          const named = accountsPayload[entry.account_id - 1];
+          if (named) accountId = ensureAccount(String(named.name), Number(named.opening_balance_cents ?? 0)).id;
+        }
+        return buildMovement(
+          db,
+          db.nextId++,
+          {
+            type: entry.type,
+            category_id: entry.category_id,
+            account_id: accountId ?? defaultAccount().id,
+            is_debt_payment: entry.is_debt_payment === true,
+            entry_currency: entry.entry_currency ?? 'USD',
+            entry_amount_cents: entry.entry_amount_cents ?? entry.amount_cents ?? 0,
+            rate_micros: entry.rate_micros ?? null,
+            date: entry.date,
+            note: entry.note,
+          },
+          new Date().toISOString(),
+        );
+      });
       if (mode === 'replace') {
         db.movements = imported;
         db.budgets = { ...budgetsPayload };
@@ -315,6 +628,7 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
         movements_imported: imported.length,
         movements_skipped: 0,
         budgets_imported: Object.keys(budgetsPayload).length,
+        accounts_imported: accountsImported,
       });
     }
 

@@ -63,14 +63,16 @@ check("health ok", h and h.get("status") == "ok" and h.get("db") == "ok", h)
 
 st, _, raw = req("GET", f"{API}/categories")
 cats = j(raw) or []
-check("categories 200 y 14 items", st == 200 and len(cats) == 14, len(cats))
-check("categories shape", all(keys_of(c) == {"id", "type", "label", "sort_order"} for c in cats))
+check("categories 200 y 15 items", st == 200 and len(cats) == 15, len(cats))
+check("categories shape", all(keys_of(c) == {"id", "type", "label", "sort_order", "is_system"} for c in cats))
 gasto_ids = [c["id"] for c in cats if c["type"] == "gasto"]
 ingreso_ids = [c["id"] for c in cats if c["type"] == "ingreso"]
-check("10 categorías de gasto (legacy)", gasto_ids == ["supermercado","comidas-afuera","transporte","alquiler-servicios","salud","suscripciones","ropa","ocio","ahorro","otros"], gasto_ids)
+check("11 categorías de gasto (incluye Deudas)", gasto_ids == ["supermercado","comidas-afuera","transporte","alquiler-servicios","salud","suscripciones","ropa","ocio","ahorro","otros","deudas"], gasto_ids)
 check("4 categorías de ingreso", ingreso_ids == ["sueldo","freelance","inversiones","otros-ingresos"], ingreso_ids)
-check("catálogo ordenado (gasto primero)", [c["type"] for c in cats] == ["gasto"]*10 + ["ingreso"]*4, [c["type"] for c in cats])
-check("sort_order ascendente dentro de cada tipo", [c["sort_order"] for c in cats if c["type"]=="gasto"] == list(range(1,11)) and [c["sort_order"] for c in cats if c["type"]=="ingreso"] == list(range(1,5)))
+check("catálogo ordenado (gasto primero)", [c["type"] for c in cats] == ["gasto"]*11 + ["ingreso"]*4, [c["type"] for c in cats])
+check("sort_order ascendente dentro de cada tipo", [c["sort_order"] for c in cats if c["type"]=="gasto"] == list(range(1,12)) and [c["sort_order"] for c in cats if c["type"]=="ingreso"] == list(range(1,5)))
+check("sólo 'deudas' es system", [c["id"] for c in cats if c["is_system"]] == ["deudas"], [c["id"] for c in cats if c["is_system"]])
+budget_gasto_ids = [g for g in gasto_ids if g != "deudas"]
 
 # ---------------- summary (mes de referencia) ----------------
 st, _, raw = req("GET", f"{API}/stats/summary")
@@ -85,17 +87,82 @@ check("promedio sobre 6 meses (seed)", s["average_prev"]["months_used"] == 6, s[
 m, inc, exp = s["month"], s["income_cents"], s["expenses_cents"]
 print(f"[info] mes actual del servidor: {m} · ingresos {inc/100:,.2f} · gastos {exp/100:,.2f} · queda {s['balance_cents']/100:,.2f} · {s['comparison']['pct']*100:.1f}% {s['comparison']['direction']}")
 
+# ---------------- carteras y deuda (saldo negativo) ----------------
+st, _, raw = req("GET", f"{API}/accounts")
+acc = j(raw)
+check("accounts 200", st == 200, (st, raw[:160]))
+check("accounts shape", keys_of(acc) == {"total_debt_cents", "items"}, keys_of(acc))
+check("account item shape", all(keys_of(a) == {"id","name","opening_balance_cents","balance_cents","is_debt","paid_cents","remaining_cents","pct_paid"} for a in acc["items"]))
+check("seed con carteras", len(acc["items"]) >= 3, len(acc["items"]))
+check("seed con deuda total > 0", acc["total_debt_cents"] > 0, acc["total_debt_cents"])
+check("total_debt = suma de saldos negativos",
+      acc["total_debt_cents"] == sum(-a["balance_cents"] for a in acc["items"] if a["balance_cents"] < 0), acc)
+debt = next((a for a in acc["items"] if a["is_debt"]), None)
+check("cartera de deuda coherente (opening<0, remaining=-balance, 0<=pct<=1)",
+      debt is not None and debt["opening_balance_cents"] < 0
+      and debt["remaining_cents"] == -debt["balance_cents"] and 0 <= debt["pct_paid"] <= 1, debt)
+default_acc = next(a["id"] for a in acc["items"] if not a["is_debt"])
+print("[info] carteras:", ", ".join(f"{a['name']}={a['balance_cents']/100:,.2f}" for a in acc["items"]))
+
+st, _, raw = req("POST", f"{API}/accounts", {"name": "Banco Prueba", "opening_balance_cents": 0})
+check("POST account 201", st == 201 and j(raw)["name"] == "Banco Prueba", (st, raw[:160]))
+new_acc_id = j(raw)["id"]
+st, _, raw = req("POST", f"{API}/accounts", {"name": "Banco Prueba", "opening_balance_cents": 0})
+check("POST account duplicado => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("POST", f"{API}/accounts", {"name": "Deuda Prueba", "opening_balance_cents": -5000})
+debt_acc = j(raw)
+check("POST account con saldo negativo 201", st == 201 and debt_acc["is_debt"] is True and debt_acc["balance_cents"] == -5000, (st, raw[:160]))
+debt_acc_id = debt_acc["id"]
+st, _, raw = req("DELETE", f"{API}/accounts/{new_acc_id}")
+check("DELETE account 204", st == 204, st)
+st, _, raw = req("DELETE", f"{API}/accounts/99999999")
+check("DELETE account inexistente => 404", st == 404, st)
+
+# pago de deuda: sube el saldo hacia 0, fuerza categoría Deudas y cuenta como gasto del mes
+st, _, raw = req("POST", f"{API}/movements", {"type": "gasto", "account_id": debt_acc_id, "is_debt_payment": True, "entry_currency": "USD", "entry_amount_cents": 5000, "date": f"{m}-12", "note": "pago"})
+pay = j(raw)
+check("POST pago de deuda 201", st == 201, (st, raw[:200]))
+check("pago fuerza categoría Deudas y gasto", pay["category_id"] == "deudas" and pay["type"] == "gasto" and pay["is_debt_payment"] is True, pay)
+st, _, raw = req("GET", f"{API}/accounts")
+debt_after = next(a for a in j(raw)["items"] if a["id"] == debt_acc_id)
+check("el pago sube el saldo hacia 0", debt_after["balance_cents"] == debt_acc["balance_cents"] + 5000, (debt_acc["balance_cents"], debt_after["balance_cents"]))
+check("el pago cuenta como gasto del mes", j(req("GET", f"{API}/stats/summary?month={m}")[2])["expenses_cents"] == exp + 5000)
+req("DELETE", f"{API}/movements/{pay['id']}")
+st, _, raw = req("POST", f"{API}/movements", {"type": "gasto", "account_id": default_acc, "is_debt_payment": True, "entry_currency": "USD", "entry_amount_cents": 5000, "date": f"{m}-12", "note": "x"})
+check("pago de deuda en cartera sin deuda => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("DELETE", f"{API}/accounts/{debt_acc_id}")
+check("DELETE account de deuda sin movimientos 204", st == 204, st)
+
+# filtro por cartera en movimientos y stats
+st, _, raw = req("GET", f"{API}/movements?month={m}&account={default_acc}")
+filtered = j(raw) or []
+check("filtro por cartera en movimientos", st == 200 and filtered and all(x["account_id"] == default_acc for x in filtered), len(filtered))
+st, _, raw = req("GET", f"{API}/stats/summary?month={m}&account={default_acc}")
+check("summary filtrado por cartera 200", st == 200, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/stats/summary?month={m}&account=all")
+check("account=all 200", st == 200, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/stats/summary?month={m}&account=nope")
+check("account inválido => 422", st == 422, (st, raw[:120]))
+
 # ---------------- movements ----------------
 st, _, raw = req("GET", f"{API}/movements?month={m}")
 movs = j(raw) or []
 check("movements 200", st == 200, st)
 check("movements del mes (~23 del seed)", len(movs) >= 20, len(movs))
-check("movement shape", all(keys_of(x) == {"id","type","category_id","amount_cents","date","note","created_at"} for x in movs))
+check("movement shape", all(keys_of(x) == {"id","type","category_id","account_id","account_name","is_debt_payment","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","created_at"} for x in movs))
+check("todos con cartera", all(x["account_id"] and x["account_name"] for x in movs))
 check("todos del mes pedido", all(x["date"].startswith(m) for x in movs))
+check("entry_currency válido", all(x["entry_currency"] in ("USD","VES") for x in movs))
+check("USD sin tasa", all(x["rate_micros"] is None for x in movs if x["entry_currency"] == "USD"))
+check("VES con tasa > 0", all(isinstance(x["rate_micros"], int) and x["rate_micros"] > 0 for x in movs if x["entry_currency"] == "VES"))
+check("seed con al menos un registro cargado en VES", any(x["entry_currency"] == "VES" for x in movs), [x["entry_currency"] for x in movs])
+check("amount_cents USD coherente con la entrada Bs",
+      all(abs(x["amount_cents"] - x["entry_amount_cents"] * 1_000_000 / x["rate_micros"]) <= 1
+          for x in movs if x["entry_currency"] == "VES"))
 dates = [x["date"] for x in movs]
 check("ordenado por fecha desc", dates == sorted(dates, reverse=True), (dates[:3], sorted(dates, reverse=True)[:3]))
 check("montos enteros positivos", all(isinstance(x["amount_cents"], int) and x["amount_cents"] > 0 for x in movs))
-check("10 categorías de gasto presentes", len({x["category_id"] for x in movs if x["type"]=="gasto"}) == 10)
+check("11 categorías de gasto presentes (incluye Deudas)", len({x["category_id"] for x in movs if x["type"]=="gasto"}) == 11)
 check("created_at con offset horario", all(re.search(r"[+-]\d\d:\d\d$", x["created_at"]) for x in movs), movs[0]["created_at"])
 check("suma de gastos coincide con el KPI", sum(x["amount_cents"] for x in movs if x["type"]=="gasto") == exp)
 check("suma de ingresos coincide con el KPI", sum(x["amount_cents"] for x in movs if x["type"]=="ingreso") == inc)
@@ -113,7 +180,7 @@ check("total = KPI de gastos", bc["total_cents"] == exp, (bc["total_cents"], exp
 check("suma de items = total", sum(i["cents"] for i in bc["items"]) == bc["total_cents"])
 check("shares suman 1", abs(sum(i["share"] for i in bc["items"]) - 1) < 1e-9, sum(i["share"] for i in bc["items"]))
 check("items ordenados desc por cents", [i["cents"] for i in bc["items"]] == sorted((i["cents"] for i in bc["items"]), reverse=True))
-check("10 categorías con gasto", len(bc["items"]) == 10, len(bc["items"]))
+check("11 categorías con gasto", len(bc["items"]) == 11, len(bc["items"]))
 
 st, _, raw = req("GET", f"{API}/stats/monthly?months=6")
 mt = j(raw) or []
@@ -144,7 +211,9 @@ statuses = {i["status"] for i in bd["items"]}
 check("estados válidos", statuses <= {"none","ok","warn","over"}, statuses)
 check("seed con estados over/warn/ok", {"over","warn","ok"} <= statuses, statuses)
 check("total_cap = suma de topes", bd["total_cap_cents"] == sum(i["cap_cents"] for i in bd["items"]))
-check("total_spent = KPI de gastos", bd["total_spent_cents"] == exp, (bd["total_spent_cents"], exp))
+debt_payments = sum(x["amount_cents"] for x in movs if x["is_debt_payment"])
+check("total_spent = KPI de gastos sin los pagos de deuda (categoría system)",
+      bd["total_spent_cents"] == exp - debt_payments, (bd["total_spent_cents"], exp, debt_payments))
 for i in bd["items"]:
     if i["cap_cents"] > 0:
         check(f"pct {i['category_id']}", abs(i["pct"] - i["spent_cents"]/i["cap_cents"]) < 1e-9)
@@ -153,20 +222,55 @@ for i in bd["items"]:
     check(f"status {i['category_id']}", i["status"] == expect, (i["status"], expect))
 print("[info] presupuestos:", ", ".join(f"{i['category_id']}={i['status']}" for i in bd["items"]))
 
+# ---------------- plan 25/15/50/10 ----------------
+st, _, raw = req("GET", f"{API}/plan?month={m}")
+pl = j(raw)
+check("plan 200", st == 200, (st, raw[:160]))
+check("plan shape", keys_of(pl) == {"month","income_cents","jars"}, keys_of(pl))
+check("plan: 4 frascos", len(pl["jars"]) == 4, len(pl["jars"]))
+check("plan jar shape", all(keys_of(x) == {"jar_id","label","pct","target_cents","spent_cents","remaining_cents","used","status","category_ids"} for x in pl["jars"]))
+check("plan pcts 25/15/50/10", [x["pct"] for x in pl["jars"]] == [25,15,50,10], [x["pct"] for x in pl["jars"]])
+check("plan ingresos = KPI de ingresos", pl["income_cents"] == inc, (pl["income_cents"], inc))
+check("plan targets suman el ingreso", sum(x["target_cents"] for x in pl["jars"]) == inc, sum(x["target_cents"] for x in pl["jars"]))
+check("plan remaining = target - spent", all(x["remaining_cents"] == x["target_cents"] - x["spent_cents"] for x in pl["jars"]))
+check("plan status válidos", {x["status"] for x in pl["jars"]} <= {"none","ok","warn","over"})
+check("plan mapea las 10 categorías de gasto (sin Deudas)", sorted(c for x in pl["jars"] for c in x["category_ids"]) == sorted(budget_gasto_ids), [c for x in pl["jars"] for c in x["category_ids"]])
+st, _, raw = req("PUT", f"{API}/plan/categories/ocio", {"jar_id":"esencial"})
+check("PUT plan 200", st == 200 and j(raw) == {"category_id":"ocio","jar_id":"esencial"}, (st, raw[:160]))
+st, _, raw = req("GET", f"{API}/plan?month={m}")
+eso = next(x for x in j(raw)["jars"] if x["jar_id"] == "esencial")
+check("PUT plan mueve la categoría", "ocio" in eso["category_ids"], eso["category_ids"])
+req("PUT", f"{API}/plan/categories/ocio", {"jar_id":"recompensas"})  # restaurar el seed
+st, _, raw = req("PUT", f"{API}/plan/categories/sueldo", {"jar_id":"esencial"})
+check("PUT plan en categoría de ingreso => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("PUT", f"{API}/plan/categories/ocio", {"jar_id":"no-existe"})
+check("PUT plan frasco inexistente => 422", st == 422, (st, raw[:160]))
+
 # ---------------- CRUD ----------------
-new = {"type":"gasto","category_id":"ocio","amount_cents":123456,"date":f"{m}-10","note":"prueba smoke"}
+new = {"type":"gasto","category_id":"ocio","account_id":default_acc,"entry_currency":"USD","entry_amount_cents":123456,"date":f"{m}-10","note":"prueba smoke"}
 st, _, raw = req("POST", f"{API}/movements", new)
 created = j(raw)
 check("POST 201", st == 201, (st, raw[:200]))
-check("POST shape", keys_of(created) == {"id","type","category_id","amount_cents","date","note","created_at"})
+check("POST shape", keys_of(created) == {"id","type","category_id","account_id","account_name","is_debt_payment","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","created_at"})
+check("POST USD: amount_cents = entry_amount_cents y sin tasa",
+      created["amount_cents"] == 123456 and created["entry_currency"] == "USD" and created["rate_micros"] is None, created)
+check("POST guarda la cartera", created["account_id"] == default_acc and created["account_name"], created)
 mid = created["id"]
+st, _, raw = req("POST", f"{API}/movements", {k: v for k, v in new.items() if k != "account_id"})
+check("POST sin cartera => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("POST", f"{API}/movements", {**new, "account_id": 99999999})
+check("POST con cartera inexistente => 422", st == 422, (st, raw[:160]))
 st, _, raw = req("GET", f"{API}/stats/summary?month={m}")
 check("POST impacta el KPI de gastos", j(raw)["expenses_cents"] == exp + 123456, j(raw)["expenses_cents"])
 
 st, _, raw = req("POST", f"{API}/movements", {**new, "type":"gasto", "category_id":"sueldo"})
 check("POST categoría de otro tipo => 422", st == 422 and isinstance(j(raw).get("detail"), str), (st, raw[:160]))
-st, _, raw = req("POST", f"{API}/movements", {**new, "amount_cents":0})
+st, _, raw = req("POST", f"{API}/movements", {**new, "entry_amount_cents":0})
 check("POST monto 0 => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("POST", f"{API}/movements", {**new, "entry_currency":"VES"})
+check("POST VES sin tasa => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("POST", f"{API}/movements", {**new, "rate_micros":40000000})
+check("POST USD con tasa => 422", st == 422, (st, raw[:160]))
 st, _, raw = req("POST", f"{API}/movements", {**new, "date":f"{m[:4]}-02-30"})
 check("POST 31-feb => 422", st == 422, (st, raw[:160]))
 st, _, raw = req("POST", f"{API}/movements", {**new, "category_id":"no-existe"})
@@ -176,16 +280,26 @@ st, _, raw = req("POST", f"{API}/movements", {**new, "note":"x"*300})
 check("POST nota de 300 caracteres => 422 y no lo crea",
       st == 422 and len(j(req("GET", f"{API}/movements?month={m}")[2])) == movs_before_long, (st, raw[:160]))
 
-st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"amount_cents": 999900})
+# alta en bolívares: Bs 4.000,00 @ 40 Bs/USD => $100,00 (10000 centavos)
+ves = {"type":"gasto","category_id":"supermercado","account_id":default_acc,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,"date":f"{m}-11","note":"prueba VES"}
+st, _, raw = req("POST", f"{API}/movements", ves)
+vcreated = j(raw)
+check("POST VES 201", st == 201, (st, raw[:200]))
+check("POST VES calcula USD (Bs 4.000 @ 40 => $100)",
+      vcreated["amount_cents"] == 10000 and vcreated["entry_currency"] == "VES"
+      and vcreated["entry_amount_cents"] == 400000 and vcreated["rate_micros"] == 40000000, vcreated)
+req("DELETE", f"{API}/movements/{vcreated['id']}")
+
+st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"entry_amount_cents": 999900})
 check("PATCH 200 y aplica", st == 200 and j(raw)["amount_cents"] == 999900, (st, raw[:160]))
 check("PATCH preserva lo no enviado", j(raw)["category_id"] == "ocio" and j(raw)["note"] == "prueba smoke")
 st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"type":"ingreso"})
 check("PATCH incoherente => 422", st == 422, (st, raw[:160]))
-st, _, raw = req("PATCH", f"{API}/movements/99999999", {"amount_cents": 100})
+st, _, raw = req("PATCH", f"{API}/movements/99999999", {"entry_amount_cents": 100})
 check("PATCH inexistente => 404", st == 404, st)
 st, _, raw = req("DELETE", f"{API}/movements/{mid}")
 check("DELETE 204", st == 204, st)
-st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"amount_cents": 100})
+st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"entry_amount_cents": 100})
 check("PATCH tras DELETE => 404", st == 404, st)
 
 # ---------------- budgets CRUD ----------------
@@ -209,20 +323,26 @@ req("PUT", f"{API}/budgets/ocio", {"cap_cents": 3000000})  # restaurar el seed
 st, hdr, raw = req("GET", f"{API}/data/export")
 exp_data = j(raw)
 check("export 200", st == 200, st)
-check("export shape", keys_of(exp_data) == {"version","exported_at","movements","budgets"}, keys_of(exp_data))
-check("export version 1", exp_data["version"] == 1)
+check("export shape", keys_of(exp_data) == {"version","exported_at","accounts","movements","budgets","jar_categories"}, keys_of(exp_data))
+check("export version 3", exp_data["version"] == 3, exp_data["version"])
 check("export content-disposition", "attachment" in hdr.get("content-disposition","") and "financirdus-" in hdr.get("content-disposition",""), hdr.get("content-disposition"))
 check("export trae todos los movimientos", len(exp_data["movements"]) == len(req("GET", f"{API}/movements")[2] and j(req("GET", f"{API}/movements")[2])), len(exp_data["movements"]))
 check("export budgets es dict de gasto", all(k in gasto_ids and isinstance(v, int) and v > 0 for k, v in exp_data["budgets"].items()), exp_data["budgets"])
-check("export movement shape", all(set(x) == {"type","category_id","amount_cents","date","note"} for x in exp_data["movements"]))
+check("export accounts shape", all(set(a) == {"name","opening_balance_cents"} for a in exp_data["accounts"]), exp_data["accounts"])
+check("export movement shape", all(set(x) == {"type","category_id","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","account_id","account_name","is_debt_payment"} for x in exp_data["movements"]))
+check("export jar_categories mapea categorías de gasto a frascos",
+      all(k in gasto_ids and v in {"crecimiento","estabilidad","esencial","recompensas"} for k, v in exp_data["jar_categories"].items()), exp_data["jar_categories"])
 
 before_total = len(j(req("GET", f"{API}/movements")[2]))
 st, _, raw = req("POST", f"{API}/data/import?mode=merge", exp_data)
 res = j(raw)
 check("import merge 200", st == 200, (st, raw[:200]))
-check("import merge shape", keys_of(res) == {"mode","movements_imported","movements_skipped","budgets_imported"}, res)
+check("import merge shape", keys_of(res) == {"mode","movements_imported","movements_skipped","budgets_imported","accounts_imported"}, res)
+check("import merge v3 conserva las carteras", len(j(req("GET", f"{API}/accounts")[2])["items"]) >= 3)
 check("import merge idempotente (no duplica)", len(j(req("GET", f"{API}/movements")[2])) == before_total, (before_total, len(j(req("GET", f"{API}/movements")[2]))))
 check("import merge reporta lo salteado", res["movements_skipped"] == len(exp_data["movements"]), res)
+check("import merge v2 preserva la entrada en Bs",
+      any(x["entry_currency"] == "VES" and x["rate_micros"] for x in j(req("GET", f"{API}/movements")[2])))
 
 # JSON inválido tiene que mandarse como texto crudo, no como JSON serializado
 def raw_post(url, text):
@@ -247,6 +367,19 @@ res = j(raw)
 check("import replace 200", st == 200 and res["mode"] == "replace", (st, raw[:160]))
 check("import replace deja sólo lo importado", len(j(req("GET", f"{API}/movements")[2])) == 1, len(j(req("GET", f"{API}/movements")[2])))
 check("import replace deja sólo los presupuestos importados", list(j(req("GET", f"{API}/budgets?month={m}")[2])["items"][4].values()) and j(req("GET", f"{API}/budgets?month={m}")[2])["items"][4]["cap_cents"] == 1000000)
+only_mov = j(req("GET", f"{API}/movements")[2])[0]
+check("import v1 normaliza a USD (entry=amount, sin tasa)",
+      only_mov["entry_currency"] == "USD" and only_mov["entry_amount_cents"] == 500000 and only_mov["rate_micros"] is None, only_mov)
+
+ves_payload = {"version":2,"movements":[{"type":"gasto","category_id":"supermercado","amount_cents":10000,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,"date":f"{m}-06","note":"ves roundtrip"}],"budgets":{},"jar_categories":{"ahorro":"estabilidad"}}
+st, _, raw = req("POST", f"{API}/data/import?mode=replace", ves_payload)
+check("import replace v2 200", st == 200, (st, raw[:160]))
+rt = j(req("GET", f"{API}/movements")[2])[0]
+check("import v2 conserva la entrada en Bs",
+      rt["entry_currency"] == "VES" and rt["entry_amount_cents"] == 400000 and rt["rate_micros"] == 40000000 and rt["amount_cents"] == 10000, rt)
+st, _, raw = req("GET", f"{API}/plan?month={m}")
+ahorro_jar = next(x["jar_id"] for x in j(raw)["jars"] if "ahorro" in x["category_ids"])
+check("import v2 restaura el mapeo de frascos", ahorro_jar == "estabilidad", ahorro_jar)
 
 # ---------------- SPA servida por nginx ----------------
 st, hdr, raw = req("GET", f"{WEB}/")
@@ -275,6 +408,7 @@ check("CORS no permite orígenes ajenos", hdr.get("access-control-allow-origin")
 
 # ---------------- límites documentados ----------------
 before_limits = len(j(req("GET", f"{API}/movements")[2]))
+limits_acc = j(req("GET", f"{API}/accounts")[2])["items"][0]["id"]
 
 def raw_declared_length(port, path, length):
     """Manda solo los headers con un Content-Length grande y lee la respuesta temprana.
@@ -317,9 +451,9 @@ st, raw = raw_post(f"{API}/data/import?mode=merge", many)
 check("import con 20001 movimientos => 422", st == 422, (st, raw[:140]))
 check("20001 movimientos no modificó los datos", len(j(req("GET", f"{API}/movements")[2])) == before_limits)
 
-st, _, raw = req("POST", f"{API}/movements", {"type":"gasto","category_id":"ocio","amount_cents":2147483648,"date":f"{m}-01","note":""})
+st, _, raw = req("POST", f"{API}/movements", {"type":"gasto","category_id":"ocio","account_id":limits_acc,"entry_amount_cents":2147483648,"date":f"{m}-01","note":""})
 check("monto > máximo de INTEGER => 422", st == 422 and "grande" in raw, (st, raw[:140]))
-st, _, raw = req("POST", f"{API}/movements", {"type":"gasto","category_id":"ocio","amount_cents":2147483647,"date":f"{m}-01","note":"maximo"})
+st, _, raw = req("POST", f"{API}/movements", {"type":"gasto","category_id":"ocio","account_id":limits_acc,"entry_amount_cents":2147483647,"date":f"{m}-01","note":"maximo"})
 check("monto = máximo de INTEGER se acepta", st == 201, (st, raw[:140]))
 if st == 201:
     req("DELETE", f"{API}/movements/{j(raw)['id']}")

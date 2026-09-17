@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AppHeader } from './components/AppHeader';
+import { AccountsPanel } from './components/AccountsPanel';
 import { BarsChart } from './components/BarsChart';
 import { Budgets } from './components/Budgets';
 import { DonutChart } from './components/DonutChart';
+import { JarsPanel } from './components/JarsPanel';
 import { KpiSummary } from './components/KpiSummary';
 import { MovementForm } from './components/MovementForm';
 import { MovementsTable } from './components/MovementsTable';
@@ -10,20 +12,33 @@ import { ErrorState, LoadingState } from './components/States';
 import { useAnnounce } from './components/LiveRegion';
 import { api, readableError } from './api/client';
 import {
+  useAccounts,
   useBudgets,
   useByCategory,
   useCategories,
+  useCreateAccount,
   useCreateMovement,
+  useDeleteAccount,
   useDeleteBudget,
   useDeleteMovement,
   useImportData,
   useMonthly,
   useMovements,
+  usePlan,
   useSetBudget,
   useSummary,
+  useUpdateAccount,
   useUpdateMovement,
 } from './api/queries';
-import type { ImportMode, Movement, MovementInput } from './api/types';
+import type {
+  Account,
+  AccountFilter,
+  AccountInput,
+  AccountUpdateInput,
+  ImportMode,
+  Movement,
+  MovementInput,
+} from './api/types';
 import { formatMoney } from './lib/money';
 import { currentMonthKey, formatDateDisplay, monthFullLabel, shiftMonth, todayStr } from './lib/month';
 
@@ -42,6 +57,7 @@ function prefersReducedMotion(): boolean {
 export function App() {
   const announce = useAnnounce();
   const [month, setMonth] = useState(() => currentMonthKey());
+  const [account, setAccount] = useState<AccountFilter>('all');
   const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState<Movement | null>(null);
   const [banner, setBanner] = useState<Banner | null>(null);
@@ -50,11 +66,13 @@ export function App() {
   const formRef = useRef<HTMLDivElement>(null);
 
   const categoriesQuery = useCategories();
-  const movementsQuery = useMovements(month);
-  const summaryQuery = useSummary(month);
-  const byCategoryQuery = useByCategory(month);
-  const monthlyQuery = useMonthly(month, 6);
+  const accountsQuery = useAccounts();
+  const movementsQuery = useMovements(month, account);
+  const summaryQuery = useSummary(month, account);
+  const byCategoryQuery = useByCategory(month, account);
+  const monthlyQuery = useMonthly(month, 6, account);
   const budgetsQuery = useBudgets(month);
+  const planQuery = usePlan(month);
 
   const createMovement = useCreateMovement();
   const updateMovement = useUpdateMovement();
@@ -62,17 +80,36 @@ export function App() {
   const setBudget = useSetBudget();
   const deleteBudget = useDeleteBudget();
   const importData = useImportData();
+  const createAccount = useCreateAccount();
+  const updateAccount = useUpdateAccount();
+  const deleteAccount = useDeleteAccount();
 
   useEffect(() => {
     setFilter('all');
     setEditing(null);
-  }, [month]);
+  }, [month, account]);
 
   const categories = categoriesQuery.data ?? [];
+  const accounts = useMemo(() => accountsQuery.data?.items ?? [], [accountsQuery.data]);
+  const totalDebtCents = accountsQuery.data?.total_debt_cents ?? 0;
   const labelOf = useCallback(
     (id: string) => categories.find((category) => category.id === id)?.label ?? id,
     [categories],
   );
+  const accountNameOf = useCallback(
+    (movement: Movement) =>
+      movement.account_name ?? accounts.find((item) => item.id === movement.account_id)?.name ?? '',
+    [accounts],
+  );
+
+  // Prefill the VES rate field with the last rate the user entered, read from
+  // the most recent Bs movement already loaded for the month.
+  const lastVesRateMicros = useMemo(() => {
+    const ves = (movementsQuery.data ?? []).find(
+      (movement) => movement.entry_currency === 'VES' && movement.rate_micros,
+    );
+    return ves?.rate_micros ?? null;
+  }, [movementsQuery.data]);
 
   /**
    * Announce a short message that includes the NEW balance, read from the API
@@ -84,7 +121,7 @@ export function App() {
       const result = await summaryQuery.refetch();
       const balance = result.data?.balance_cents;
       if (typeof balance === 'number') {
-        announce(`${prefix} Te queda ${formatMoney(balance)}.`);
+        announce(`${prefix} Te queda ${formatMoney(balance, 'USD')}.`);
         return;
       }
     } catch {
@@ -128,7 +165,7 @@ export function App() {
 
   async function handleDelete(movement: Movement) {
     const confirmed = window.confirm(
-      `¿Borrar este movimiento?\n\n${labelOf(movement.category_id)} · ${formatMoney(movement.amount_cents)} · ${formatDateDisplay(movement.date)}`,
+      `¿Borrar este movimiento?\n\n${labelOf(movement.category_id)} · ${formatMoney(movement.amount_cents, 'USD')} · ${formatDateDisplay(movement.date)}`,
     );
     if (!confirmed) return;
     try {
@@ -159,6 +196,62 @@ export function App() {
       setBanner({ kind: 'error', text: readableError(error) });
       announce(readableError(error));
     }
+  }
+
+  async function handleCreateAccount(input: AccountInput) {
+    try {
+      await createAccount.mutateAsync(input);
+      announce('Cartera creada.');
+    } catch (error) {
+      announce(readableError(error));
+      throw error;
+    }
+  }
+
+  async function handleUpdateAccount(id: number, patch: AccountUpdateInput) {
+    try {
+      await updateAccount.mutateAsync({ id, patch });
+      announce('Cartera actualizada.');
+    } catch (error) {
+      announce(readableError(error));
+      throw error;
+    }
+  }
+
+  function handleDeleteAccount(accountToDelete: Account) {
+    const confirmed = window.confirm(`¿Borrar la cartera "${accountToDelete.name}"?`);
+    if (!confirmed) {
+      announce('Borrado cancelado.');
+      return;
+    }
+    deleteAccount.mutate(accountToDelete.id, {
+      onSuccess: () => announce('Cartera borrada.'),
+      onError: (error) => {
+        setBanner({ kind: 'error', text: readableError(error) });
+        announce(readableError(error));
+      },
+    });
+  }
+
+  async function handlePayDebt(input: MovementInput) {
+    try {
+      await createMovement.mutateAsync(input);
+      void announceWithBalance('Pago de deuda registrado.');
+    } catch (error) {
+      announce(readableError(error));
+      throw error;
+    }
+  }
+
+  function changeAccount(next: AccountFilter) {
+    setAccount(next);
+    setBanner(null);
+    if (next === 'all') {
+      announce('Mostrando todas las carteras.');
+      return;
+    }
+    const name = accounts.find((item) => item.id === next)?.name ?? 'la cartera';
+    announce(`Filtrando por ${name}.`);
   }
 
   async function handleExport() {
@@ -220,6 +313,9 @@ export function App() {
   }
 
   const budgetsBusy = setBudget.isPending || deleteBudget.isPending;
+  const accountsBusy = createAccount.isPending || updateAccount.isPending || deleteAccount.isPending;
+  const formError = categoriesQuery.error ?? accountsQuery.error ?? null;
+  const formReady = categoriesQuery.isSuccess && accountsQuery.isSuccess;
 
   return (
     <div className="mx-auto max-w-[1180px] px-4 pt-[22px] pb-16">
@@ -234,6 +330,9 @@ export function App() {
         onCurrentMonth={() => goToMonth(currentMonthKey())}
         onExport={handleExport}
         onImport={handleImport}
+        accounts={accounts}
+        account={account}
+        onAccountChange={changeAccount}
         busy={importing}
       />
 
@@ -244,24 +343,28 @@ export function App() {
 
         <div className="grid gap-4 min-[861px]:grid-cols-[minmax(320px,1fr)_1.08fr] min-[861px]:items-start">
           <div ref={formRef} className="min-w-0">
-            {categoriesQuery.isPending ? (
-              <section className="card">
-                <LoadingState label="Cargando categorías…" />
-              </section>
-            ) : categoriesQuery.isError ? (
+            {formError ? (
               <section className="card">
                 <ErrorState
-                  message={readableError(categoriesQuery.error)}
+                  message={readableError(formError)}
                   onRetry={() => {
                     void categoriesQuery.refetch();
+                    void accountsQuery.refetch();
                   }}
                 />
+              </section>
+            ) : !formReady ? (
+              <section className="card">
+                <LoadingState label="Cargando…" />
               </section>
             ) : (
               <MovementForm
                 categories={categories}
+                accounts={accounts}
                 editing={editing}
                 month={month}
+                defaultAccountId={account === 'all' ? null : account}
+                lastVesRateMicros={lastVesRateMicros}
                 onSubmit={handleSubmit}
                 onCancel={() => setEditing(null)}
               />
@@ -285,6 +388,31 @@ export function App() {
             <KpiSummary summary={summaryQuery.data} month={month} />
           ) : null}
         </div>
+
+        {accountsQuery.isPending ? (
+          <section className="card">
+            <LoadingState label="Cargando carteras…" />
+          </section>
+        ) : accountsQuery.isError ? (
+          <section className="card">
+            <ErrorState
+              message={readableError(accountsQuery.error)}
+              onRetry={() => {
+                void accountsQuery.refetch();
+              }}
+            />
+          </section>
+        ) : accountsQuery.data ? (
+          <AccountsPanel
+            data={accountsQuery.data}
+            today={todayStr()}
+            busy={accountsBusy}
+            onCreate={handleCreateAccount}
+            onUpdate={handleUpdateAccount}
+            onDelete={handleDeleteAccount}
+            onPayDebt={handlePayDebt}
+          />
+        ) : null}
 
         <div className="grid gap-4 min-[861px]:grid-cols-2">
           <section className="card" aria-labelledby="donut-title">
@@ -342,6 +470,23 @@ export function App() {
           />
         ) : null}
 
+        {planQuery.isPending ? (
+          <section className="card">
+            <LoadingState label="Cargando plan…" />
+          </section>
+        ) : planQuery.isError ? (
+          <section className="card">
+            <ErrorState
+              message={readableError(planQuery.error)}
+              onRetry={() => {
+                void planQuery.refetch();
+              }}
+            />
+          </section>
+        ) : planQuery.data ? (
+          <JarsPanel data={planQuery.data} labelOf={labelOf} totalDebtCents={totalDebtCents} />
+        ) : null}
+
         {movementsQuery.isPending ? (
           <section className="card">
             <LoadingState label="Cargando movimientos…" />
@@ -359,6 +504,7 @@ export function App() {
           <MovementsTable
             movements={movementsQuery.data ?? []}
             labelOf={labelOf}
+            accountNameOf={accountNameOf}
             filter={filter}
             onFilterChange={(value) => {
               setFilter(value);

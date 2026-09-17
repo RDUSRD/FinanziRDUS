@@ -21,7 +21,21 @@ function movement(
   cents: number,
   date: string,
 ): Movement {
-  return { id, type, category_id: categoryId, amount_cents: cents, date, note: '', created_at: `${date}T10:00:00-03:00` };
+  return {
+    id,
+    type,
+    category_id: categoryId,
+    account_id: 1,
+    account_name: 'Cartera USD',
+    is_debt_payment: false,
+    amount_cents: cents,
+    entry_currency: 'USD',
+    entry_amount_cents: cents,
+    rate_micros: null,
+    date,
+    note: '',
+    created_at: `${date}T10:00:00-03:00`,
+  };
 }
 
 function mount(movements: Movement[]): void {

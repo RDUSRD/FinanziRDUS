@@ -41,7 +41,7 @@ export function BarsChart({ data, selectedMonth }: { data: MonthlyStat[]; select
               <g key={fraction}>
                 <line x1={padL} y1={y} x2={width - padR} y2={y} stroke="rgba(255,255,255,.07)" strokeWidth={1} />
                 <text x={padL - 6} y={y + 4} textAnchor="end" fontSize={13} fill="#98a2b3">
-                  {shortMoney(layoutMax * fraction)}
+                  {shortMoney(layoutMax * fraction, 'USD')}
                 </text>
               </g>
             );
@@ -78,7 +78,7 @@ export function BarsChart({ data, selectedMonth }: { data: MonthlyStat[]; select
                     fontSize={14}
                     fill={rect.selected ? '#e6e9ee' : '#98a2b3'}
                   >
-                    {shortMoney(rect.value)}
+                    {shortMoney(rect.value, 'USD')}
                   </text>
                 )}
                 <text
@@ -115,8 +115,8 @@ export function BarsChart({ data, selectedMonth }: { data: MonthlyStat[]; select
           {data.map((entry) => (
             <tr key={entry.month}>
               <th scope="row">{monthFullLabel(entry.month)}</th>
-              <td>{formatMoney(entry.expenses_cents)}</td>
-              <td>{formatMoney(entry.income_cents)}</td>
+              <td>{formatMoney(entry.expenses_cents, 'USD')}</td>
+              <td>{formatMoney(entry.income_cents, 'USD')}</td>
             </tr>
           ))}
         </tbody>

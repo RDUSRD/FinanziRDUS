@@ -29,7 +29,7 @@ def get_budgets(month: str | None = None, db: Session = Depends(get_db)) -> dict
     categories = (
         db.execute(
             select(Category)
-            .where(Category.type == "gasto")
+            .where(Category.type == "gasto", Category.is_system.is_(False))
             .order_by(Category.sort_order, Category.id)
         )
         .scalars()

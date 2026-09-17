@@ -14,7 +14,7 @@ from . import __version__
 from .config import get_settings
 from .db import get_db
 from .models import Category
-from .routers import budgets, data, movements, stats
+from .routers import accounts, budgets, data, movements, plan, stats
 from .schemas import CategoryOut
 
 
@@ -44,8 +44,10 @@ def create_app() -> FastAPI:
     )
 
     application.include_router(movements.router)
+    application.include_router(accounts.router)
     application.include_router(budgets.router)
     application.include_router(stats.router)
+    application.include_router(plan.router)
     application.include_router(data.router)
 
     @application.get("/api/health", tags=["health"])

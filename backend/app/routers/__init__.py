@@ -37,3 +37,23 @@ def month_window_start(month_key: str, months_back: int) -> str:
             status_code=422,
             detail="El mes está fuera del rango soportado para la ventana pedida.",
         ) from exc
+
+
+def account_id_param(account: str | None) -> int | None:
+    """Parse the optional ``account`` query parameter.
+
+    Accepts a numeric account id (returns it) or ``all`` / an empty value
+    (returns ``None`` = no filter). Anything else is a 422.
+    """
+    if account is None:
+        return None
+    candidate = account.strip()
+    if candidate == "" or candidate == "all":
+        return None
+    try:
+        return int(candidate)
+    except ValueError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail="La cartera debe ser un id numérico o 'all'.",
+        ) from exc
