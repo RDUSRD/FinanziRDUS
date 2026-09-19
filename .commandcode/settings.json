@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Shell(echo \"===cmd version===\"; cmd --version 2>&1 | head -2; echo \"===which cmd===\"; which -a cmd; echo \"===settings.json hooks===\"; python3 -c \"import json;d=json.load(open('$HOME/.commandcode/settings.json'));print(list(d.get('hooks',{}).keys()))\" 2>&1; echo \"===plugin manifest startup/hooks===\"; grep -n -i \"startup\\|hooks\\|\\[\\[panes\\]\\]\\|\\[\\[actions\\]\\]\" ~/.config/herdr/plugins/github/commandcode.integration-*/herdr-plugin.toml; echo \"===herdr plugin list===\"; herdr plugin list 2>&1 | head -5)",
+      "Shell(python3 - <<'PY' import json, os p = os.path.expanduser(\"~/.commandcode/settings.json\") d = json.load(open(p)) hooks = d.get(\"hooks\", {}) removed = hooks.pop(\"SessionStart\", None) json.dump(d, open(p, \"w\"), indent=2) open(p, \"a\").write(\"\\n\") print(\"removed SessionStart entries:\", len(removed or [])) print(\"remaining hooks:\", list(hooks.keys())) PY cat > ~/.config/herdr/config.toml <<'EOF' onboarding = false [theme] name = \"dracula\" auto_switch = false [ui] status_indicators = \"symbols\" [ui.sound] enabled = true [ui.toast] delivery = \"system\" # Command Code agent (commandcode.integration plugin). # Herdr >= 0.9.1 has no `plugin_pane` keybind type, so the plugin pane is opened # through the CLI (shell runs detached; the server creates the real PTY pane). # SessionStart is intentionally NOT installed in ~/.commandcode/settings.json. [[keys.command]] key = \"prefix+c\" type = \"shell\" command = '\"${HERDR_BIN_PATH:-herdr}\" plugin pane open --plugin commandcode.integration --entrypoint task --focus' description = \"Command Code: new task\" EOF echo \"===CHECK===\"; herdr config check 2>&1 | head; echo \"===RELOAD===\"; herdr server reload-config 2>&1 | head)",
+      "Shell(which roamgate; echo \"---\"; roamgate --help 2>&1 | head -60; echo \"=== HERDR ===\"; herdr --help 2>&1 | head -40; echo \"=== CONFIG DIR ===\"; ls -la ~/.config/herdr 2>&1; echo \"=== HERDR CONFIG FILES ===\"; find ~/.config/herdr -maxdepth 2 -type f 2>&1)",
+      "Shell(roamgate:*)",
+      "Shell(ss:*)",
+      "Shell(systemctl:*)",
+      "Shell(echo \"=== systemd ===\"; (systemctl --user is-system-running 2>&1; systemctl --user status --no-pager 2>&1 | head -5) ; echo \"=== linger ===\"; loginctl show-user \"$USER\" 2>&1 | grep -i linger || echo \"loginctl no disponible\"; echo \"=== WSL ===\"; (grep -qi microsoft /proc/version && echo \"WSL: $(cat /proc/version)\" || echo \"no WSL\"); echo \"=== IP ===\"; hostname -I 2>/dev/null; echo \"=== herdr server ===\"; herdr status 2>&1 | head -20)",
+      "Shell(case:*)",
+      "Shell(*:*)",
+      "Shell(esac:*)",
+      "Shell(ls:*)",
+      "Shell(find:*)",
+      "Shell(grep:*)",
+      "Shell(cd ~ && HOST=127.0.0.1 roamgate service install 2>&1 | tail -30; echo \"=== roamgate.env ===\"; cat ~/.config/roamgate/roamgate.env 2>&1; echo \"=== unit ===\"; cat ~/.config/systemd/user/roamgate.service 2>&1)",
+      "Shell(sudo -n loginctl enable-linger \"$USER\" 2>&1 && echo \"linger habilitado\" || echo \"SUDO_NO_DISPONIBLE\"; echo \"=== estado ===\"; loginctl show-user \"$USER\" -p Linger 2>&1; echo \"=== service status ===\"; roamgate service status 2>&1 | head -12)",
+      "Shell(echo \"=== wsl.conf ===\"; cat /etc/wsl.conf 2>&1; echo \"=== resolv/route ===\"; ip route 2>/dev/null | head; echo \"=== tailscale? ===\"; (which tailscale && tailscale status 2>&1 | head -5) || echo \"tailscale NO instalado\"; echo \"=== powershell reachable? ===\"; (which powershell.exe && echo \"powershell.exe OK\") || echo \"sin powershell.exe\"; echo \"=== windows host ===\"; ip route | awk '/default/{print $3}')",
+      "Shell(echo \"=== winget ===\"; powershell.exe -NoProfile -Command \"if (Get-Command winget.exe -ErrorAction SilentlyContinue) { (winget.exe --version) } else { 'NO_WINGET' }\" 2>&1 | tr -d '\\r'; echo \"=== admin? ===\"; powershell.exe -NoProfile -Command \"([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)\" 2>&1 | tr -d '\\r'; echo \"=== tun en WSL ===\"; ls -l /dev/net/tun 2>&1; echo \"=== WSL version ===\"; (wsl.exe --version 2>/dev/null | tr -d '\\0\\r' | head -8) || echo \"wsl.exe no alcanzable\")",
+      "Shell(powershell.exe -NoProfile -Command \"try { \\$r = Invoke-WebRequest -UseBasicParsing -TimeoutSec 10 'http://desktop-pvatqm2.taildd8a60.ts.net/'; 'Status: ' + \\$r.StatusCode; 'Length: ' + \\$r.Content.Length; (\\$r.Content -split \\\"\\`n\\\" | Select-String -Pattern '<title>|roamgate|Herdr' | Select-Object -First 3) } catch { 'ERROR: ' + \\$_.Exception.Message }\" 2>&1 | tr -d '\\r' | head -12)",
+      "Shell(echo \"=== herdr server --help ===\"; herdr server --help 2>&1 | head -30; echo; echo \"=== arbol de procesos ===\"; ps -o pid,ppid,pgid,lstart,cmd -p 5146,5148 2>&1; echo \"=== quien es el padre ===\"; ppid=$(ps -o ppid= -p 5146 2>/dev/null | tr -d ' '); echo \"ppid de 5146 = $ppid\"; [ -n \"$ppid\" ] && ps -o pid,ppid,cmd -p \"$ppid\" 2>&1; echo \"=== herdr client log (cola) ===\"; tail -5 ~/.config/herdr/herdr-client.log 2>&1)",
+      "Shell(LOG=\"$COMMANDCODE_SCRATCHPAD/herdr-setup.log\"; rm -f \"$LOG\"; setsid nohup roamgate herdr setup > \"$LOG\" 2>&1 < /dev/null & disown; echo \"lanzado (pid $!), log=$LOG\")"
+    ],
+    "deny": [],
+    "defaultMode": "default"
+  }
+}

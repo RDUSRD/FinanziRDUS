@@ -1,0 +1,147 @@
+{
+  "title": "Elegí el mundo visual",
+  "question": "La dirección asignada es la pizarra de la tasa. Podés quedártela, tomar un alternativo, adoptar uno descartado o volver a tirar.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "La pizarra de la tasa",
+      "kicker": "THE ROLL",
+      "lineage": "Pizarras de precios pintadas a mano: casas de cambio, bodegas y carteles de precios corregidos con pintura sobre la pintura.",
+      "thesis": "La app es una pizarra que se reescribe: el mes es un tablero pintado, la tasa del día es una placa viva y lo que se pasa de la raya se tacha y se reescribe en rojo.",
+      "palette": ["#131a16", "#ede8d9", "#c9432a", "#e0a92c"],
+      "materials": ["Pintura esmaltada sobre madera", "Letra de cartel pintada", "Rayas y líneas hechas a mano alzada", "Tiza"],
+      "viewport": "Una sola pizarra enmarcada en madera, sin tarjetas: el nombre pintado arriba, la placa de la TASA DEL DÍA al lado del mes, la deuda pendiente en rojo, y los tres números del mes en cifras enormes apoyadas sobre una raya. ANOTAR MOVIMIENTO es la única mancha de color fuerte del tablero; debajo empieza LA LISTA con el tope y el precio gastado de cada categoría.",
+      "risk": "El negro pizarra es el riesgo: sin la textura de pintura y el marco de madera se lee como un dashboard oscuro más.",
+      "raised": [
+        {
+          "from": "cuarto oscuro con luz ámbar",
+          "raise": "Prueba de tira: antes de escribir, el modal muestra el saldo y el tope que quedarían, como una tira de prueba que se revela al confirmar."
+        },
+        {
+          "from": "escritorio de un bit",
+          "raise": "Ventana con marco honesto: el alta y la edición pasan en una ventana con barra de título, casilla de cierre y selección que se invierte al presionar."
+        },
+        {
+          "from": "pantalla de 16 colores",
+          "raise": "Ventana de datos acoplada: el libro de movimientos vive fijo al pie del tablero en vez de aparecer y desaparecer."
+        },
+        {
+          "from": "gramática industrial entre comillas",
+          "raise": "Franja de peligro: una sola franja a 45°, reservada exclusivamente al tope excedido."
+        },
+        {
+          "from": "columna de tensegridad",
+          "raise": "Traza de carga: cada gasto se puede seguir hasta el frasco y el tope que lo financian."
+        }
+      ],
+      "comp": "http://127.0.0.1:8791/mocks/decision/assigned.png"
+    },
+    {
+      "id": "model-pick",
+      "label": "La libreta de control",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Libretas de ahorro y planillas de contabilidad: papel con tinte de seguridad, reglas oxblood, sellos de goma.",
+      "thesis": "La app es una libreta impresa: renglones, columnas y sellos en lugar de tarjetas, y el estado se marca con un sello, no con un color.",
+      "palette": ["#d7ddd2", "#7a2a24", "#1c1f1c", "#a3312a"],
+      "materials": ["Papel con tinte de seguridad verde-gris", "Reglas y formularios impresos", "Tinta de máquina de escribir", "Sello de goma", "Perforaciones de encuadernación"],
+      "viewport": "Una hoja impresa con agujeros de encuadernación en el margen izquierdo: los tres totales del mes en cajas impresas, el tope y el gastado en columnas regladas, el sello EXCEDIDO inclinado sobre supermercado, y el libro del mes como renglones con filete punteado.",
+      "risk": "Es la dirección más esperable del rubro: si las reglas impresas quedan tímidas se lee como un dashboard claro cualquiera.",
+      "comp": "http://127.0.0.1:8791/mocks/decision/pick.png"
+    },
+    {
+      "id": "challenger-manual",
+      "label": "Manual de acetato con pestañas",
+      "verdict": "competitive",
+      "lineage": "Manuales de software en caja: tablero de color por sección y hojas de acetato perforadas por encima.",
+      "thesis": "La app es un manual abierto: cada mes es una pestaña cuya altura es su gasto, y cada bloque vive en una hoja de acetato transparente sobre el color de la sección.",
+      "palette": ["#8a4a2b", "#e8e9e4", "#191a1b", "#c0392b"],
+      "materials": ["Tablero de color a plena saturación", "Acetato lechoso perforado", "Tinta tipográfica", "Marca de errata en vermellón"],
+      "viewport": "Un pliego abierto a cuatro columnas más una quinta de margen donde cuelgan los títulos: el riel de pestañas escalonado al canto derecho con septiembre salido hacia afuera, y el gasto del mes repartido en hojas de acetato sobre el siena.",
+      "case": "Funde limpio: las pestañas son los meses, el color de sección son las categorías y las tablas son los datos. Pierde por identificación —el manual técnico no es el mundo cotidiano de esta persona—, no por claridad.",
+      "risk": "El acetato se lee como vidrio esmerilado genérico si la oclusión no es dura y el cambio no es de dos cuadros.",
+      "comp": "http://127.0.0.1:8791/mocks/decision/challenger.png"
+    },
+    {
+      "id": "challenger-darkroom",
+      "label": "Cuarto oscuro con luz ámbar",
+      "verdict": "declined",
+      "lineage": "Cuartos oscuros fotográficos: luz de seguridad ámbar, bandejas, tiras de prueba.",
+      "thesis": "Revelar una foto en lugar de leer un número.",
+      "palette": ["#2a1a06", "#d9a441", "#8c8c8c"],
+      "materials": ["Luz ámbar", "Bandejas de revelado", "Cubas y pinzas"],
+      "viewport": "Estaciones en orden fijo sobre un baño ámbar.",
+      "risk": "Bajo la luz ámbar, todo el dinero queda con el mismo peso y ningún número resalta.",
+      "case": "Pierde las dos pruebas: la fotografía no es el mundo de esta persona, y el proceso químico irreversible no tiene equivalente en el mes.",
+      "kept": "La prueba de tira antes de confirmar.",
+      "hero": "https://impeccable.style/worlds/cards/signals-instruments-darkroom-safelight-bay-hero.webp"
+    },
+    {
+      "id": "challenger-onebit",
+      "label": "Escritorio de un bit",
+      "verdict": "declined",
+      "lineage": "Escritorios de un bit: tramas ordenadas, ventanas con barra de título y casilla de cierre, selecciones con hormigas marchando.",
+      "thesis": "La app como un escritorio de ventanas en blanco y negro.",
+      "palette": ["#000000", "#ffffff", "#9a9a9a"],
+      "materials": ["Trama ordenada", "Cromo de ventana en dos colores", "Iconos de 32 píxeles"],
+      "viewport": "Ventanas superpuestas sobre un plano único de escritorio.",
+      "risk": "La trama de un bit aplana la jerarquía: los tres números del mes pesan lo mismo que una nota.",
+      "case": "La claridad de las ventanas es real, pero la identificación es fina para este uso y la trama destruye la jerarquía del dinero.",
+      "kept": "El marco de ventana honesto para el alta de movimientos.",
+      "hero": "https://impeccable.style/worlds/cards/medium-native-one-bit-desktop-hero.webp"
+    },
+    {
+      "id": "challenger-pc98",
+      "label": "Pantalla de 16 colores",
+      "verdict": "declined",
+      "lineage": "Pantallas japonesas de 16 colores a 640 por 400: degradados hechos con tramas cruzadas y una ventana de texto acoplada abajo.",
+      "thesis": "Un marco de regiones fijas donde navegar cambia el contenido, no el diseño.",
+      "palette": ["#101820", "#e8d9a0", "#c04a2a", "#3a7d5c"],
+      "materials": ["Paleta cerrada de 16", "Trama cruzada de píxeles", "Ventana de texto al pie"],
+      "viewport": "Marco partido en regiones que nunca se mueven, con la ventana de texto acoplada a la banda baja.",
+      "risk": "La trama ordenada vuelve ilegibles los gráficos y los importes pequeños.",
+      "case": "Cero identificación: la PC-98 no es el mundo de esta persona. La estructura de regiones fijas era lo bueno, y eso se quedó.",
+      "kept": "La ventana de datos acoplada al pie del tablero.",
+      "hero": "https://impeccable.style/worlds/cards/digital-design-canon-pc98-sixteen-color-field-hero.webp"
+    },
+    {
+      "id": "challenger-streetwear",
+      "label": "Gramática industrial entre comillas",
+      "verdict": "declined",
+      "lineage": "Streetwear industrial: algodón blanco, nylon negro, franjas de peligro a 45° y etiquetas de precinto.",
+      "thesis": "Etiquetar todo con su nombre literal, entre comillas rectas.",
+      "palette": ["#f2f2ee", "#111111", "#f26a1b"],
+      "materials": ["Franja de peligro a 45°", "Etiqueta de precinto", "Serigrafía"],
+      "viewport": "Cada zona rotulada con su nombre literal entre comillas.",
+      "risk": "La franja de peligro se vuelve adorno en cuanto aparece más de una vez.",
+      "case": "Pierde las dos: la subcultura no es este ritual financiero y la franja decorativa no informa nada.",
+      "kept": "La franja a 45° reservada sólo al tope excedido.",
+      "hero": "https://impeccable.style/worlds/cards/textiles-weave-drape-fashion-industrial-quote-grammar-hero.webp"
+    },
+    {
+      "id": "challenger-tensegrity",
+      "label": "Columna de tensegridad",
+      "verdict": "declined",
+      "lineage": "Esculturas cinéticas de tensegridad: varillas de carbono y cordón rojo sosteniéndose por tensión.",
+      "thesis": "El mes como un diagrama de fuerzas donde cada carga se puede seguir hasta su contrafuerza.",
+      "palette": ["#d8d5cf", "#1b1b1b", "#c0392b"],
+      "materials": ["Varillas mate", "Cordón rojo en tensión", "Etiquetas de ingeniería"],
+      "viewport": "Una red de tracción y compresión en lugar de una grilla de página.",
+      "risk": "Es abstracto: una app de dinero necesita números, no un diagrama de fuerzas.",
+      "case": "Poético pero abstracto: pierde identificación y claridad frente a la pizarra.",
+      "kept": "La traza de carga hasta el frasco que financia cada gasto.",
+      "hero": "https://impeccable.style/worlds/cards/kinetic-sculpture-automata-tensegrity-breathing-column-hero.webp"
+    }
+  ],
+  "reroll": { "registers": ["safer", "bolder"] },
+  "buildPath": { "value": "code", "toggle": false },
+  "canon": true,
+  "canonCard": {
+    "label": "El estándar del rubro",
+    "thesis": "Lo que este rubro entrega siempre, ejecutado impecablemente: fondo claro, tarjetas de esquina redondeada, un azul de acento y un anillo de dona.",
+    "palette": ["#ffffff", "#111827", "#2563eb"],
+    "materials": ["Grilla limpia", "Tarjetas con sombra suave", "Iconos de trazo uniforme"],
+    "viewport": "La disposición que cualquiera espera: tres tarjetas de KPI arriba, el gráfico al medio, la tabla abajo.",
+    "risk": "Indistinguible de la competencia, por diseño."
+  },
+  "steer": true
+}

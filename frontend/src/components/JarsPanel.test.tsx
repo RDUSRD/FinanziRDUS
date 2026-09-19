@@ -79,9 +79,9 @@ afterEach(() => {
 describe('JarsPanel', () => {
   it('shows the target, spent, remaining and status of every jar', () => {
     renderWithProviders(<JarsPanel data={DATA} labelOf={labelOf} />);
-    const region = screen.getByRole('region', { name: 'Plan 25/15/50/10' });
+    const region = screen.getByRole('region', { name: 'El plan 25/15/50/10' });
 
-    expect(within(region).getByText('Crecimiento', { selector: 'span.jar-name' })).toBeInTheDocument();
+    expect(within(region).getByText('Crecimiento', { selector: 'span.nm' })).toBeInTheDocument();
     expect(within(region).getByText('25%')).toBeInTheDocument();
     expect(within(region).getByText('50%')).toBeInTheDocument();
 
@@ -103,13 +103,13 @@ describe('JarsPanel', () => {
 
     const warn = progress('Estabilidad');
     expect(warn).toHaveAttribute('aria-valuenow', '87'); // 86.66 rounds up
-    expect(warn).toHaveClass('progress', 'warn');
+    expect(warn.closest('.j')).toHaveClass('warn');
 
     const over = progress('Esencial');
     expect(over).toHaveAttribute('aria-valuenow', '100'); // bar clamped...
     expect(over.getAttribute('aria-valuetext')).toContain('110%'); // ...text is not
     expect(over.getAttribute('aria-valuetext')).toContain('excedido');
-    expect(over).toHaveClass('progress', 'over');
+    expect(over.closest('.j')).toHaveClass('over');
   });
 
   it('reassigns a category to another jar through the API', async () => {
@@ -121,6 +121,9 @@ describe('JarsPanel', () => {
 
     const select = screen.getByLabelText('Frasco de Supermercado');
     expect(select).toHaveValue('esencial');
+    // The member caption reads "Supermercado" but the field's label is scoped to
+    // the select, so it never competes with a budget cap field of that name.
+    expect(screen.queryByLabelText('Supermercado')).not.toBeInTheDocument();
     await user.selectOptions(select, 'recompensas');
 
     await waitFor(() => expect(server.db.jarCategories.supermercado).toBe('recompensas'));

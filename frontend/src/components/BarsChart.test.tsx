@@ -16,8 +16,11 @@ const DATA: MonthlyStat[] = [
 // Intentionally NOT the tallest bar, to prove selection is by month, not value.
 const SELECTED = '2026-07';
 
-const SELECTED_FILL = 'hsl(188 62% 58%)';
-const IDLE_FILL = 'hsl(188 38% 40%)';
+// The chart is printed with a single-family ink ramp driven by one token: the
+// selected bar is the only full one (opacity .9), the rest are outlined (opacity .2).
+const INK = 'var(--color-ink)';
+const SELECTED_OPACITY = '0.9';
+const IDLE_OPACITY = '0.2';
 
 function renderChart(data: MonthlyStat[] = DATA, selectedMonth: string = SELECTED) {
   return render(<BarsChart data={data} selectedMonth={selectedMonth} />);
@@ -30,18 +33,20 @@ describe('BarsChart', () => {
     expect(svg.querySelectorAll('rect')).toHaveLength(6);
   });
 
-  it('highlights the selected month and tags it as "actual"', () => {
+  it('highlights the selected month and tags it as the current one', () => {
     renderChart();
     const svg = screen.getByRole('img', { name: 'Gastos de los últimos 6 meses.' });
     const rects = Array.from(svg.querySelectorAll('rect'));
 
-    // Only the selected bar uses the highlight fill, and it is the selected month.
-    expect(rects.filter((rect) => rect.getAttribute('fill') === SELECTED_FILL)).toHaveLength(1);
-    expect(rects[3].getAttribute('fill')).toBe(SELECTED_FILL);
-    expect(rects.filter((rect) => rect.getAttribute('fill') === IDLE_FILL)).toHaveLength(5);
+    // Every bar is the ink token; only the selected one is full (opacity .9).
+    expect(rects.every((rect) => rect.getAttribute('fill') === INK)).toBe(true);
+    const solid = rects.filter((rect) => rect.getAttribute('fill-opacity') === SELECTED_OPACITY);
+    expect(solid).toHaveLength(1);
+    expect(solid[0]).toBe(rects[3]);
+    expect(rects.filter((rect) => rect.getAttribute('fill-opacity') === IDLE_OPACITY)).toHaveLength(5);
 
-    // The word "actual" appears once, anchored to the selected month's label.
-    expect(screen.getAllByText('actual')).toHaveLength(1);
+    // The current-month tag appears once, anchored to the selected month's label.
+    expect(screen.getAllByText('este mes')).toHaveLength(1);
   });
 
   it('exposes a short image label and a single navigable table equivalent', () => {

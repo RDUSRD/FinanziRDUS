@@ -22,7 +22,7 @@ describe('App', () => {
   it('renders the KPIs, charts, budgets and movements from the API', async () => {
     renderAppTree(<App />);
 
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     expect(within(kpi).getByText(money(138_000_000))).toBeInTheDocument();
     expect(within(kpi).getByText(money(44_700_000))).toBeInTheDocument();
     expect(within(kpi).getByText(money(93_300_000))).toBeInTheDocument();
@@ -35,11 +35,11 @@ describe('App', () => {
     expect(within(donut).getByText('Alquiler y servicios')).toBeInTheDocument();
     expect(within(donut).getByText('Transporte')).toBeInTheDocument();
 
-    const budgets = screen.getByRole('region', { name: 'Presupuestos por categoría' });
+    const budgets = screen.getByRole('region', { name: 'La lista · tope y gastado' });
     expect(within(budgets).getByText('excedido')).toBeInTheDocument();
     expect(within(budgets).getByText('cerca del tope')).toBeInTheDocument();
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     expect(within(movements).getByText('-$ 85.000')).toBeInTheDocument();
     expect(within(movements).getByText('(5)')).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe('App', () => {
     expect(await screen.findByText('Falla temporal')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Reintentar' }));
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     expect(within(movements).getByText('-$ 85.000')).toBeInTheDocument();
   });
 
@@ -76,6 +76,7 @@ describe('App', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     const amount = await screen.findByLabelText('Monto en dólares');
     await user.type(amount, 'abc');
     await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
@@ -88,17 +89,17 @@ describe('App', () => {
     await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
 
     await waitFor(() => expect(server.db.movements).toHaveLength(6));
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     await waitFor(() => expect(within(kpi).getByText(money(44_800_000))).toBeInTheDocument());
   });
 
   it('deletes a movement after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     await user.click(within(movements).getByRole('button', { name: /Borrar movimiento: Supermercado/ }));
+    await user.click(screen.getByRole('button', { name: 'Borrar movimiento' }));
 
     await waitFor(() => expect(server.db.movements).toHaveLength(4));
     await waitFor(() => expect(within(movements).queryByText('-$ 85.000')).not.toBeInTheDocument());
@@ -108,7 +109,7 @@ describe('App', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     await user.selectOptions(within(movements).getByLabelText('Filtrar por categoría'), 'transporte');
 
     const table = within(movements).getByRole('table');
@@ -133,7 +134,7 @@ describe('App', () => {
 
     try {
       renderAppTree(<App />);
-      await screen.findByRole('region', { name: /Movimientos/ });
+      await screen.findByRole('region', { name: /^El libro/i });
 
       await user.click(screen.getByRole('button', { name: 'Exportar JSON' }));
 
@@ -193,7 +194,7 @@ describe('App', () => {
 
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     // The amount column stays USD; the Bs + rate is a secondary line.
     expect(within(movements).getByText('-$ 100')).toBeInTheDocument();
     expect(within(movements).getByText('Bs 4.000,00 @ 40')).toBeInTheDocument();

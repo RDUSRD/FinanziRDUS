@@ -6,28 +6,6 @@
  */
 
 /* ------------------------------------------------------------------ *
- * Palette
- * ------------------------------------------------------------------ */
-
-/**
- * Sequential single-hue palette. Hue is fixed at 188 (teal/cyan), lightness
- * goes from 86% (lightest, largest slice) down to 38% and saturation from
- * 72% down to 42%. `n === 1` returns the neutral single color; `n <= 0` -> [].
- */
-export function paletteFor(n: number): string[] {
-  if (!(n > 0)) return [];
-  if (n === 1) return ['hsl(188 60% 60%)'];
-  const out: string[] = [];
-  for (let i = 0; i < n; i++) {
-    const t = i / (n - 1); // 0..1
-    const l = 86 - t * (86 - 38); // 86% -> 38%
-    const s = 72 - t * (72 - 42); // 72% -> 42%
-    out.push(`hsl(188 ${s.toFixed(0)}% ${l.toFixed(0)}%)`);
-  }
-  return out;
-}
-
-/* ------------------------------------------------------------------ *
  * Donut
  * ------------------------------------------------------------------ */
 
@@ -185,14 +163,4 @@ export function barsLayout(values: number[], options: BarsOptions = {}): BarsLay
   });
 
   return { width, height, padL, padR, padT, padB, plotW, plotH, baseline, slot, barW, max, scaleMax, rects };
-}
-
-/** Fill color for a bar: the selected month stands out. */
-export function barColor(selected: boolean): string {
-  return selected ? 'hsl(188 62% 58%)' : 'hsl(188 38% 40%)';
-}
-
-/** Outline color for the selected bar (empty string when not selected). */
-export function barStroke(selected: boolean): string {
-  return selected ? 'hsl(188 75% 70%)' : 'none';
 }

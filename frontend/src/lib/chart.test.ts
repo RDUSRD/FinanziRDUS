@@ -1,40 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import {
-  BARS,
-  barColor,
-  barStroke,
-  barsLayout,
-  DONUT,
-  donutSegments,
-  paletteFor,
-} from './chart';
+import { BARS, barsLayout, DONUT, donutSegments } from './chart';
 
 const close = (a: number, b: number, epsilon = 1e-6) => Math.abs(a - b) <= epsilon;
-
-describe('paletteFor', () => {
-  it('returns an empty palette for n <= 0', () => {
-    expect(paletteFor(0)).toEqual([]);
-    expect(paletteFor(-3)).toEqual([]);
-  });
-
-  it('returns the neutral single color for n === 1', () => {
-    expect(paletteFor(1)).toEqual(['hsl(188 60% 60%)']);
-  });
-
-  it('stays on a single hue and yields distinct colors', () => {
-    const palette = paletteFor(6);
-    expect(palette).toHaveLength(6);
-    expect(new Set(palette).size).toBe(6);
-    for (const color of palette) expect(color.startsWith('hsl(188 ')).toBe(true);
-  });
-
-  it('goes from lightest to darkest', () => {
-    const palette = paletteFor(3);
-    const lightness = palette.map((c) => Number(/hsl\(188 \d+% (\d+)%\)/.exec(c)?.[1] ?? '0'));
-    expect(lightness[0]).toBeGreaterThan(lightness[1]);
-    expect(lightness[1]).toBeGreaterThan(lightness[2]);
-  });
-});
 
 describe('donutSegments', () => {
   it('renders a single full ring with no gap', () => {
@@ -96,13 +63,10 @@ describe('barsLayout', () => {
     expect(close(dx, layout.slot)).toBe(true);
   });
 
-  it('flags the selected month and colors it differently', () => {
+  it('flags exactly one selected month', () => {
     const layout = barsLayout(values, { selectedIndex: 4 });
     expect(layout.rects[4].selected).toBe(true);
     expect(layout.rects.filter((r) => r.selected)).toHaveLength(1);
-    expect(barColor(true)).not.toBe(barColor(false));
-    expect(barStroke(true)).not.toBe('none');
-    expect(barStroke(false)).toBe('none');
   });
 
   it('never divides by zero when every value is zero', () => {

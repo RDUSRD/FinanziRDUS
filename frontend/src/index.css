@@ -1,730 +1,1593 @@
 @import "tailwindcss";
 
-/* ------------------------------------------------------------------ *
- * Design tokens (docs/architecture.md, "Design system").
- * Tailwind v4 CSS-first: these generate utilities and CSS variables.
- * ------------------------------------------------------------------ */
+/* ================================================================== *
+ * Design tokens — "La Factura del Mes".
+ *
+ * El mes es un documento: una factura blanca encuadernada como libreta
+ * de ahorros. Papel frío, tinta de imprenta, y tres marcas que son
+ * acciones físicas sobre el papel:
+ *
+ *   paper / ink      -> la hoja y lo impreso. Todo el texto es tinta.
+ *   stamp  (rojo)    -> el sello de goma: lo negativo, lo excedido,
+ *                       y la única placa de acción. Nunca decorativo.
+ *   pen    (azul)    -> el bolígrafo: el monto original en bolívares.
+ *   mark   (resalt.) -> el resaltador: SÓLO fondo detrás de tinta,
+ *                       nunca color de texto (>=80% del tope).
+ *   warn   (ámbar)   -> atención que se lee como texto: contraste AA.
+ *
+ * Los ingresos no llevan color: tinta plena con el "+" adelante.
+ * Esquinas cuadradas en todo: el papel no tiene radio.
+ * ================================================================== */
 @theme {
-  --color-bg: #0e1116;
-  --color-surface: #171d25;
-  --color-surface-2: #1b2129;
-  --color-border: rgba(255, 255, 255, 0.1);
-  --color-border-strong: rgba(255, 255, 255, 0.14);
-  --color-border-control: rgba(255, 255, 255, 0.38);
-  --color-text: #e6e9ee;
-  --color-muted: #98a2b3;
-  --color-accent: hsl(188 60% 55%);
-  --color-accent-bright: hsl(188 68% 62%);
-  --color-accent-dim: hsl(188 40% 42%);
-  --color-danger: #ff6b6b;
-  --color-warn: #f0b429;
-
-  --radius-card: 14px;
-  --radius-btn: 12px;
-  --radius-control: 10px;
-
-  --shadow-card: 0 1px 2px rgba(0, 0, 0, 0.45);
+  --color-paper: #fafaf8;        /* la hoja */
+  --color-paper-2: #f2f3f0;      /* la copia / el bloque secundario */
+  --color-desk: #e2e5e1;         /* la superficie detrás de la hoja */
+  --color-ink: #11161b;          /* tinta de imprenta: texto principal */
+  --color-ink-deep: #05080a;     /* la tinta cuando se presiona */
+  --color-dim: rgba(17, 22, 27, 0.66);
+  --color-dim-2: rgba(17, 22, 27, 0.6);
+  --color-rule: rgba(17, 22, 27, 0.16);
+  --color-rule-strong: rgba(17, 22, 27, 0.34);
+  --color-control: rgba(17, 22, 27, 0.46);    /* borde de controles, >=3:1 */
+  --color-edge: #d3d7d2;         /* el filo de la hoja */
+  --color-danger: #b12e22;       /* texto en rojo de sello */
+  --color-danger-fill: #b23a20;  /* relleno de la placa de acción */
+  --color-danger-deep: #8d2a17;  /* la presión del sello */
+  --color-warn: #8a6a12;         /* atención legible como texto */
+  --color-mark: #f0e24b;         /* resaltador: fondo detrás de tinta */
+  --color-pen: #1b3c8c;          /* bolígrafo azul: el monto en Bs */
+  --font-sans: "Libre Franklin", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Chivo Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* ------------------------------------------------------------------ *
+/* ================================================================== *
+ * Caras auto-hospedadas (frontend/public/fonts, servidas en /fonts;
+ * la CSP sólo permite font-src 'self'). Cero red externa en runtime.
+ * ================================================================== */
+@font-face {
+  font-family: "Libre Franklin";
+  src: url("/fonts/libre-franklin-latin-var.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Chivo Mono";
+  src: url("/fonts/chivo-mono-latin-400-normal.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Chivo Mono";
+  src: url("/fonts/chivo-mono-latin-700-normal.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ================================================================== *
  * Base
- * ------------------------------------------------------------------ */
+ * ================================================================== */
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+
   html,
   body {
     margin: 0;
+    background: var(--color-desk);
   }
 
   body {
-    background: var(--color-bg);
-    color: var(--color-text);
-    font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
     font-size: 16px;
     line-height: 1.45;
-    color-scheme: dark;
+    font-weight: 400;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--color-accent);
-    outline-offset: 2px;
-    border-radius: 6px;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    html {
-      scroll-behavior: auto !important;
-    }
-    *,
-    *::before,
-    *::after {
-      transition-duration: 0.01ms !important;
-      animation-duration: 0.01ms !important;
-    }
-  }
-}
-
-/* ------------------------------------------------------------------ *
- * Components (ported 1:1 from legacy/index.html)
- * ------------------------------------------------------------------ */
-@layer components {
-  .num {
+    /* Toda cifra se mide: alineada por centavo. */
     font-variant-numeric: tabular-nums;
+    padding: 0 0 40px;
+    caret-color: var(--color-ink);
   }
 
-  /* Skip link */
-  .skip-link {
-    position: absolute;
-    left: 12px;
-    top: -60px;
-    z-index: 50;
-    background: var(--color-surface-2);
-    color: var(--color-text);
-    border: 1px solid var(--color-border-strong);
-    border-radius: 10px;
-    padding: 10px 14px;
-    text-decoration: none;
-    transition: top 140ms ease;
-  }
-  .skip-link:focus {
-    top: 12px;
+  /* La tinta sobre el sello. */
+  ::selection {
+    background: var(--color-danger-fill);
+    color: var(--color-paper);
   }
 
-  /* Buttons */
-  .btn {
-    appearance: none;
-    border: 1px solid var(--color-border-control);
-    background: var(--color-surface-2);
-    color: var(--color-text);
-    padding: 10px 14px;
-    border-radius: var(--radius-btn);
-    font: inherit;
-    font-weight: 600;
-    min-height: 44px;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    transition: background 140ms ease, border-color 140ms ease, transform 120ms ease;
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-rule-strong) transparent;
   }
-  .btn:hover {
-    background: #232b34;
-    border-color: rgba(255, 255, 255, 0.5);
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
   }
-  .btn:active {
-    transform: translateY(1px);
-  }
-  .btn:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    transform: none;
-  }
-  .btn-primary {
-    background: var(--color-accent);
-    border-color: var(--color-accent);
-    color: #04222a;
-  }
-  .btn-primary:hover {
-    background: var(--color-accent-bright);
-    border-color: var(--color-accent-bright);
-  }
-  .btn-ghost {
+  *::-webkit-scrollbar-track {
     background: transparent;
   }
-  .btn-sm {
-    min-height: 44px;
-    padding: 8px 12px;
-    font-size: 0.86rem;
-  }
-  .icon-btn {
-    width: 44px;
-    height: 44px;
-    padding: 0;
-    justify-content: center;
-    font-size: 1.15rem;
-    line-height: 1;
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-rule-strong);
+    border: 2px solid transparent;
+    background-clip: content-box;
   }
 
-  /* Cards */
-  .card {
-    background: var(--color-surface);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-card);
-    padding: 18px;
-    box-shadow: var(--shadow-card);
-    min-width: 0;
-  }
-  .card h2 {
-    font-size: 1rem;
-    margin: 0 0 14px;
-    letter-spacing: 0.01em;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .card.editing {
-    border-color: var(--color-accent);
-    box-shadow: 0 0 0 3px hsl(188 60% 55% / 0.18), var(--shadow-card);
-  }
-
-  /* Form */
-  fieldset {
-    border: 0;
-    margin: 0;
-    padding: 0;
-    min-width: 0;
-  }
-  legend {
+  h1,
+  h2,
+  h3 {
     font-weight: 700;
-    font-size: 1rem;
-    margin-bottom: 12px;
-    padding: 0;
+    letter-spacing: -0.005em;
+    margin: 0;
   }
 
-  .field {
-    margin-bottom: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .field > label {
-    font-size: 0.82rem;
-    color: var(--color-muted);
-    font-weight: 600;
-  }
-  .field .hint {
-    font-size: 0.8rem;
-    color: var(--color-muted);
+  .mono,
+  .num {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
   }
 
-  input[type="text"],
-  input[type="date"],
-  select {
-    width: 100%;
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border-control);
-    color: var(--color-text);
-    border-radius: var(--radius-control);
-    padding: 10px 12px;
-    font: inherit;
-    min-height: 44px;
-    transition: border-color 140ms ease, background 140ms ease;
-  }
-  input[type="text"]:hover,
-  input[type="date"]:hover,
-  select:hover {
-    border-color: rgba(255, 255, 255, 0.5);
-  }
-  input::placeholder {
-    color: var(--color-muted);
-    opacity: 1;
-  }
-  input[aria-invalid="true"],
-  select[aria-invalid="true"] {
-    border-color: rgba(230, 233, 238, 0.7);
-    box-shadow: 0 0 0 1px rgba(230, 233, 238, 0.55);
+  /* Cifras de dinero: mono, siempre alineadas a la derecha. */
+  .num {
+    font-weight: 700;
+    letter-spacing: -0.02em;
   }
 
-  /* Segmented radio group */
-  .segmented {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 12px;
-    padding: 0;
-  }
-  .segmented label {
-    position: relative;
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    border: 1px solid var(--color-border-control);
-    border-radius: var(--radius-control);
-    padding: 10px;
-    cursor: pointer;
-    min-height: 44px;
-    font-weight: 600;
-    transition: background 140ms ease, border-color 140ms ease;
-  }
-  .segmented input {
+  .sr-only {
     position: absolute;
-    opacity: 0;
     width: 1px;
     height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
   }
-  .segmented label.is-active {
-    background: hsl(188 60% 55% / 0.16);
-    border-color: var(--color-accent);
-  }
-  .segmented label:has(input:focus-visible) {
-    outline: 2px solid var(--color-accent);
+
+  /* Foco: un anillo de sello, siempre visible. */
+  :focus-visible {
+    outline: 2px solid var(--color-danger);
     outline-offset: 2px;
   }
+}
 
-  .error-msg {
-    color: var(--color-text);
-    font-size: 0.82rem;
-    font-weight: 600;
-    min-height: 0;
-  }
-  .error-msg:empty {
-    display: none;
-  }
+/* ================================================================== *
+ * La hoja
+ * ================================================================== */
+.desk {
+  min-height: 100vh;
+  background: var(--color-desk);
+}
 
-  .form-actions {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
-    align-items: center;
-    margin-top: 4px;
-  }
-  .edit-notice {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 0.84rem;
-    font-weight: 700;
-    color: var(--color-accent);
-    background: hsl(188 60% 55% / 0.12);
-    border: 1px solid hsl(188 60% 55% / 0.4);
-    border-radius: 999px;
-    padding: 4px 12px;
-    margin-bottom: 12px;
-  }
+.sheet {
+  position: relative;
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-edge);
+  border-radius: 0;
+  box-shadow:
+    0 1px 0 rgba(17, 22, 27, 0.04),
+    0 14px 34px -18px rgba(17, 22, 27, 0.34);
+  padding: 26px 18px 34px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
 
-  /* KPIs */
-  .kpi {
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    padding: 14px;
-    min-width: 0;
-  }
-  .kpi-label {
-    display: block;
-    font-size: 0.8rem;
-    color: var(--color-muted);
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .kpi-value {
-    display: block;
-    margin-top: 8px;
-    font-size: clamp(1.5rem, 0.7rem + 2.3vw, 2.5rem);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-    line-height: 1.05;
-    overflow-wrap: anywhere;
-  }
-  .kpi.negative .kpi-value {
-    color: var(--color-danger);
-  }
-  .comparison {
-    margin: 14px 0 0;
-    font-size: 0.86rem;
-    color: var(--color-muted);
-  }
-
-  /* Donut */
-  .donut-svg {
-    display: block;
-    max-width: 100%;
-    height: auto;
-  }
-  .donut-center-label {
-    fill: var(--color-muted);
-  }
-  .donut-center-value {
-    fill: var(--color-text);
-  }
-  .legend {
-    flex: 1 1 170px;
-    display: flex;
-    flex-direction: column;
-    gap: 7px;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-    min-width: 0;
-  }
-  .legend li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.88rem;
-    min-width: 0;
-  }
-  .legend .dot {
-    width: 14px;
-    height: 14px;
-    border-radius: 4px;
-    flex: 0 0 auto;
-  }
-  .legend .lg-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .legend .lg-amt {
-    color: var(--color-muted);
-  }
-  .legend .lg-pct {
-    color: var(--color-muted);
-    min-width: 38px;
-    text-align: right;
-  }
-
-  /* Bars */
-  .bars-host {
-    overflow-x: auto;
-  }
-  .bars-host svg {
-    display: block;
-    width: 100%;
-    min-width: 440px;
-    height: auto;
-  }
-
-  /* Budgets */
-  .budget-row {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    gap: 6px 12px;
-    align-items: center;
-    padding: 12px 0;
-    border-top: 1px solid var(--color-border);
-  }
-  .budget-row:first-of-type {
-    border-top: 0;
-  }
-  .budget-row label {
-    font-weight: 600;
-    font-size: 0.95rem;
-  }
-  .budget-input {
-    width: 132px;
-    background: var(--color-surface-2);
-    border: 1px solid var(--color-border-control);
-    color: var(--color-text);
-    border-radius: var(--radius-control);
-    padding: 8px 10px;
-    font: inherit;
-    font-variant-numeric: tabular-nums;
-    min-height: 44px;
-    text-align: right;
-  }
-  .progress {
-    grid-column: 1 / -1;
-    height: 10px;
-    background: var(--color-surface-2);
-    border-radius: 999px;
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-  }
-  .progress > span {
-    display: block;
-    height: 100%;
-    border-radius: 999px;
-    background: var(--color-accent);
-    transition: width 150ms ease;
-  }
-  .progress.warn > span {
-    background: var(--color-warn);
-  }
-  .progress.over > span {
-    background: var(--color-danger);
-  }
-  .budget-meta {
-    grid-column: 1 / -1;
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 0.82rem;
-    color: var(--color-muted);
-  }
-  .b-status {
-    font-weight: 700;
-  }
-  .b-status.warn {
-    color: var(--color-warn);
-  }
-  .b-status.over {
-    color: var(--color-danger);
-  }
-  .hint-note {
-    margin: 0 0 12px;
-    font-size: 0.86rem;
-    color: var(--color-muted);
-  }
-
-  /* Money jars (plan 25/15/50/10) */
-  .jar-row {
-    padding: 12px 0;
-    border-top: 1px solid var(--color-border);
-  }
-  .jar-row:first-of-type {
-    border-top: 0;
-  }
-  .jar-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    flex-wrap: wrap;
-  }
-  .jar-name {
-    font-weight: 700;
-    font-size: 0.95rem;
-    margin-right: auto;
-  }
-  .jar-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-top: 6px;
-    font-size: 0.82rem;
-    color: var(--color-muted);
-  }
-  .jar-cats {
-    list-style: none;
-    margin: 10px 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-  .jar-cats li {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 0.86rem;
-  }
-  .jar-cat-name {
-    flex: 1 1 auto;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .jar-cats select {
-    width: auto;
-    min-width: 150px;
-  }
-
-  /* Movements table */
-  .movements-head {
-    display: flex;
-    align-items: flex-end;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    margin-bottom: 12px;
-  }
-  .movements-head h2 {
-    margin: 0;
-  }
-  .filter-field {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-size: 0.78rem;
-    color: var(--color-muted);
-    font-weight: 600;
-  }
-  .filter-field select {
-    min-width: 200px;
-  }
-  .table-wrap {
-    overflow-x: auto;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-btn);
-  }
-  table {
-    width: 100%;
-    border-collapse: collapse;
-    min-width: 660px;
-    font-size: 0.9rem;
-  }
-  th,
-  td {
-    padding: 10px 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--color-border);
-    vertical-align: middle;
-  }
-  thead th {
-    background: var(--color-surface-2);
-    font-size: 0.78rem;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--color-muted);
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  tbody tr:last-child td {
-    border-bottom: 0;
-  }
-  td.col-amount,
-  th.col-amount {
-    text-align: right;
-  }
-  .amount {
-    font-variant-numeric: tabular-nums;
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .amount-income {
-    color: var(--color-accent);
-  }
-  .amount-gasto {
-    color: var(--color-muted);
-  }
-  .badge {
-    display: inline-block;
-    font-size: 0.78rem;
-    font-weight: 700;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--color-border-strong);
-    color: var(--color-muted);
-    white-space: nowrap;
-  }
-  .badge-ingreso {
-    color: var(--color-accent);
-    border-color: hsl(188 60% 55% / 0.5);
-    background: hsl(188 60% 55% / 0.1);
-  }
-  .row-actions {
-    display: flex;
-    gap: 6px;
-    flex-wrap: nowrap;
-  }
-  .note-cell {
-    max-width: 280px;
-    overflow-wrap: anywhere;
-  }
-  .empty-state {
-    padding: 26px 16px;
-    text-align: center;
-    color: var(--color-muted);
-  }
-
-  /* Accounts & debt (named USD wallets) */
-  .debt-objective,
-  .debt-warning {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    padding: 14px;
-    margin: 0 0 14px;
-    border-radius: 12px;
-    border: 1px solid hsl(0 80% 65% / 0.5);
-    background: hsl(0 80% 65% / 0.12);
-  }
-  .debt-objective-value {
-    font-size: clamp(1.4rem, 1rem + 2vw, 2rem);
-    font-weight: 700;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.01em;
-    color: var(--color-danger);
-    overflow-wrap: anywhere;
-  }
-  .debt-warning strong {
-    color: var(--color-danger);
-  }
-  .debt-warning span {
-    font-size: 0.88rem;
-    color: var(--color-text);
-  }
-
-  .accounts-list {
-    list-style: none;
-    margin: 0 0 14px;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .account-row {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 14px;
-    border: 1px solid var(--color-border);
-    border-radius: 12px;
-    background: var(--color-surface-2);
-    min-width: 0;
-  }
-  .account-head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-  .account-name {
-    font-weight: 700;
-    margin-right: auto;
-    overflow-wrap: anywhere;
-  }
-  .account-balance {
-    font-weight: 700;
-    white-space: nowrap;
-  }
-  .account-meta {
-    display: flex;
-    justify-content: space-between;
-    gap: 12px;
-    flex-wrap: wrap;
-    font-size: 0.82rem;
-    color: var(--color-muted);
-  }
-  .badge-debt {
-    color: var(--color-danger);
-    border-color: hsl(0 80% 65% / 0.5);
-    background: hsl(0 80% 65% / 0.12);
-  }
-  .inline-form {
-    border-top: 1px solid var(--color-border);
-    padding-top: 12px;
-    margin-top: 4px;
-    min-width: 0;
-  }
-  .inline-form h3 {
-    margin: 0 0 10px;
-    font-size: 0.92rem;
-  }
-
-  /* Messages */
-  .banner {
-    border-radius: var(--radius-btn);
-    padding: 11px 14px;
-    font-size: 0.9rem;
-    border: 1px solid var(--color-border-strong);
-    background: var(--color-surface-2);
-  }
-  .banner + .banner {
-    margin-top: 10px;
-  }
-  .banner.error {
-    border-color: rgba(230, 233, 238, 0.6);
-    color: var(--color-text);
-  }
-  .banner.success {
-    border-color: hsl(188 60% 55% / 0.5);
-    color: var(--color-accent);
-    background: hsl(188 60% 55% / 0.08);
-  }
-
-  .muted {
-    color: var(--color-muted);
+/* El ancho completo sólo en pantallas chicas: en escritorio la hoja se
+ * posa sobre el escritorio con aire alrededor. */
+@media (min-width: 680px) {
+  .sheet {
+    padding: 34px 40px 46px;
+    margin: 30px auto;
   }
 }
+
+/* En el celular la acción principal vive al alcance del pulgar: es el mismo
+ * botón del membrete, sacado de flujo. No se duplica en ningún lado. */
+@media (max-width: 719px) {
+  .membrete .plate {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 30;
+    box-shadow: 0 12px 28px -12px rgba(17, 22, 27, 0.55);
+  }
+
+  body {
+    padding-bottom: 104px;
+  }
+
+  /* Los botones del paginador se van al extremo opuesto de la placa
+   * flotante, para que el pulgar no tape el paso a la página siguiente. */
+  .pager .pages {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ================================================================== *
+ * Membrete — el encabezado de la factura
+ * ================================================================== */
+.membrete {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px 20px;
+  padding-bottom: 12px;
+  border-bottom: 3px solid var(--color-ink);
+  box-shadow: 0 5px 0 -4px var(--color-ink);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+
+.brand .house {
+  font-size: 1.32rem;
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.brand .tag-line {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+/* El número correlativo del documento y su fecha. */
+.doc-no {
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+  text-align: right;
+  line-height: 1.5;
+}
+
+.doc-no b {
+  color: var(--color-ink);
+}
+
+/* ================================================================== *
+ * Secciones del documento
+ * ================================================================== */
+.sect {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 30px 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--color-ink);
+}
+
+.sect h2 {
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.sect .sect-note {
+  font-size: 0.72rem;
+  color: var(--color-dim);
+  letter-spacing: 0.02em;
+}
+
+.legend-note {
+  margin: 12px 0 0;
+  font-size: 0.74rem;
+  line-height: 1.55;
+  color: var(--color-dim);
+  max-width: 68ch;
+}
+
+/* Acciones dentro de la cabeza de una sección. */
+.sect-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
+}
+
+/* Dentro del membrete, la fecha y las acciones toman su propio renglón. */
+.membrete .monthnav,
+.membrete .sect-actions {
+  flex-basis: 100%;
+}
+
+/* La barra de búsqueda y filtros del libro. */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 10px 14px;
+  margin: 0 0 14px;
+}
+
+.filters .field {
+  flex: 1 1 300px;
+}
+
+/* El libro scrollea en su propio carril en pantallas angostas. El
+ * `position: relative` no es decorativo: sin él, el contenido posicionado de
+ * la tabla (su caption oculto) escapa del recorte, se posiciona contra la
+ * hoja y arrastra la página entera 194px de costado. El `min-width: 0` es lo
+ * que impide que, como hijo de un flex/grid, estire a su contenedor. */
+.table-scroll {
+  position: relative;
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+/* En el celular la columna de acciones envuelve en vez de empujar el ancho. */
+@media (max-width: 719px) {
+  .book .acts {
+    white-space: normal;
+    max-width: 96px;
+  }
+}
+
+/* El bloque inferior de un frasco cae bajo la columna de contenido. */
+.margin-col .j .meta {
+  grid-column: 2 / -1;
+}
+
+/* Los casilleros de reasignación de un frasco, en grilla. */
+.jar-meta {
+  display: grid;
+  gap: 10px;
+}
+
+.jar-meta > .hint {
+  grid-column: 1 / -1;
+}
+
+@media (min-width: 720px) {
+  .jar-meta {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* La nota marginal de la tasa de referencia. */
+.rate {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  padding: 5px 9px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  background: var(--color-paper-2);
+  font-size: 0.7rem;
+  letter-spacing: 0.02em;
+  color: var(--color-dim);
+}
+
+.rate b {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+/* La perforación: por acá se corta la página del mes. */
+.perf {
+  position: relative;
+  height: 1px;
+  margin: 26px 0 0;
+  border-top: 1px dashed var(--color-rule-strong);
+}
+
+.perf::before,
+.perf::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  width: 7px;
+  height: 7px;
+  border: 1px solid var(--color-edge);
+  border-radius: 50%;
+  background: var(--color-desk);
+}
+
+.perf::before {
+  left: -12px;
+}
+
+.perf::after {
+  right: -12px;
+}
+
+/* El folio de la página, al pie del documento. */
+.page-no {
+  margin: 10px 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-dim-2);
+  text-align: center;
+}
+
+.rule {
+  border: 0;
+  border-top: 1px solid var(--color-rule);
+  margin: 18px 0;
+}
+
+/* ================================================================== *
+ * Banda de subtotales — las tres cifras del mes
+ * ================================================================== */
+.subtotals {
+  margin-top: 18px;
+}
+
+.sub-line {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 7px 0;
+}
+
+.sub-line .lab {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+  white-space: nowrap;
+}
+
+/* El punteado del formulario: lleva la vista del rótulo a la cifra. */
+.sub-line .leader {
+  flex: 1;
+  min-width: 14px;
+  border-bottom: 1px dotted var(--color-rule-strong);
+  transform: translateY(-3px);
+}
+
+.sub-line .val {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.22rem;
+  letter-spacing: -0.03em;
+  white-space: nowrap;
+}
+
+/* La raya gruesa antes del cierre: la convención de todo subtotal. */
+.sub-line.total {
+  border-top: 3px solid var(--color-ink);
+  box-shadow: 0 5px 0 -4px var(--color-ink);
+  margin-top: 8px;
+  padding-top: 10px;
+}
+
+.sub-line.total .val {
+  font-size: 1.72rem;
+}
+
+.sub-line.total .lab {
+  color: var(--color-ink);
+}
+
+.sub-line.neg .val {
+  color: var(--color-danger);
+}
+
+.compare {
+  margin: 12px 0 0;
+  font-size: 0.8rem;
+  line-height: 1.6;
+  color: var(--color-dim);
+  max-width: 74ch;
+}
+
+/* ================================================================== *
+ * Marcas sobre el papel: el resaltador y la tachadura
+ * ================================================================== */
+/* Sólo fondo detrás de tinta. Nunca color de texto. */
+.mark {
+  background-image: linear-gradient(
+    178deg,
+    transparent 8%,
+    var(--color-mark) 8%,
+    var(--color-mark) 92%,
+    transparent 92%
+  );
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0 0.16em;
+}
+
+/* La corrección de una factura: el número viejo tachado, el nuevo al lado. */
+.struck {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+  text-decoration-color: var(--color-ink);
+  opacity: 0.62;
+}
+
+.fix {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+/* ================================================================== *
+ * El sello de goma
+ * ================================================================== */
+.stamp {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 8px;
+  border: 2px solid var(--color-danger);
+  border-radius: 0;
+  color: var(--color-danger);
+  font-size: 0.64rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  transform: rotate(-2.4deg);
+  background: rgba(178, 58, 32, 0.05);
+}
+
+.stamp.void {
+  border-color: var(--color-dim);
+  color: var(--color-dim);
+  background: rgba(17, 22, 27, 0.04);
+}
+
+/* La única placa de color fuerte del documento: la acción. Se lee de
+ * frente (nunca rotada) porque en Operate la acción no se decora. */
+.plate,
+.action-stamp {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  padding: 12px 18px;
+  border: 0;
+  border-radius: 0;
+  background: var(--color-danger-fill);
+  color: var(--color-paper);
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18);
+  transition: background-color 120ms ease, transform 60ms ease;
+}
+
+.plate:hover,
+.action-stamp:hover {
+  background: var(--color-danger-deep);
+}
+
+/* La impresión: el sello baja contra el papel. */
+.plate:active,
+.action-stamp:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.22);
+}
+
+.plate:disabled,
+.action-stamp:disabled {
+  background: var(--color-rule-strong);
+  color: var(--color-paper);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+/* ================================================================== *
+ * Controles — casilleros del formulario
+ * ================================================================== */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.field > label,
+.field .lab {
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+input[type="text"],
+input[type="date"],
+input[type="month"],
+input[type="number"],
+input[type="search"],
+textarea {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-dim-2);
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  border-color: var(--color-danger);
+}
+
+input[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--color-danger);
+  border-width: 2px;
+}
+
+input:disabled,
+textarea:disabled {
+  background: var(--color-paper-2);
+  color: var(--color-dim-2);
+}
+
+select {
+  width: 100%;
+  min-height: 46px;
+  padding: 10px 34px 10px 12px;
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+  background-color: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  appearance: none;
+  background-image: linear-gradient(45deg, transparent 50%, var(--color-ink) 50%),
+    linear-gradient(135deg, var(--color-ink) 50%, transparent 50%);
+  background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
+}
+
+select:focus-visible {
+  border-color: var(--color-danger);
+}
+
+select:disabled {
+  background-color: var(--color-paper-2);
+  color: var(--color-dim-2);
+}
+
+/* La lista desplegable es del papel: fondo opaco, nunca el control
+ * nativo claro sobre texto de tinta. */
+option {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Botones de texto y de icono. */
+.linkb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: underline;
+  text-decoration-color: var(--color-rule-strong);
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+
+.linkb:hover {
+  text-decoration-color: var(--color-ink);
+}
+
+.linkb.destructive {
+  color: var(--color-danger);
+  text-decoration-color: rgba(178, 58, 32, 0.5);
+}
+
+.iconb {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+
+.iconb:hover:not(:disabled) {
+  background: var(--color-paper-2);
+  border-color: var(--color-ink);
+}
+
+.iconb:disabled {
+  color: var(--color-dim-2);
+  cursor: not-allowed;
+}
+
+/* Botones de página del libro. */
+.pbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 9px 14px;
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pbtn:hover:not(:disabled) {
+  border-color: var(--color-ink);
+  background: var(--color-paper-2);
+}
+
+.pbtn:disabled {
+  color: var(--color-dim-2);
+  cursor: not-allowed;
+}
+
+/* La acción principal de un bloque: placa de tinta llena. El rojo del sello
+ * queda reservado para la acción del documento y para lo destructivo. */
+.pbtn.primary {
+  background: var(--color-ink);
+  border-color: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.pbtn.primary:hover:not(:disabled) {
+  background: var(--color-ink-deep);
+  border-color: var(--color-ink-deep);
+}
+
+/* El campo de archivo también es un casillero del formulario. */
+input[type="file"] {
+  width: 100%;
+  min-height: 46px;
+  padding: 8px 10px;
+  border: 1px dashed var(--color-control);
+  border-radius: 0;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.84rem;
+}
+
+input[type="file"]::file-selector-button {
+  margin-right: 10px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+  background: var(--color-paper-2);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+/* Conmutador segmentado (gasto / ingreso). */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--color-control);
+  border-radius: 0;
+}
+
+.seg button {
+  min-height: 46px;
+  padding: 10px 16px;
+  border: 0;
+  border-right: 1px solid var(--color-control);
+  background: var(--color-paper);
+  color: var(--color-dim);
+  font-family: var(--font-sans);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.seg button:last-child {
+  border-right: 0;
+}
+
+.seg button[aria-pressed="true"],
+.seg button[aria-checked="true"] {
+  background: var(--color-ink);
+  color: var(--color-paper);
+}
+
+.tag {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 0;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+  white-space: nowrap;
+}
+
+/* ================================================================== *
+ * Navegación de mes — la fecha del documento
+ * ================================================================== */
+.monthnav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.monthnav .m {
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+
+.monthjump {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.monthjump label {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+.monthjump input[type="month"] {
+  min-height: 42px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+}
+
+/* ================================================================== *
+ * El libro — renglones de la factura
+ * ================================================================== */
+.book {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.86rem;
+}
+
+.book thead th {
+  padding: 8px 8px;
+  border-bottom: 2px solid var(--color-ink);
+  text-align: left;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.book thead th.right,
+.book tbody td.right,
+.book tbody th.right {
+  text-align: right;
+}
+
+.book tbody tr {
+  border-bottom: 1px dashed var(--color-rule);
+}
+
+.book tbody th,
+.book tbody td {
+  padding: 9px 8px;
+  text-align: left;
+  font-weight: 400;
+  vertical-align: top;
+}
+
+/* El número de renglón: la numeración correlativa de la factura. */
+.book .ln {
+  width: 1%;
+  padding-right: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--color-dim-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.book .ln-head {
+  width: 1%;
+}
+
+.book .amt {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 0.94rem;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.book .amt.income {
+  color: var(--color-ink);
+}
+
+.book .amt.expense {
+  color: var(--color-ink);
+}
+
+.book .desc {
+  min-width: 0;
+}
+
+.book .desc .who {
+  display: block;
+  font-weight: 700;
+}
+
+.book .desc .what {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-dim);
+  overflow-wrap: anywhere;
+}
+
+.book .desc .note {
+  display: block;
+  font-size: 0.76rem;
+  color: var(--color-dim);
+  overflow-wrap: anywhere;
+}
+
+/* La copia del renglón: el monto original en bolívares, en bolígrafo. */
+.pen {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--color-pen);
+  white-space: nowrap;
+}
+
+.book .acts {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.book .acts .linkb {
+  min-height: 30px;
+  font-size: 0.68rem;
+}
+
+/* El renglón recién escrito destella una sola vez. */
+.book tbody tr.flash {
+  animation: ink-set 900ms ease-out 1;
+}
+
+@keyframes ink-set {
+  0% {
+    background: rgba(178, 58, 32, 0.14);
+  }
+  100% {
+    background: transparent;
+  }
+}
+
+/* ================================================================== *
+ * Paginación — las páginas del documento
+ * ================================================================== */
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid var(--color-rule);
+}
+
+.pager-state {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+.pager-range {
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  color: var(--color-dim);
+}
+
+.pager .pages {
+  display: flex;
+  gap: 8px;
+}
+
+/* ================================================================== *
+ * La columna de frascos — el margen numerado
+ * ================================================================== */
+.margin-col {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 2px solid var(--color-ink);
+}
+
+.margin-col .j {
+  display: grid;
+  grid-template-columns: 26px 1fr auto;
+  align-items: baseline;
+  gap: 4px 10px;
+  padding: 9px 0;
+  border-bottom: 1px dashed var(--color-rule);
+}
+
+.margin-col .j .no {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--color-dim-2);
+}
+
+.margin-col .j .nm {
+  font-weight: 700;
+  font-size: 0.86rem;
+}
+
+.margin-col .j .pc {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--color-dim);
+}
+
+/* El paso activo se encierra entre rayas, como se marca un renglón en un
+ * documento. Nunca una franja de costado. */
+.margin-col .j[aria-current="step"] {
+  border-top: 2px solid var(--color-ink);
+  border-bottom: 2px solid var(--color-ink);
+  padding-top: 11px;
+  padding-bottom: 11px;
+}
+
+.margin-col .j[aria-current="step"] .no {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+.margin-col .j .bar,
+.margin-col .j .wbar {
+  grid-column: 2 / -1;
+}
+
+/* La lista de topes. */
+.list {
+  border-top: 2px solid var(--color-ink);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: baseline;
+  gap: 6px 12px;
+  padding: 11px 0;
+  border-bottom: 1px dashed var(--color-rule);
+}
+
+.row .nm {
+  font-weight: 700;
+  font-size: 0.9rem;
+  min-width: 0;
+}
+
+.row .amt,
+.row .spent {
+  font-family: var(--font-mono);
+  font-size: 0.92rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.row .cap {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--color-dim);
+  white-space: nowrap;
+}
+
+/* La regla del tope: la barra que marca cuánto se gastó de la raya. */
+.bar,
+.wbar {
+  position: relative;
+  height: 8px;
+  background: var(--color-paper-2);
+  border: 1px solid var(--color-rule);
+  border-radius: 0;
+  overflow: hidden;
+}
+
+.bar > i,
+.wbar > i {
+  display: block;
+  height: 100%;
+  background: var(--color-ink);
+}
+
+.row.warn .bar > i,
+.wbar.warn > i {
+  background: var(--color-warn);
+}
+
+.row.over .bar > i,
+.wbar.over > i {
+  background: var(--color-danger-fill);
+}
+
+.row.over {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    rgba(178, 58, 32, 0.07) 6px 12px
+  );
+}
+
+.row.over .amt,
+.row.over .spent {
+  color: var(--color-danger);
+}
+
+/* El casillero del tope: un número escrito sobre una raya punteada. */
+.row .capfield {
+  width: 92px;
+  min-height: 38px;
+  padding: 6px 8px;
+  border: 0;
+  border-bottom: 1px dashed var(--color-rule-strong);
+  border-radius: 0;
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--color-ink);
+  text-align: right;
+}
+
+.row .capfield:focus-visible {
+  border-bottom-style: solid;
+  border-bottom-color: var(--color-danger);
+  outline: none;
+  background: var(--color-paper-2);
+}
+
+/* ================================================================== *
+ * Carteras
+ * ================================================================== */
+.cats {
+  display: grid;
+  gap: 16px;
+}
+
+.acc {
+  border-top: 2px solid var(--color-ink);
+  padding-top: 10px;
+  min-width: 0;
+}
+
+.acc .a {
+  border-top: 2px solid var(--color-rule-strong);
+  padding-top: 9px;
+  min-width: 0;
+}
+
+.acc .a .n {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 8px;
+  font-weight: 700;
+  font-size: 0.94rem;
+}
+
+.acc .a .n .tag {
+  white-space: nowrap;
+}
+
+.acc .a .b {
+  display: block;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 1.3rem;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+}
+
+.acc .a .m {
+  font-size: 0.76rem;
+  color: var(--color-dim);
+  margin-top: 5px;
+}
+
+.acc .a.debt {
+  border-top-color: var(--color-danger-fill);
+}
+
+.acc .a.debt .b {
+  color: var(--color-danger);
+}
+
+.debtline {
+  color: var(--color-danger);
+}
+
+/* ================================================================== *
+ * Gráficos impresos
+ * ================================================================== */
+.chartbox {
+  border: 1px solid var(--color-rule);
+  border-radius: 0;
+  background: var(--color-paper-2);
+  padding: 14px;
+}
+
+.chartlead {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--color-dim);
+  margin: 0 0 12px;
+  max-width: 70ch;
+}
+
+.donut,
+.bars {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.bars-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 4px;
+}
+
+.bars-scroll:focus-visible {
+  outline: 2px solid var(--color-danger);
+  outline-offset: 2px;
+}
+
+.cols {
+  display: grid;
+  gap: 14px;
+}
+
+@media (min-width: 720px) {
+  .cols {
+    grid-template-columns: 1fr 1fr;
+  }
+  .two .cols {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.two {
+  display: grid;
+  gap: 18px;
+}
+
+/* ================================================================== *
+ * Ventanas — hojas que se ponen encima
+ * ================================================================== */
+/* El velo es un elemento vacío: sólo tapa. La hoja se posiciona sola contra
+ * el viewport, así que acá no hay nada que centrar. */
+.scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(17, 22, 27, 0.42);
+}
+
+/* La hoja que se pone encima: se posiciona sola contra el viewport para que
+ * el velo quede DETRÁS y abrirla no arrastre el scroll del documento. */
+.window {
+  position: fixed;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 41;
+  width: calc(100% - 32px);
+  max-width: 620px;
+  max-height: calc(100vh - 32px);
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  background-color: var(--color-paper);
+  border: 1px solid var(--color-edge);
+  border-radius: 0;
+  box-shadow: 0 24px 60px -22px rgba(17, 22, 27, 0.5);
+  padding: 0 0 18px;
+}
+
+.wtitle {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 16px 18px 11px;
+  border-bottom: 3px solid var(--color-ink);
+  box-shadow: 0 5px 0 -4px var(--color-ink);
+}
+
+.wtitle h2 {
+  font-size: 0.82rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.wsub {
+  font-size: 0.78rem;
+  line-height: 1.6;
+  color: var(--color-dim);
+  padding: 12px 18px 0;
+  margin: 0;
+  max-width: 66ch;
+}
+
+.wbody {
+  padding: 16px 18px 0;
+  display: grid;
+  gap: 14px;
+}
+
+.wfoot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 18px 18px 0;
+  margin-top: 18px;
+  border-top: 1px solid var(--color-rule);
+}
+
+/* ================================================================== *
+ * Estados
+ * ================================================================== */
+.notice,
+.strip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-rule-strong);
+  border-top: 2px solid var(--color-ink);
+  border-radius: 0;
+  background: var(--color-paper-2);
+  font-size: 0.8rem;
+  line-height: 1.55;
+}
+
+/* Lo que reemplaza datos va reglado en el rojo del sello. */
+.strip.action {
+  border-color: var(--color-danger);
+  border-width: 2px;
+}
+
+/* Éxito y error se distinguen: el error es el único que lleva el sello. */
+.notice.success {
+  border-color: var(--color-ink);
+}
+
+.notice.error {
+  border-color: var(--color-danger);
+  border-width: 2px;
+  background: rgba(178, 58, 32, 0.05);
+}
+
+.notice.error p {
+  color: var(--color-danger);
+  font-weight: 700;
+}
+
+.empty-state {
+  padding: 26px 14px;
+  text-align: center;
+  border: 1px dashed var(--color-rule-strong);
+  border-radius: 0;
+  background: var(--color-paper-2);
+}
+
+.empty-state p {
+  margin: 0 0 12px;
+  font-size: 0.86rem;
+  color: var(--color-dim);
+}
+
+.empty-state .lead {
+  font-weight: 700;
+  color: var(--color-ink);
+}
+
+.error-msg,
+.hint {
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.error-msg {
+  color: var(--color-danger);
+  font-weight: 600;
+}
+
+.hint {
+  color: var(--color-dim);
+}
+
+/* ================================================================== *
+ * Accesibilidad
+ * ================================================================== */
+.skip-link {
+  position: fixed;
+  left: 14px;
+  top: -100px;
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 11px 15px;
+  border-radius: 0;
+  background: var(--color-danger-fill);
+  color: var(--color-paper);
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: top 140ms ease;
+}
+
+.skip-link:focus,
+.skip-link:focus-visible {
+  top: 14px;
+}
+
+/* Movimiento reducido: nada se mueve, todo se lee. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ================================================================== *
+ * La cifra repintada: el único movimiento del mes
+ * ================================================================== */
+.repaint {
+  animation: ink-dry 240ms ease-out 1;
+}
+
+@keyframes ink-dry {
+  0% {
+    opacity: 0.35;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* ================================================================== *
+ * Imprimir: un documento de verdad sale por la impresora
+ * ================================================================== */
+@media print {
+  .desk,
+  body {
+    background: #fff;
+  }
+  .sheet {
+    box-shadow: none;
+    border: 0;
+    margin: 0;
+    max-width: none;
+  }
+  .monthnav,
+  .pager,
+  .skip-link,
+  .plate,
+  .action-stamp {
+    display: none;
+  }
+}
+
+/* ================================================================== *
+ * Pantallas táctiles — va al FINAL del archivo a propósito.
+ * Estas declaraciones tienen la misma especificidad que las reglas base
+ * de arriba, así que sólo ganan si vienen después: más arriba quedan
+ * inertes y el control se queda por debajo del mínimo cómodo.
+ * ================================================================== */
+@media (pointer: coarse) {
+  .linkb,
+  .book .acts .linkb,
+  .iconb,
+  .pbtn,
+  .row .capfield,
+  .monthjump input[type="month"] {
+    min-height: 44px;
+  }
+
+  .iconb {
+    width: 44px;
+  }
+}
+
+/* En el celular el paginador se apila contra el margen izquierdo: sus
+ * botones nunca quedan bajo la esquina donde flota la placa de acción. */
+@media (max-width: 719px) {
+  .pager .pages {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+

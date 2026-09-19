@@ -59,7 +59,7 @@ describe('App comparison states', () => {
       movement(1, 'gasto', 'otros', 30_000_000, day(MONTH, 5)),
       movement(2, 'gasto', 'otros', 10_000_000, day(shiftMonth(MONTH, -1), 5)),
     ]);
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     expect(
       within(kpi).getByText(
         `Este mes gastaste 200% más que el promedio de los 6 meses anteriores (promedio: ${money(
@@ -74,7 +74,7 @@ describe('App comparison states', () => {
       movement(1, 'gasto', 'otros', 10_000_000, day(MONTH, 5)),
       movement(2, 'gasto', 'otros', 20_000_000, day(shiftMonth(MONTH, -1), 5)),
     ]);
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     expect(
       within(kpi).getByText(
         `Este mes gastaste 50% menos que el promedio de los 6 meses anteriores (promedio: ${money(
@@ -89,7 +89,7 @@ describe('App comparison states', () => {
       movement(1, 'gasto', 'otros', 10_000_000, day(MONTH, 5)),
       movement(2, 'gasto', 'otros', 10_000_000, day(shiftMonth(MONTH, -1), 5)),
     ]);
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     expect(
       within(kpi).getByText(
         `Este mes gastaste lo mismo que el promedio de los 6 meses anteriores (promedio: ${money(
@@ -127,9 +127,9 @@ describe('App comparison states', () => {
 
   it('flags a negative balance with the danger class', async () => {
     mount([movement(1, 'gasto', 'otros', 20_000_000, day(MONTH, 5))]);
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     const balance = within(kpi).getByText(money(-20_000_000));
-    expect(balance.closest('.kpi')).toHaveClass('negative');
+    expect(balance.closest('.sub-line')).toHaveClass('neg');
   });
 });
 
@@ -142,7 +142,7 @@ describe('App month navigation', () => {
     const user = userEvent.setup();
     const previous = shiftMonth(MONTH, -1);
 
-    await screen.findByRole('region', { name: /Movimientos/ });
+    await screen.findByRole('region', { name: /^El libro/i });
     await user.click(screen.getByRole('button', { name: 'Mes anterior' }));
 
     expect(screen.getByText(monthFullLabel(previous))).toBeInTheDocument();
@@ -152,7 +152,7 @@ describe('App month navigation', () => {
     expect(await screen.findByText('Todavía no cargaste movimientos este mes.')).toBeInTheDocument();
     expect(screen.getByText('Sin gastos este mes.')).toBeInTheDocument();
     expect(screen.getByText('Sin gastos registrados en los últimos 6 meses.')).toBeInTheDocument();
-    const kpi = screen.getByRole('region', { name: 'Resumen del mes' });
+    const kpi = screen.getByRole('region', { name: 'Los números del mes' });
     expect(within(kpi).getAllByText(money(0))).toHaveLength(3);
   });
 });
@@ -165,12 +165,12 @@ describe('App import', () => {
   it('rejects a file bigger than 5 MB with a clear message and without calling the API', async () => {
     mount([movement(1, 'gasto', 'supermercado', 30_000_000, day(MONTH, 5))]);
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /Movimientos/ });
+    await screen.findByRole('region', { name: /^El libro/i });
 
     const big = importFile('grande.json', { version: 1, movements: [], budgets: {} });
     Object.defineProperty(big, 'size', { value: 6 * 1024 * 1024 });
 
-    await user.click(screen.getByRole('button', { name: 'Importar y fusionar' }));
+    await user.click(screen.getByRole('button', { name: /importar/i }));
     await user.upload(screen.getByLabelText('Archivo JSON a importar'), big);
 
     expect(await screen.findByText(/demasiado grande \(máximo 5 MB\)/)).toBeInTheDocument();
@@ -183,9 +183,9 @@ describe('App import', () => {
       movement(2, 'ingreso', 'sueldo', 50_000_000, day(MONTH, 6)),
     ]);
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /Movimientos/ });
+    await screen.findByRole('region', { name: /^El libro/i });
 
-    await user.click(screen.getByRole('button', { name: 'Importar y fusionar' }));
+    await user.click(screen.getByRole('button', { name: /importar/i }));
     await user.upload(
       screen.getByLabelText('Archivo JSON a importar'),
       importFile('merge.json', {
@@ -198,9 +198,9 @@ describe('App import', () => {
     await waitFor(() => expect(server.db.movements).toHaveLength(3));
     expect(server.db.budgets.ocio).toBe(2_000_000);
     expect(requested('mode=merge')).toBe(true);
-    expect(await screen.findByText(/Datos fusionados/)).toBeInTheDocument();
+    expect(await screen.findByText(/Datos fusionados:/)).toBeInTheDocument();
 
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     await waitFor(() => expect(within(kpi).getByText(money(19_000_000))).toBeInTheDocument());
     await waitFor(() =>
       expect(liveStatusText()).toContain(`Datos fusionados. Te queda ${money(19_000_000)}.`),
@@ -208,15 +208,15 @@ describe('App import', () => {
   });
 
   it('replaces the data in replace mode after confirmation', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     mount([
       movement(1, 'gasto', 'supermercado', 30_000_000, day(MONTH, 5)),
       movement(2, 'ingreso', 'sueldo', 50_000_000, day(MONTH, 6)),
     ]);
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /Movimientos/ });
+    await screen.findByRole('region', { name: /^El libro/i });
 
-    await user.click(screen.getByRole('button', { name: 'Importar y reemplazar' }));
+    await user.click(screen.getByRole('button', { name: /importar/i }));
+    await user.click(screen.getByRole('radio', { name: 'Reemplazar' }));
     await user.upload(
       screen.getByLabelText('Archivo JSON a importar'),
       importFile('replace.json', {
@@ -228,13 +228,14 @@ describe('App import', () => {
         budgets: { ocio: 2_000_000 },
       }),
     );
+    await user.click(await screen.findByRole('button', { name: 'Reemplazar todo' }));
 
     await waitFor(() => expect(server.db.movements).toHaveLength(2));
     expect(server.db.budgets).toEqual({ ocio: 2_000_000 });
     expect(requested('mode=replace')).toBe(true);
-    expect(await screen.findByText(/Datos reemplazados/)).toBeInTheDocument();
+    expect(await screen.findByText(/Datos reemplazados:/)).toBeInTheDocument();
 
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     await waitFor(() => expect(within(kpi).getByText(money(4_000_000))).toBeInTheDocument());
   });
 
@@ -254,14 +255,15 @@ describe('App import', () => {
     vi.stubGlobal('fetch', failing);
 
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /Movimientos/ });
+    await screen.findByRole('region', { name: /^El libro/i });
+    await user.click(screen.getByRole('button', { name: /importar/i }));
     await user.upload(
       screen.getByLabelText('Archivo JSON a importar'),
       importFile('bad.json', { version: 1, movements: [], budgets: {} }),
     );
 
     expect(await screen.findByText('Import falló')).toBeInTheDocument();
-    expect(screen.getByRole('region', { name: 'Resumen del mes' })).toBeInTheDocument();
+    expect(screen.getByRole('region', { name: 'Los números del mes' })).toBeInTheDocument();
     await waitFor(() => expect(liveStatusText()).toBe('Import falló'));
   });
 });

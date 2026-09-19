@@ -19,3 +19,10 @@ build/
 # --- Sistema ---
 .DS_Store
 Thumbs.db
+
+# Artefactos de trabajo de la ronda de diseño (las fuentes se publican desde
+# frontend/public/fonts; los PNG de revisión y las herramientas son scratch).
+.impeccable/review/
+.impeccable/fonts/
+.impeccable/tools/
+.impeccable/questions/

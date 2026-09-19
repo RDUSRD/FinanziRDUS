@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeader } from './components/AppHeader';
 import { AccountsPanel } from './components/AccountsPanel';
 import { BarsChart } from './components/BarsChart';
 import { Budgets } from './components/Budgets';
 import { DonutChart } from './components/DonutChart';
+import { ImportWindow } from './components/ImportWindow';
 import { JarsPanel } from './components/JarsPanel';
 import { KpiSummary } from './components/KpiSummary';
-import { MovementForm } from './components/MovementForm';
+import { MovementWindow } from './components/MovementWindow';
 import { MovementsTable } from './components/MovementsTable';
 import { ErrorState, LoadingState } from './components/States';
+import { Notice } from './components/Notice';
+import { ConfirmWindow } from './components/Window';
 import { useAnnounce } from './components/LiveRegion';
 import { api, readableError } from './api/client';
 import {
@@ -40,19 +43,20 @@ import type {
   MovementInput,
 } from './api/types';
 import { formatMoney } from './lib/money';
-import { currentMonthKey, formatDateDisplay, monthFullLabel, shiftMonth, todayStr } from './lib/month';
+import { currentMonthKey, formatDateDisplay, isValidMonthKey, monthFullLabel, shiftMonth, todayStr } from './lib/month';
 
 interface Banner {
   kind: 'success' | 'error';
   text: string;
 }
 
+/** What a confirmation window is asking about, if any. */
+type PendingConfirm =
+  | { kind: 'movement'; movement: Movement }
+  | { kind: 'account'; account: Account };
+
 /** Límite de la API para el cuerpo del import (5 MB): se valida acá para dar un error claro. */
 const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
-
-function prefersReducedMotion(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-}
 
 export function App() {
   const announce = useAnnounce();
@@ -60,10 +64,13 @@ export function App() {
   const [account, setAccount] = useState<AccountFilter>('all');
   const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState<Movement | null>(null);
+  const [movementOpen, setMovementOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(null);
   const [importing, setImporting] = useState(false);
-
-  const formRef = useRef<HTMLDivElement>(null);
+  const [repaintKey, setRepaintKey] = useState(0);
+  const [flashId, setFlashId] = useState<number | null>(null);
+  const [pendingConfirm, setPendingConfirm] = useState<PendingConfirm | null>(null);
 
   const categoriesQuery = useCategories();
   const accountsQuery = useAccounts();
@@ -134,17 +141,45 @@ export function App() {
     if (next === month) return;
     setMonth(next);
     setBanner(null);
+    setRepaintKey((key) => key + 1);
+    setFlashId(null);
     announce(`Mes ${monthFullLabel(next)}.`);
+  }
+
+  /** Jump straight to a month typed in the header field; empty/invalid keys
+   * are ignored (validated with the month helpers, never by hand). */
+  function handleMonthChange(next: string) {
+    if (!isValidMonthKey(next)) return;
+    goToMonth(next);
+  }
+
+  /** Open the movement window: prefilled for an edit, blank for a new movement. */
+  function openMovementWindow(movement: Movement | null) {
+    setBanner(null);
+    setEditing(movement);
+    setMovementOpen(true);
+    if (movement) announce('Editando movimiento.');
+  }
+
+  function closeMovementWindow() {
+    setMovementOpen(false);
+    setEditing(null);
   }
 
   async function handleSubmit(input: MovementInput, current: Movement | null) {
     try {
       if (current) {
-        await updateMovement.mutateAsync({ id: current.id, patch: input });
+        const updated = await updateMovement.mutateAsync({ id: current.id, patch: input });
         setEditing(null);
+        setMovementOpen(false);
+        setRepaintKey((key) => key + 1);
+        setFlashId(updated.id);
         void announceWithBalance('Movimiento actualizado.');
       } else {
-        await createMovement.mutateAsync(input);
+        const created = await createMovement.mutateAsync(input);
+        setMovementOpen(false);
+        setRepaintKey((key) => key + 1);
+        setFlashId(created.id);
         void announceWithBalance('Movimiento agregado.');
       }
     } catch (error) {
@@ -153,28 +188,25 @@ export function App() {
     }
   }
 
-  function handleEdit(movement: Movement) {
-    setEditing(movement);
+  function handleDelete(movement: Movement) {
     setBanner(null);
-    announce('Editando movimiento.');
-    formRef.current?.scrollIntoView({
-      behavior: prefersReducedMotion() ? 'auto' : 'smooth',
-      block: 'start',
-    });
+    setPendingConfirm({ kind: 'movement', movement });
   }
 
-  async function handleDelete(movement: Movement) {
-    const confirmed = window.confirm(
-      `¿Borrar este movimiento?\n\n${labelOf(movement.category_id)} · ${formatMoney(movement.amount_cents, 'USD')} · ${formatDateDisplay(movement.date)}`,
-    );
-    if (!confirmed) return;
+  async function confirmDeleteMovement() {
+    if (pendingConfirm?.kind !== 'movement') return;
+    const { movement } = pendingConfirm;
     try {
       await deleteMovement.mutateAsync(movement.id);
-      if (editing?.id === movement.id) setEditing(null);
+      if (editing?.id === movement.id) closeMovementWindow();
+      setRepaintKey((key) => key + 1);
+      setFlashId(movement.id);
+      setPendingConfirm(null);
       void announceWithBalance('Movimiento borrado.');
     } catch (error) {
       setBanner({ kind: 'error', text: readableError(error) });
       announce(readableError(error));
+      setPendingConfirm(null);
     }
   }
 
@@ -219,18 +251,27 @@ export function App() {
   }
 
   function handleDeleteAccount(accountToDelete: Account) {
-    const confirmed = window.confirm(`¿Borrar la cartera "${accountToDelete.name}"?`);
-    if (!confirmed) {
-      announce('Borrado cancelado.');
-      return;
+    setBanner(null);
+    setPendingConfirm({ kind: 'account', account: accountToDelete });
+  }
+
+  async function confirmDeleteAccount() {
+    if (pendingConfirm?.kind !== 'account') return;
+    const { account: accountToDelete } = pendingConfirm;
+    try {
+      await deleteAccount.mutateAsync(accountToDelete.id);
+      setPendingConfirm(null);
+      announce('Cartera borrada.');
+    } catch (error) {
+      setBanner({ kind: 'error', text: readableError(error) });
+      announce(readableError(error));
+      setPendingConfirm(null);
     }
-    deleteAccount.mutate(accountToDelete.id, {
-      onSuccess: () => announce('Cartera borrada.'),
-      onError: (error) => {
-        setBanner({ kind: 'error', text: readableError(error) });
-        announce(readableError(error));
-      },
-    });
+  }
+
+  function cancelConfirm() {
+    if (pendingConfirm?.kind === 'account') announce('Borrado cancelado.');
+    setPendingConfirm(null);
   }
 
   async function handlePayDebt(input: MovementInput) {
@@ -288,16 +329,6 @@ export function App() {
         throw new Error('El archivo no es un JSON válido.');
       }
 
-      if (mode === 'replace') {
-        const confirmed = window.confirm(
-          '¿Reemplazar TODOS los datos actuales con el archivo importado? Esta acción no se puede deshacer.',
-        );
-        if (!confirmed) {
-          announce('Importación cancelada.');
-          return;
-        }
-      }
-
       const result = await importData.mutateAsync({ mode, payload });
       setBanner({
         kind: 'success',
@@ -309,212 +340,269 @@ export function App() {
       announce(readableError(error));
     } finally {
       setImporting(false);
+      setImportOpen(false);
     }
   }
 
   const budgetsBusy = setBudget.isPending || deleteBudget.isPending;
   const accountsBusy = createAccount.isPending || updateAccount.isPending || deleteAccount.isPending;
-  const formError = categoriesQuery.error ?? accountsQuery.error ?? null;
-  const formReady = categoriesQuery.isSuccess && accountsQuery.isSuccess;
+  const baseError = categoriesQuery.error ?? accountsQuery.error ?? null;
 
   return (
-    <div className="mx-auto max-w-[1180px] px-4 pt-[22px] pb-16">
-      <a className="skip-link" href="#main">
-        Saltar al contenido
-      </a>
+    <>
+      <div className="desk">
+        <div className="sheet">
+          <a className="skip-link" href="#main">
+            Saltar al contenido
+          </a>
 
-      <AppHeader
-        monthLabel={monthFullLabel(month)}
-        onPrev={() => goToMonth(shiftMonth(month, -1))}
-        onNext={() => goToMonth(shiftMonth(month, 1))}
-        onCurrentMonth={() => goToMonth(currentMonthKey())}
-        onExport={handleExport}
-        onImport={handleImport}
-        accounts={accounts}
-        account={account}
-        onAccountChange={changeAccount}
-        busy={importing}
-      />
+          <AppHeader
+            monthLabel={monthFullLabel(month)}
+            month={month}
+            onPrev={() => goToMonth(shiftMonth(month, -1))}
+            onNext={() => goToMonth(shiftMonth(month, 1))}
+            onCurrentMonth={() => goToMonth(currentMonthKey())}
+            onMonthChange={handleMonthChange}
+            onExport={handleExport}
+            onImport={() => {
+              setBanner(null);
+              setImportOpen(true);
+            }}
+            onNewMovement={() => openMovementWindow(null)}
+            accounts={accounts}
+            account={account}
+            onAccountChange={changeAccount}
+            busy={importing}
+            lastRateMicros={lastVesRateMicros}
+          />
 
-      <main id="main" className="grid gap-4">
-        {banner && (
-          <div className={banner.kind === 'success' ? 'banner success' : 'banner error'}>{banner.text}</div>
-        )}
+          <main id="main">
+            {banner && <Notice kind={banner.kind} text={banner.text} onDismiss={() => setBanner(null)} />}
 
-        <div className="grid gap-4 min-[861px]:grid-cols-[minmax(320px,1fr)_1.08fr] min-[861px]:items-start">
-          <div ref={formRef} className="min-w-0">
-            {formError ? (
-              <section className="card">
-                <ErrorState
-                  message={readableError(formError)}
-                  onRetry={() => {
-                    void categoriesQuery.refetch();
-                    void accountsQuery.refetch();
-                  }}
-                />
-              </section>
-            ) : !formReady ? (
-              <section className="card">
-                <LoadingState label="Cargando…" />
-              </section>
-            ) : (
-              <MovementForm
-                categories={categories}
-                accounts={accounts}
-                editing={editing}
-                month={month}
-                defaultAccountId={account === 'all' ? null : account}
-                lastVesRateMicros={lastVesRateMicros}
-                onSubmit={handleSubmit}
-                onCancel={() => setEditing(null)}
+            {baseError ? (
+              <ErrorState
+                message={readableError(baseError)}
+                onRetry={() => {
+                  void categoriesQuery.refetch();
+                  void accountsQuery.refetch();
+                }}
               />
-            )}
-          </div>
+            ) : null}
 
-          {summaryQuery.isPending ? (
-            <section className="card">
+            {/* Los números del mes */}
+            {summaryQuery.isPending ? (
               <LoadingState label="Cargando resumen…" />
-            </section>
-          ) : summaryQuery.isError ? (
-            <section className="card">
+            ) : summaryQuery.isError ? (
               <ErrorState
                 message={readableError(summaryQuery.error)}
                 onRetry={() => {
                   void summaryQuery.refetch();
                 }}
               />
-            </section>
-          ) : summaryQuery.data ? (
-            <KpiSummary summary={summaryQuery.data} month={month} />
-          ) : null}
-        </div>
+            ) : summaryQuery.data ? (
+              <KpiSummary
+                summary={summaryQuery.data}
+                month={month}
+                totalDebtCents={totalDebtCents}
+                repaintKey={repaintKey}
+              />
+            ) : null}
 
-        {accountsQuery.isPending ? (
-          <section className="card">
-            <LoadingState label="Cargando carteras…" />
-          </section>
-        ) : accountsQuery.isError ? (
-          <section className="card">
-            <ErrorState
-              message={readableError(accountsQuery.error)}
-              onRetry={() => {
-                void accountsQuery.refetch();
-              }}
-            />
-          </section>
-        ) : accountsQuery.data ? (
-          <AccountsPanel
-            data={accountsQuery.data}
-            today={todayStr()}
-            busy={accountsBusy}
-            onCreate={handleCreateAccount}
-            onUpdate={handleUpdateAccount}
-            onDelete={handleDeleteAccount}
-            onPayDebt={handlePayDebt}
-          />
-        ) : null}
+            <div className="rule" />
 
-        <div className="grid gap-4 min-[861px]:grid-cols-2">
-          <section className="card" aria-labelledby="donut-title">
-            <h2 id="donut-title">Gastos por categoría</h2>
-            {byCategoryQuery.isPending ? (
-              <LoadingState label="Cargando gastos…" />
-            ) : byCategoryQuery.isError ? (
+            {/* El libro · los renglones del documento */}
+            {movementsQuery.isPending ? (
+              <LoadingState label="Cargando movimientos…" />
+            ) : movementsQuery.isError ? (
               <ErrorState
-                message={readableError(byCategoryQuery.error)}
+                message={readableError(movementsQuery.error)}
                 onRetry={() => {
-                  void byCategoryQuery.refetch();
+                  void movementsQuery.refetch();
                 }}
               />
-            ) : byCategoryQuery.data ? (
-              <DonutChart data={byCategoryQuery.data} />
-            ) : null}
-          </section>
+            ) : (
+              <MovementsTable
+                movements={movementsQuery.data ?? []}
+                labelOf={labelOf}
+                accountNameOf={accountNameOf}
+                filter={filter}
+                onFilterChange={(value) => {
+                  setFilter(value);
+                  announce(
+                    value === 'all' ? 'Mostrando todas las categorías.' : `Filtrando por ${labelOf(value)}.`,
+                  );
+                }}
+                onEdit={openMovementWindow}
+                onDelete={handleDelete}
+                flashId={flashId}
+              />
+            )}
 
-          <section className="card" aria-labelledby="bars-title">
-            <h2 id="bars-title">Últimos 6 meses</h2>
-            {monthlyQuery.isPending ? (
-              <LoadingState label="Cargando meses…" />
-            ) : monthlyQuery.isError ? (
+            <div className="rule" />
+
+            {/* La lista · tope y gastado */}
+            {budgetsQuery.isPending ? (
+              <LoadingState label="Cargando presupuestos…" />
+            ) : budgetsQuery.isError ? (
               <ErrorState
-                message={readableError(monthlyQuery.error)}
+                message={readableError(budgetsQuery.error)}
                 onRetry={() => {
-                  void monthlyQuery.refetch();
+                  void budgetsQuery.refetch();
                 }}
               />
-            ) : monthlyQuery.data ? (
-              <BarsChart data={monthlyQuery.data} selectedMonth={month} />
+            ) : budgetsQuery.data ? (
+              <Budgets data={budgetsQuery.data} onSet={handleSetBudget} onClear={handleClearBudget} busy={budgetsBusy} />
             ) : null}
-          </section>
+
+            <div className="rule" />
+
+            {/* El reparto · gastos por categoría y los últimos meses */}
+            <div className="cols">
+              <section aria-labelledby="donut-title">
+                <div className="sect">
+                  <h2 id="donut-title">Gastos por categoría</h2>
+                </div>
+                {byCategoryQuery.isPending ? (
+                  <LoadingState label="Cargando gastos…" />
+                ) : byCategoryQuery.isError ? (
+                  <ErrorState
+                    message={readableError(byCategoryQuery.error)}
+                    onRetry={() => {
+                      void byCategoryQuery.refetch();
+                    }}
+                  />
+                ) : byCategoryQuery.data ? (
+                  <DonutChart data={byCategoryQuery.data} />
+                ) : null}
+              </section>
+
+              <section aria-labelledby="bars-title">
+                <div className="sect">
+                  <h2 id="bars-title">Últimos 6 meses</h2>
+                </div>
+                {monthlyQuery.isPending ? (
+                  <LoadingState label="Cargando meses…" />
+                ) : monthlyQuery.isError ? (
+                  <ErrorState
+                    message={readableError(monthlyQuery.error)}
+                    onRetry={() => {
+                      void monthlyQuery.refetch();
+                    }}
+                  />
+                ) : monthlyQuery.data ? (
+                  <BarsChart data={monthlyQuery.data} selectedMonth={month} />
+                ) : null}
+              </section>
+            </div>
+
+            <div className="rule" />
+
+            {/* El plan 25/15/50/10 */}
+            {planQuery.isPending ? (
+              <LoadingState label="Cargando plan…" />
+            ) : planQuery.isError ? (
+              <ErrorState
+                message={readableError(planQuery.error)}
+                onRetry={() => {
+                  void planQuery.refetch();
+                }}
+              />
+            ) : planQuery.data ? (
+              <JarsPanel data={planQuery.data} labelOf={labelOf} totalDebtCents={totalDebtCents} />
+            ) : null}
+
+            <div className="rule" />
+
+            {/* Las carteras */}
+            {accountsQuery.isPending ? (
+              <LoadingState label="Cargando carteras…" />
+            ) : accountsQuery.isError ? (
+              <ErrorState
+                message={readableError(accountsQuery.error)}
+                onRetry={() => {
+                  void accountsQuery.refetch();
+                }}
+              />
+            ) : accountsQuery.data ? (
+              <AccountsPanel
+                data={accountsQuery.data}
+                today={todayStr()}
+                busy={accountsBusy}
+                onCreate={handleCreateAccount}
+                onUpdate={handleUpdateAccount}
+                onDelete={handleDeleteAccount}
+                onPayDebt={handlePayDebt}
+              />
+            ) : null}
+
+          </main>
+
+          <div className="perf" />
+          <p className="page-no">
+            {summaryQuery.data
+              ? `Pasa a la hoja siguiente · ${formatMoney(summaryQuery.data.balance_cents, 'USD')}`
+              : 'Fin del documento'}
+          </p>
         </div>
+      </div>
 
-        {budgetsQuery.isPending ? (
-          <section className="card">
-            <LoadingState label="Cargando presupuestos…" />
-          </section>
-        ) : budgetsQuery.isError ? (
-          <section className="card">
-            <ErrorState
-              message={readableError(budgetsQuery.error)}
-              onRetry={() => {
-                void budgetsQuery.refetch();
-              }}
-            />
-          </section>
-        ) : budgetsQuery.data ? (
-          <Budgets
-            data={budgetsQuery.data}
-            onSet={handleSetBudget}
-            onClear={handleClearBudget}
-            busy={budgetsBusy}
-          />
-        ) : null}
+      <MovementWindow
+        open={movementOpen}
+        categories={categories}
+        accounts={accounts}
+        editing={editing}
+        month={month}
+        defaultAccountId={account === 'all' ? null : account}
+        lastVesRateMicros={lastVesRateMicros}
+        estimate={{ summary: summaryQuery.data ?? null, budgets: budgetsQuery.data ?? null }}
+        onSubmit={handleSubmit}
+        onClose={closeMovementWindow}
+        onError={announce}
+      />
 
-        {planQuery.isPending ? (
-          <section className="card">
-            <LoadingState label="Cargando plan…" />
-          </section>
-        ) : planQuery.isError ? (
-          <section className="card">
-            <ErrorState
-              message={readableError(planQuery.error)}
-              onRetry={() => {
-                void planQuery.refetch();
-              }}
-            />
-          </section>
-        ) : planQuery.data ? (
-          <JarsPanel data={planQuery.data} labelOf={labelOf} totalDebtCents={totalDebtCents} />
-        ) : null}
+      <ImportWindow
+        open={importOpen}
+        onClose={() => setImportOpen(false)}
+        onImport={handleImport}
+        onError={announce}
+        busy={importing}
+      />
 
-        {movementsQuery.isPending ? (
-          <section className="card">
-            <LoadingState label="Cargando movimientos…" />
-          </section>
-        ) : movementsQuery.isError ? (
-          <section className="card">
-            <ErrorState
-              message={readableError(movementsQuery.error)}
-              onRetry={() => {
-                void movementsQuery.refetch();
-              }}
-            />
-          </section>
-        ) : (
-          <MovementsTable
-            movements={movementsQuery.data ?? []}
-            labelOf={labelOf}
-            accountNameOf={accountNameOf}
-            filter={filter}
-            onFilterChange={(value) => {
-              setFilter(value);
-              announce(value === 'all' ? 'Mostrando todas las categorías.' : `Filtrando por ${labelOf(value)}.`);
-            }}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-          />
-        )}
-      </main>
-    </div>
+      {pendingConfirm?.kind === 'movement' && (
+        <ConfirmWindow
+          open
+          title="Borrar movimiento"
+          destructive
+          confirmLabel="Borrar movimiento"
+          confirmBusy={deleteMovement.isPending}
+          onConfirm={confirmDeleteMovement}
+          onCancel={cancelConfirm}
+        >
+          <p>
+            ¿Borrar el movimiento {labelOf(pendingConfirm.movement.category_id)} ·{' '}
+            {formatMoney(pendingConfirm.movement.amount_cents, 'USD')} ·{' '}
+            {formatDateDisplay(pendingConfirm.movement.date)}?
+          </p>
+          <p>
+            Se quita del libro de {monthFullLabel(month)} y los totales se reescriben. No se puede deshacer.
+          </p>
+        </ConfirmWindow>
+      )}
+
+      {pendingConfirm?.kind === 'account' && (
+        <ConfirmWindow
+          open
+          title="Borrar cartera"
+          destructive
+          confirmLabel="Borrar cartera"
+          confirmBusy={deleteAccount.isPending}
+          onConfirm={confirmDeleteAccount}
+          onCancel={cancelConfirm}
+        >
+          <p>¿Borrar la cartera "{pendingConfirm.account.name}"?</p>
+          <p>La cartera y su saldo salen del tablero. No se puede deshacer.</p>
+        </ConfirmWindow>
+      )}
+    </>
   );
 }

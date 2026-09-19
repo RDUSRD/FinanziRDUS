@@ -1,0 +1,664 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-09-18T19:37:32-04:00",
+  "title": "Design System: FinanciRDUS",
+  "source": {
+    "tokens": "frontend/src/index.css (@theme, @layer base, @font-face, unlayered primitives)",
+    "shell": "frontend/index.html (favicon only; the direction contract is no longer embedded in the document)",
+    "direction": ".impeccable/surface-brief-body.md and .impeccable/questions/direction-invoices.json",
+    "fonts": "frontend/public/fonts/libre-franklin-latin-var.woff2, frontend/public/fonts/chivo-mono-latin-{400,700}-normal.woff2 (self-hosted, same origin, CSP font-src 'self')",
+    "reviewRasters": ".impeccable/review/desktop.png, mobile.png, window.png, window-mobile.png"
+  },
+  "extensions": {
+    "colorMeta": {
+      "stamp": {
+        "role": "primary",
+        "displayName": "Stamp Red",
+        "canonical": "#b12e22",
+        "tonalRamp": [
+          "#1f0000",
+          "#4d0100",
+          "#800301",
+          "#ad291e",
+          "#d55141",
+          "#fd7563",
+          "#fdb4a8",
+          "#fee9e5"
+        ]
+      },
+      "stamp-fill": {
+        "role": "primary",
+        "displayName": "Stamp Fill",
+        "canonical": "#b23a20",
+        "tonalRamp": [
+          "#1d0200",
+          "#490900",
+          "#781b05",
+          "#a93116",
+          "#d0563c",
+          "#f97a5f",
+          "#ffb4a2",
+          "#ffe9e4"
+        ]
+      },
+      "stamp-deep": {
+        "role": "primary",
+        "displayName": "Stamp Under The Hand",
+        "canonical": "#8d2a17",
+        "tonalRamp": [
+          "#1e0100",
+          "#490901",
+          "#7a1602",
+          "#a03c29",
+          "#c75f4a",
+          "#ee826c",
+          "#ffb4a3",
+          "#ffe9e4"
+        ]
+      },
+      "ballpoint": {
+        "role": "secondary",
+        "displayName": "Ballpoint Blue",
+        "canonical": "#1b3c8c",
+        "tonalRamp": [
+          "#000035",
+          "#021867",
+          "#1a3a8a",
+          "#375caf",
+          "#577fd5",
+          "#78a2fc",
+          "#afc9fe",
+          "#e7efff"
+        ]
+      },
+      "highlighter": {
+        "role": "tertiary",
+        "displayName": "Highlighter Yellow",
+        "canonical": "#f0e24b",
+        "tonalRamp": [
+          "#0d0c00",
+          "#292602",
+          "#494406",
+          "#6b6300",
+          "#908502",
+          "#b5a912",
+          "#dccd2e",
+          "#fff373"
+        ]
+      },
+      "amber": {
+        "role": "tertiary",
+        "displayName": "Attention Amber",
+        "canonical": "#8a6a12",
+        "tonalRamp": [
+          "#110a00",
+          "#312300",
+          "#543e00",
+          "#7a5c03",
+          "#9e7d2d",
+          "#c2a052",
+          "#e7c576",
+          "#ffedc6"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#fafaf8",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252524",
+          "#424240",
+          "#616160",
+          "#828281",
+          "#a5a5a3",
+          "#c9c9c7",
+          "#eeeeec"
+        ]
+      },
+      "paper-2": {
+        "role": "neutral",
+        "displayName": "Copy Paper",
+        "canonical": "#f2f3f0",
+        "tonalRamp": [
+          "#0b0b0a",
+          "#252523",
+          "#414240",
+          "#61625f",
+          "#828380",
+          "#a4a5a3",
+          "#c8c9c7",
+          "#eeefec"
+        ]
+      },
+      "desk": {
+        "role": "neutral",
+        "displayName": "Desk Grey",
+        "canonical": "#e2e5e1",
+        "tonalRamp": [
+          "#0a0c09",
+          "#242623",
+          "#404340",
+          "#5f625f",
+          "#808380",
+          "#a3a6a2",
+          "#c7cac6",
+          "#ecefeb"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Print Ink",
+        "canonical": "#11161b",
+        "tonalRamp": [
+          "#070c10",
+          "#20262b",
+          "#3d4349",
+          "#5c6268",
+          "#7d838a",
+          "#9fa6ad",
+          "#c3cad1",
+          "#e8eff7"
+        ]
+      },
+      "ink-deep": {
+        "role": "neutral",
+        "displayName": "Ink Deep (the ink under the hand)",
+        "canonical": "#05080a",
+        "tonalRamp": [
+          "#030609",
+          "#1d232a",
+          "#3a4147",
+          "#596067",
+          "#7a8289",
+          "#9ca4ab",
+          "#c0c8cf",
+          "#e5ecf4"
+        ]
+      },
+      "ink-dim": {
+        "role": "neutral",
+        "displayName": "Ink Dim (secondary text)",
+        "canonical": "rgba(17, 22, 27, 0.66)",
+        "compositeOverPaper": "#606466",
+        "contrastOnPaper": 5.72,
+        "tonalRamp": [
+          "#090c0d",
+          "#222627",
+          "#3f4344",
+          "#5e6264",
+          "#7f8385",
+          "#a1a6a8",
+          "#c5cacc",
+          "#ebeff2"
+        ]
+      },
+      "ink-dim-2": {
+        "role": "neutral",
+        "displayName": "Ink Dim 2 (tertiary text, placeholders)",
+        "canonical": "rgba(17, 22, 27, 0.6)",
+        "compositeOverPaper": "#6e7173",
+        "contrastOnPaper": 4.7,
+        "tonalRamp": [
+          "#090b0d",
+          "#232527",
+          "#404244",
+          "#5f6264",
+          "#808385",
+          "#a2a5a8",
+          "#c6cacc",
+          "#eceff1"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Hairline Rule",
+        "canonical": "rgba(17, 22, 27, 0.16)",
+        "compositeOverPaper": "#d5d6d5",
+        "tonalRamp": [
+          "#0b0b0b",
+          "#242524",
+          "#414241",
+          "#616161",
+          "#828282",
+          "#a4a5a4",
+          "#c8c9c8",
+          "#eeefee"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Dashed Rule / Disabled Fill",
+        "canonical": "rgba(17, 22, 27, 0.34)",
+        "compositeOverPaper": "#abacad",
+        "tonalRamp": [
+          "#0b0b0c",
+          "#242526",
+          "#414243",
+          "#606162",
+          "#818283",
+          "#a4a5a6",
+          "#c8c9ca",
+          "#edeef0"
+        ]
+      },
+      "control-line": {
+        "role": "neutral",
+        "displayName": "Control Line",
+        "canonical": "rgba(17, 22, 27, 0.46)",
+        "compositeOverPaper": "#8f9192",
+        "contrastOnPaper": 3.03,
+        "tonalRamp": [
+          "#0a0b0c",
+          "#242526",
+          "#404243",
+          "#606162",
+          "#818384",
+          "#a3a5a6",
+          "#c7c9ca",
+          "#edeff0"
+        ]
+      },
+      "edge": {
+        "role": "neutral",
+        "displayName": "Sheet Edge",
+        "canonical": "#d3d7d2",
+        "tonalRamp": [
+          "#090c09",
+          "#232622",
+          "#40433f",
+          "#5f625e",
+          "#80837f",
+          "#a2a6a1",
+          "#c6cac5",
+          "#ecf0eb"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "The house name in the letterhead. 1.32rem / 900 / -0.02em, uppercase, line-height 1."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "The closing total (\"Te queda\"): 1.72rem Chivo Mono, tabular. The largest number on the sheet, and the only one that turns red when the month closes negative."
+      },
+      "subtotal": {
+        "displayName": "Subtotal",
+        "purpose": "The income and expense figures on the subtotal band: 1.22rem Chivo Mono, tabular."
+      },
+      "ledger-amount": {
+        "displayName": "Ledger Amount",
+        "purpose": "A movement's amount in the ledger and the cap field: 0.94rem Chivo Mono, right-aligned behind its + / -."
+      },
+      "heading": {
+        "displayName": "Section Head",
+        "purpose": "The .sect h2 of every band: 0.74rem / 900 / 0.16em, uppercase, on the baseline of its 1px rule."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Reading copy, notes, hints and notices: 16px Libre Franklin at 1.45, measure capped at 66-74ch."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels, plate lettering and .tag: 0.66rem / 700 / 0.14em, uppercase."
+      },
+      "mono-micro": {
+        "displayName": "Mono Micro",
+        "purpose": "The document number Nº YYYY-MM, the page folio, the pager state and the ledger's line numbers: 0.68-0.76rem Chivo Mono."
+      }
+    },
+    "shadows": [
+      {
+        "name": "sheet-rest",
+        "value": "0 1px 0 rgba(17, 22, 27, 0.04), 0 14px 34px -18px rgba(17, 22, 27, 0.34)",
+        "purpose": "The sheet lying on the grey desk: a 1px hairline at the top edge plus one offset, soft, negatively-spread ground shadow. The system's only large shadow besides a window's."
+      },
+      {
+        "name": "window-over",
+        "value": "0 24px 60px -22px rgba(17, 22, 27, 0.5)",
+        "purpose": "A window thrown over the sheet. Never applied to a band, a field or a row."
+      },
+      {
+        "name": "plate-float",
+        "value": "0 12px 28px -12px rgba(17, 22, 27, 0.55)",
+        "purpose": "The action plate once it leaves the flow and floats over the sheet on a phone (below 720px, .membrete .plate position: fixed). Its only drop shadow; in the flow the plate carries just its inset edge."
+      },
+      {
+        "name": "double-rule",
+        "value": "0 5px 0 -4px #11161b",
+        "purpose": "Draws the second line of the invoice's double rule under the 3px ink border of .membrete, .sub-line.total and .wtitle. It is a rule, not depth."
+      },
+      {
+        "name": "plate-edge",
+        "value": "inset 0 -2px 0 rgba(0, 0, 0, 0.18)",
+        "purpose": "The printed lower edge of the action plate at rest."
+      },
+      {
+        "name": "plate-press",
+        "value": "inset 0 1px 0 rgba(0, 0, 0, 0.22)",
+        "purpose": "The plate's edge once the stamp goes down (:active), together with translateY(1px)."
+      },
+      {
+        "name": "scrim",
+        "value": "rgba(17, 22, 27, 0.42)",
+        "purpose": "A flat ink wash behind a window. No backdrop-filter, no blur: the scrim dims the desk, it never frosts it."
+      }
+    ],
+    "motion": [
+      {
+        "name": "ink-dry",
+        "value": "240ms ease-out 1",
+        "purpose": "The one authored moment: the month's figures re-print in place (opacity 0.35 -> 1). Replayed by remounting the value spans with App's repaintKey after a save or a month change (KpiSummary, .repaint)."
+      },
+      {
+        "name": "ink-set",
+        "value": "900ms ease-out 1",
+        "purpose": "The row just written takes one highlight (background rgba(178, 58, 32, 0.14) -> transparent) as the ink sets (.book tbody tr.flash)."
+      },
+      {
+        "name": "plate-state",
+        "value": "background-color 120ms ease, transform 60ms ease",
+        "purpose": "Hover deepens the stamp fill; pressing moves the plate down 1px and flips its inset edge."
+      },
+      {
+        "name": "skip-link-slide",
+        "value": "top 140ms ease",
+        "purpose": "The skip link slides into the top-left corner on focus (.skip-link, top: -100px -> 14px)."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important",
+        "purpose": "Under prefers-reduced-motion: reduce nothing moves and every state stays readable."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "desk",
+        "value": "680px",
+        "purpose": "The sheet lifts off the desk: 30px auto margins and 34px 40px 46px padding instead of running edge to edge."
+      },
+      {
+        "name": "columns",
+        "value": "720px",
+        "purpose": ".cols (donut + bars), .two (window form rows) and .jar-meta (reassignment selects) become two columns."
+      },
+      {
+        "name": "phone-table",
+        "value": "719px (max-width)",
+        "purpose": "Below this the ledger's action column wraps (white-space: normal; max-width: 96px) instead of widening the row; the letterhead's action plate leaves the flow (position: fixed, 16px from the right and bottom edges, z-index: 30) with the body reserving 104px of foot; and the pagination's buttons stack into a column so they never sit under the floating plate."
+      },
+      {
+        "name": "pointer-coarse",
+        "value": "@media (pointer: coarse)",
+        "purpose": "Raises every control below the comfortable minimum to 44px: .linkb, .book .acts .linkb, .iconb (width included), .pbtn, .row .capfield and .monthjump input[type=month]. Declared last in index.css on purpose: at equal specificity these only win by order, and higher up they stay inert."
+      }
+    ],
+    "browserSurfaces": [
+      {
+        "name": "selection",
+        "value": "::selection { background: var(--color-danger-fill); color: var(--color-paper) }",
+        "purpose": "Selected text is ink struck by the stamp."
+      },
+      {
+        "name": "caret",
+        "value": "caret-color: var(--color-ink)",
+        "purpose": "The caret is the pen in the document's ink."
+      },
+      {
+        "name": "scrollbars",
+        "value": "scrollbar-width: thin; scrollbar-color: var(--color-rule-strong) transparent; ::-webkit-scrollbar 10px, thumb 2px transparent border with background-clip: content-box",
+        "purpose": "The scrollbars of the ledger (beside .table-scroll), the bars scroller and a window body belong to the palette."
+      },
+      {
+        "name": "focus-ring",
+        "value": ":focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px }",
+        "purpose": "One visible ring everywhere, in the stamp's red; the cap field and the bars scroller restate it."
+      },
+      {
+        "name": "print",
+        "value": "@media print hides .monthnav, .pager, .skip-link, .plate, .action-stamp; the sheet loses its shadow, its border and its max-width",
+        "purpose": "A real document also leaves by printer."
+      }
+    ],
+    "fonts": [
+      {
+        "family": "Libre Franklin",
+        "files": [
+          "/fonts/libre-franklin-latin-var.woff2"
+        ],
+        "weight": "100 900",
+        "format": "woff2-variations",
+        "purpose": "The document face: house name, section heads, labels, body copy."
+      },
+      {
+        "family": "Chivo Mono",
+        "files": [
+          "/fonts/chivo-mono-latin-400-normal.woff2"
+        ],
+        "weight": 400,
+        "format": "woff2",
+        "purpose": "The measuring face at reading weight (pager ranges, chart labels)."
+      },
+      {
+        "family": "Chivo Mono",
+        "files": [
+          "/fonts/chivo-mono-latin-700-normal.woff2"
+        ],
+        "weight": 700,
+        "format": "woff2",
+        "purpose": "Every amount, rate, date, count and line number."
+      }
+    ],
+    "accessibility": {
+      "standard": "WCAG 2.2 AA",
+      "liveRegions": 1,
+      "liveRegion": "frontend/src/components/LiveRegion.tsx - the app's only role=\"status\" region; announcements replace each other. The visible Notice is deliberately not a live region.",
+      "contrast": {
+        "method": "Ratios computed from the @theme token values, compositing rgba over the sheet's paper ground. A browser walk of every text node (verify.cjs) was re-run for the reconciliation pass: 0 failures over 339 text nodes at 1440 and 390, counting ancestor opacity.",
+        "inkOnPaper": 17.41,
+        "inkDimOnPaper": 5.72,
+        "inkDimOnCopyPaper": 5.62,
+        "inkDim2OnPaper": 4.7,
+        "inkDim2OnCopyPaper": 4.61,
+        "controlLineOnPaper": 3.03,
+        "stampOnPaper": 6.12,
+        "paperOnStampFill": 5.71,
+        "amberOnPaper": 4.84,
+        "ballpointOnPaper": 9.7,
+        "inkOnHighlighter": 13.59
+      },
+      "constraints": [
+        "Zero horizontal overflow at 390px.",
+        "Touch targets 42-46px at rest (.plate/.field/.seg 46px, .pbtn/.iconb 42px, .skip-link 44px) with a 44px floor on a coarse pointer.",
+        "Every control has an associated label; the gasto/ingreso, USD/VES and import groups are role=radiogroup with an aria-label.",
+        "Form errors use aria-invalid + aria-describedby and focus moves to the first field with an error; no role=alert per field.",
+        "No window.confirm anywhere: every interruption is the one Window primitive with focus moved in, trapped, restored, Escape to close and body scroll locked."
+      ]
+    },
+    "superseded": [
+      "docs/architecture.md still documents the retired teal system (single hue 188, paletteFor, dark mode). docs/** is frozen by the project's ownership contract, so it was not edited; DESIGN.md supersedes it for visual decisions.",
+      ".impeccable/NEW-WORLD-SPEC.md and .impeccable/build-packet.md describe the previous chalk-board world (\"La pizarra de la tasa\", board/chalk/wood tokens, the #paint-rough filter). index.css no longer carries any of those tokens or classes; the contract also no longer ships inside frontend/index.html."
+    ]
+  },
+  "components": [
+    {
+      "name": "Action Plate",
+      "kind": "button",
+      "refersTo": "action-plate",
+      "description": "The single saturated fill on the sheet: one stamp-red plate per flow — Anotar movimiento in the letterhead, Agregar movimiento / Guardar cambios in the movement window, Reemplazar todo in the import window, and the destructive confirm. The wallet window's confirm is the ink plate, not this one.",
+      "html": "<button class=\"ds-plate\" type=\"button\">ANOTAR MOVIMIENTO</button>",
+      "css": ".ds-plate { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 12px 18px; border: 0; border-radius: 0; background: var(--color-danger-fill); color: var(--color-paper); font-family: var(--font-sans); font-size: 0.76rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18); transition: background-color 120ms ease, transform 60ms ease; } .ds-plate:hover { background: var(--color-danger-deep); } .ds-plate:active { transform: translateY(1px); box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.22); } .ds-plate:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-plate:disabled { background: var(--color-rule-strong); color: var(--color-paper); cursor: not-allowed; box-shadow: none; }"
+    },
+    {
+      "name": "Page Button",
+      "kind": "button",
+      "refersTo": "page-button",
+      "description": "The document's secondary control: pager steps, Mes actual, Exportar, Importar, Reintentar, Nueva cartera and the window cancel actions.",
+      "html": "<button class=\"ds-pbtn\" type=\"button\">SIGUIENTE</button>",
+      "css": ".ds-pbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 14px; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; } .ds-pbtn:hover:not(:disabled) { border-color: var(--color-ink); background: var(--color-paper-2); } .ds-pbtn:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-pbtn:disabled { color: var(--color-dim-2); cursor: not-allowed; }"
+    },
+    {
+      "name": "Ink Plate",
+      "kind": "button",
+      "refersTo": "ink-plate",
+      "description": "The page-button frame filled with print ink: the confirm action inside the wallet window (Crear cartera / Guardar cambios). Hover drops ground and border to Ink Deep — the token's only use. The red plate stays reserved for the document's action and for the destructive confirm.",
+      "html": "<button class=\"ds-pbtn-primary\" type=\"button\">GUARDAR CAMBIOS</button>",
+      "css": ".ds-pbtn-primary { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 14px; border: 1px solid var(--color-ink); border-radius: 0; background: var(--color-ink); color: var(--color-paper); font-family: var(--font-sans); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; } .ds-pbtn-primary:hover:not(:disabled) { background: var(--color-ink-deep); border-color: var(--color-ink-deep); } .ds-pbtn-primary:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-pbtn-primary:disabled { color: var(--color-dim-2); cursor: not-allowed; }"
+    },
+    {
+      "name": "Segmented Control",
+      "kind": "custom",
+      "refersTo": "segmented-control",
+      "description": "A 1px-bordered rectangle divided by 1px separators; the chosen option turns ink with paper lettering. Used for gasto/ingreso, USD/VES and the import modes (role=radiogroup, aria-checked).",
+      "html": "<div class=\"ds-seg\" role=\"radiogroup\" aria-label=\"Tipo\"><button type=\"button\" role=\"radio\" aria-checked=\"true\" class=\"ds-seg-btn\">Gasto</button><button type=\"button\" role=\"radio\" aria-checked=\"false\" class=\"ds-seg-btn\">Ingreso</button></div>",
+      "css": ".ds-seg { display: inline-flex; border: 1px solid var(--color-control); border-radius: 0; } .ds-seg-btn { min-height: 46px; padding: 10px 16px; border: 0; border-right: 1px solid var(--color-control); background: var(--color-paper); color: var(--color-dim); font-family: var(--font-sans); font-size: 0.74rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background-color 120ms ease, color 120ms ease; } .ds-seg-btn:last-child { border-right: 0; } .ds-seg-btn[aria-checked=\"true\"] { background: var(--color-ink); color: var(--color-paper); } .ds-seg-btn:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; }"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "field",
+      "description": "The document's casillero: paper ground, 1px Control Line border, square corners, 46px tall. Focus and invalid states are the stamp's red.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-amount\">MONTO EN DÓLARES</label><input class=\"ds-input\" id=\"ds-amount\" type=\"text\" inputmode=\"decimal\" placeholder=\"1.234,56\" /></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; } .ds-field-label { font-family: var(--font-sans); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-dim); } .ds-input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.92rem; font-variant-numeric: tabular-nums; } .ds-input::placeholder { color: var(--color-dim-2); } .ds-input:focus-visible { border-color: var(--color-danger); outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-input[aria-invalid=\"true\"] { border-color: var(--color-danger); border-width: 2px; } .ds-input:disabled { background: var(--color-paper-2); color: var(--color-dim-2); }"
+    },
+    {
+      "name": "Select",
+      "kind": "input",
+      "refersTo": "select",
+      "description": "appearance: none with the chevron drawn in CSS (two 5px ink wedges); option is forced onto an opaque paper ground so the native popup never goes light under ink lettering.",
+      "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-cat\">CATEGORÍA</label><select class=\"ds-select\" id=\"ds-cat\"><option>Supermercado</option><option>Servicios</option></select></div>",
+      "css": ".ds-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; } .ds-field-label { font-family: var(--font-sans); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-dim); } .ds-select { width: 100%; min-height: 46px; padding: 10px 34px 10px 12px; border: 1px solid var(--color-control); border-radius: 0; background-color: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.92rem; appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--color-ink) 50%), linear-gradient(135deg, var(--color-ink) 50%, transparent 50%); background-position: calc(100% - 17px) 50%, calc(100% - 12px) 50%; background-size: 5px 5px, 5px 5px; background-repeat: no-repeat; } .ds-select:focus-visible { border-color: var(--color-danger); outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-select option { background: var(--color-paper); color: var(--color-ink); }"
+    },
+    {
+      "name": "Tag",
+      "kind": "chip",
+      "refersTo": "tag",
+      "description": "The square label of a row's kind (Gasto, Ingreso, Pago de deuda, Deuda) or of a jar's status. Never carries colour.",
+      "html": "<span class=\"ds-tag\">GASTO</span> <span class=\"ds-tag\">PAGO DE DEUDA</span>",
+      "css": ".ds-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--color-rule-strong); border-radius: 0; font-family: var(--font-sans); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; }"
+    },
+    {
+      "name": "Rubber Stamp",
+      "kind": "custom",
+      "refersTo": "rubber-stamp",
+      "description": "The stamp impression on a wallet in debt (\"A pagar\"): 2px stamp-red border, rotated -2.4°. .stamp.void is the same impression dulled to ink.",
+      "html": "<span class=\"ds-stamp\">A PAGAR</span>",
+      "css": ".ds-stamp { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px; border: 2px solid var(--color-danger); border-radius: 0; color: var(--color-danger); font-family: var(--font-sans); font-size: 0.64rem; font-weight: 900; letter-spacing: 0.16em; text-transform: uppercase; transform: rotate(-2.4deg); background: rgba(178, 58, 32, 0.05); }"
+    },
+    {
+      "name": "Notice",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "The ruled band that reports an outcome on the sheet or inside a window: Copy Paper ground closed above by a 2px ink rule, never outlined down one side. Success swaps the border to ink; error is the only one that takes the stamp's red on a 5% wash. Deliberately not a live region.",
+      "html": "<div class=\"ds-notice error\" role=\"group\" aria-label=\"Error al cargar los datos\"><p>No se pudieron cargar los datos.</p><button class=\"ds-notice-x\" type=\"button\">Reintentar</button></div>",
+      "css": ".ds-notice { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 10px 12px; border: 1px solid var(--color-rule-strong); border-top: 2px solid var(--color-ink); border-radius: 0; background: var(--color-paper-2); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.8rem; line-height: 1.55; } .ds-notice p { margin: 0; } .ds-notice .ds-notice-x { min-height: 42px; padding: 9px 14px; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; } .ds-notice .ds-notice-x:hover { border-color: var(--color-ink); background: var(--color-paper-2); } .ds-notice.success { border-color: var(--color-ink); } .ds-notice.error { border-color: var(--color-danger); border-width: 2px; background: rgba(178, 58, 32, 0.05); } .ds-notice.error p { color: var(--color-danger); font-weight: 700; }"
+    },
+    {
+      "name": "Subtotal Band",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "The month in three ruled lines: label, dot leader, figure - closing on the 3px heavy rule with its double rule. The closing figure turns stamp red when the month is negative.",
+      "html": "<div class=\"ds-sub\"><div class=\"ds-sub-line\"><span class=\"ds-sub-lab\">INGRESOS</span><span class=\"ds-leader\"></span><span class=\"ds-sub-val\">$ 4.850,00</span></div><div class=\"ds-sub-line\"><span class=\"ds-sub-lab\">GASTOS</span><span class=\"ds-leader\"></span><span class=\"ds-sub-val\">$ 3.120,40</span></div><div class=\"ds-sub-line ds-sub-total ds-sub-neg\"><span class=\"ds-sub-lab\">TE QUEDA</span><span class=\"ds-leader\"></span><span class=\"ds-sub-val\">- $ 1.000,00</span></div></div>",
+      "css": ".ds-sub { display: grid; gap: 0; } .ds-sub-line { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; } .ds-sub-lab { font-family: var(--font-sans); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; } .ds-leader { flex: 1; min-width: 14px; border-bottom: 1px dotted var(--color-rule-strong); transform: translateY(-3px); } .ds-sub-val { font-family: var(--font-mono); font-weight: 700; font-size: 1.22rem; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-sub-total { border-top: 3px solid var(--color-ink); box-shadow: 0 5px 0 -4px var(--color-ink); margin-top: 8px; padding-top: 10px; } .ds-sub-total .ds-sub-lab { color: var(--color-ink); } .ds-sub-total .ds-sub-val { font-size: 1.72rem; } .ds-sub-neg .ds-sub-val { color: var(--color-danger); }"
+    },
+    {
+      "name": "Ledger Line",
+      "kind": "custom",
+      "refersTo": "sheet",
+      "description": "A numbered line item of the month: line number, date, tag + category, wallet, note, and the amount right-aligned in mono with the ballpoint detail (original Bs amount and rate) underneath.",
+      "html": "<div class=\"ds-line\"><span class=\"ds-ln\">7</span><span class=\"ds-date\">12/09/2026</span><span class=\"ds-desc\"><span class=\"ds-who\"><span class=\"ds-tag\">GASTO</span> Supermercado</span><span class=\"ds-what\">Binance</span><span class=\"ds-note\">compra semanal</span></span><span class=\"ds-amt\"><span>- $ 84,20</span><span class=\"ds-pen\">3.368,00 Bs @ 40,00</span></span></div>",
+      "css": ".ds-line { display: grid; grid-template-columns: auto minmax(96px, auto) minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 9px 8px; border-bottom: 1px dashed var(--color-rule); } .ds-ln { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; color: var(--color-dim-2); font-variant-numeric: tabular-nums; } .ds-date { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.86rem; } .ds-desc { min-width: 0; } .ds-who { display: block; font-weight: 700; font-size: 0.86rem; } .ds-what, .ds-note { display: block; font-size: 0.76rem; color: var(--color-dim); overflow-wrap: anywhere; } .ds-amt { text-align: right; } .ds-amt > span { display: block; font-family: var(--font-mono); font-weight: 700; font-size: 0.94rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-pen { font-size: 0.72rem !important; color: var(--color-pen); } .ds-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--color-rule-strong); border-radius: 0; font-family: var(--font-sans); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; }"
+    },
+    {
+      "name": "Window",
+      "kind": "custom",
+      "refersTo": "window",
+      "description": "The one dialog primitive: every form, every destructive confirmation and the import flow render inside it. role=dialog + aria-modal + aria-labelledby, focus moved in and trapped, Escape and scrim click close, body scroll locked, never nested. The panel is position: fixed against the viewport (16px from the top, centred, with its own vertical scroll) over an empty fixed veil, so opening it never drags the document's scroll.",
+      "html": "<div class=\"ds-scrim\" aria-hidden=\"true\"></div><div class=\"ds-window\" role=\"dialog\" aria-modal=\"true\" aria-label=\"Nuevo movimiento\" tabindex=\"-1\"><div class=\"ds-wtitle\"><h2>NUEVO MOVIMIENTO</h2><button class=\"ds-iconb\" type=\"button\" aria-label=\"Cerrar\"><svg viewBox=\"0 0 20 20\" width=\"16\" height=\"16\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" aria-hidden=\"true\"><line x1=\"4\" y1=\"4\" x2=\"16\" y2=\"16\" /><line x1=\"16\" y1=\"4\" x2=\"4\" y2=\"16\" /></svg></button></div><div class=\"ds-wbody\"><p class=\"ds-wsub\">Prueba de tira</p></div><div class=\"ds-wfoot\"><button class=\"ds-plate\" type=\"button\">AGREGAR MOVIMIENTO</button></div></div>",
+      "css": ".ds-scrim { position: fixed; inset: 0; z-index: 40; background: rgba(17, 22, 27, 0.42); } .ds-window { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); z-index: 41; width: calc(100% - 32px); max-width: 620px; max-height: calc(100dvh - 32px); overflow-y: auto; background-color: var(--color-paper); border: 1px solid var(--color-edge); border-radius: 0; box-shadow: 0 24px 60px -22px rgba(17, 22, 27, 0.5); padding: 0 0 18px; } .ds-wtitle { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px; padding: 16px 18px 11px; border-bottom: 3px solid var(--color-ink); box-shadow: 0 5px 0 -4px var(--color-ink); } .ds-wtitle h2 { margin: 0; font-family: var(--font-sans); font-size: 0.82rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; } .ds-wbody { padding: 16px 18px 0; display: grid; gap: 14px; } .ds-wsub { margin: 0; font-family: var(--font-sans); font-size: 0.78rem; line-height: 1.6; color: var(--color-dim); } .ds-wfoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding: 18px 18px 0; margin-top: 18px; border-top: 1px solid var(--color-rule); } .ds-iconb { display: inline-flex; align-items: center; justify-content: center; width: 42px; height: 42px; padding: 0; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); cursor: pointer; } .ds-iconb:hover { background: var(--color-paper-2); border-color: var(--color-ink); } .ds-iconb:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-plate { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; padding: 12px 18px; border: 0; border-radius: 0; background: var(--color-danger-fill); color: var(--color-paper); font-family: var(--font-sans); font-size: 0.76rem; font-weight: 900; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.18); transition: background-color 120ms ease, transform 60ms ease; } .ds-plate:hover { background: var(--color-danger-deep); } .ds-plate:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "La Factura del Mes",
+    "overview": "The month is one white invoice, bound like a savings passbook, that the visitor keeps re-writing. The whole screen is one sheet of cool white paper lying on a grey desk: the letterhead at the top, the month's three figures ruled into a subtotal band, the numbered line items of the ledger, the margin column of jars and wallets, and the perforation that ends the page. Nothing in it is a card: bands are separated by rules, and the rules are the structure.\n\nThe sheet is written with the marks a person physically makes on a document. A rubber stamp carries anything negative, anything over its cap, and the one action plate; a ballpoint carries the original bolívar amount of a movement; a highlighter marks a cap that is running out — always as a stroke behind the ink, never as a colour of its own. Attention that has to be legible as text uses a darker amber instead. Income is not a colour at all: it is print ink at full strength with a leading `+`, the way a signed ledger reads.\n\nEvery figure on the sheet carries its provenance in the line beside it — its date, its line number, the wallet and the note that produced it — so the visitor sees the month already closed into a total and still knows where each part of it came from. The two things this world refuses are named in its own material: the dashboard of soft-shadowed KPI cards (there is one sheet, and nothing on it is elevated) and the bureaucratic form (the movement form is a window over the sheet that first shows a \"prueba de tira\" — an estimate of where the movement will land, labelled as an estimate, before anything is saved).",
+    "keyCharacteristics": [
+      "One sheet on a grey desk, ruled into bands; zero cards, zero rounded corners.",
+      "Cool white paper, near-black print ink; the only saturated fill is the stamp-red action plate.",
+      "Three marks only: stamp red, ballpoint blue, highlighter yellow — plus amber for attention text.",
+      "Libre Franklin for the document, Chivo Mono for every measured column, tabular figures everywhere.",
+      "Depth is material: one shadow for the sheet on the desk, one for a window over the sheet, and one for the action plate once it leaves the flow on a phone.",
+      "Both faces self-hosted and served from this origin; no external font, CDN or network request.",
+      "Two authored motions: the ink-dry re-print of the month's figures, and one flash on the row just written."
+    ],
+    "rules": [
+      {
+        "name": "The Three-Marks Rule",
+        "body": "Only three marks carry colour: the rubber stamp (red), the ballpoint (blue) and the highlighter (yellow). Amber is the same \"attention\" ink made readable as text. A fourth hue does not exist — a new state finds its mark, or it stays ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Ink-Only-Income Rule",
+        "body": "Income is never a colour: `.amt.income` is print ink at full strength with a leading `+`, exactly like `.amt.expense`. The sign carries the meaning.",
+        "section": "colors"
+      },
+      {
+        "name": "The Highlighter-Behind-Ink Rule",
+        "body": "The highlighter is a background stroke, never a text colour. When attention must be legible as lettering it is amber (`.row.warn`, `.wbar.warn`) or it is ink.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never-Grey Rule",
+        "body": "Secondary and tertiary text are ink at reduced alpha over paper (0.66 → 5.7:1, 0.6 → 4.7:1). No grey and no tinted neutral is ever used to lower the voice, because the sheet has to stay legible in daylight.",
+        "section": "colors"
+      },
+      {
+        "name": "The Tabular Rule",
+        "body": "`font-variant-numeric: tabular-nums` is declared on `body` and inherited by everything, and restated on `.mono`/`.num`. No column of figures may shift width.",
+        "section": "typography"
+      },
+      {
+        "name": "The Measured-Mono Rule",
+        "body": "Chivo Mono is for money, rates, dates, counts, line numbers and codes — things that are measured, matched or listed in a column. It is never used to make something look technical.",
+        "section": "typography"
+      },
+      {
+        "name": "The One-Line Section Rule",
+        "body": "A section opens with a `.sect`: one `0.74rem`/900/`0.16em` uppercase heading and its 1px ink rule sharing a baseline, with the optional `sect-note` in Ink Dim at the far end of the row. The heading carries its own weight; the rule supplies the division.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-Sheet Rule",
+        "body": "A surface never lifts. It is either printed on the sheet (fields, bars, tags, stamps) or it is a window over it. A card with a soft shadow does not belong to this world.",
+        "section": "elevation"
+      },
+      {
+        "name": "The One-Shadow Rule",
+        "body": "A surface declares its depth once, as ground contact: the sheet has one shadow, the window has one shadow. Nothing else in the sheet casts anything — except the action plate, and only once it has left the flow to float over the sheet on a phone.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do keep one sheet and divide it with rules (`.sect`, `.rule`, 2px/3px closers, dashed row separators). Bands are separated by ink, never by a card.",
+      "Do measure every figure in Chivo Mono with tabular numerals (`.num`, `.mono`, `.pen`, `.cap`, `.ln`) and right-align money.",
+      "Do set income as full ink with a leading `+`; the sign carries the meaning.",
+      "Do use the highlighter as a background stroke behind ink (`.mark`) and switch to amber (`--color-warn`, 4.8:1) the moment attention has to be lettering.",
+      "Do keep the stamp-red `.plate` the loudest element of the flow it belongs to.",
+      "Do put every interruption, form and destructive confirmation in the one window primitive with focus moved in, trapped and restored, Escape working, body scroll locked, and the panel positioned against the viewport so opening it never scrolls the document.",
+      "Do let every figure show its provenance: date, line number, wallet and note stay in the row beside the amount.",
+      "Do label a client-side estimate as an estimate (\"Estimado, todavía sin guardar\") and never as the stored figure.",
+      "Do verify contrast as a number against the real ground (ink 0.66 → 5.7:1, ink 0.6 → 4.7:1, control 0.46 → 3.0:1, stamp on paper 6.1:1, paper on stamp fill 5.7:1), and size the controls for touch — fields and the plate 46px, page and icon buttons 42px, and a 44px floor on a coarse pointer — with one visible 2px focus ring.",
+      "Do keep both faces self-hosted and versioned in the document's own stylesheet: no CDN, no external font, no network request at runtime."
+    ],
+    "donts": [
+      "Don't introduce a fourth hue or a coloured fill that is not the stamp plate. The only other full fill in the system is print ink (`.pbtn.primary`), which is not a colour.",
+      "Don't round a corner: the sheet has `border-radius: 0` everywhere. The punch holes of `.perf` are the only curve.",
+      "Don't let a surface cast a shadow other than the sheet's, a window's or the floating action plate's; a band's depth is its rule.",
+      "Don't use the highlighter yellow as a text colour, and don't colour an income.",
+      "Don't recompute a stored business figure in the client; the API owns the numbers.",
+      "Don't use `window.confirm`, a `role=\"alert\"` per field, or a second live region.",
+      "Don't add an entrance animation per section: the only two motions in the system are the ink-dry re-print of the month's figures (240ms) and the single flash of the row just written."
+    ]
+  }
+}

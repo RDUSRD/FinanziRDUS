@@ -65,7 +65,7 @@ function mount(seed: Partial<FakeDb>): void {
 }
 
 function accountRegion(): HTMLElement {
-  return screen.getByRole('region', { name: 'Carteras y deudas' });
+  return screen.getByRole('region', { name: 'Las carteras' });
 }
 
 describe('App · carteras y deudas', () => {
@@ -73,7 +73,7 @@ describe('App · carteras y deudas', () => {
     mount(debtSeed());
     renderAppTree(<App />);
 
-    const accounts = await screen.findByRole('region', { name: 'Carteras y deudas' });
+    const accounts = await screen.findByRole('region', { name: 'Las carteras' });
     expect(within(accounts).getByText('Objetivo: eliminar la deuda')).toBeInTheDocument();
     expect(within(accounts).getByText(money(60_000))).toBeInTheDocument();
 
@@ -89,7 +89,7 @@ describe('App · carteras y deudas', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const accounts = await screen.findByRole('region', { name: 'Carteras y deudas' });
+    const accounts = await screen.findByRole('region', { name: 'Las carteras' });
     await user.click(within(accounts).getByRole('button', { name: 'Nueva cartera' }));
     await user.type(within(accounts).getByLabelText('Nombre de la cartera'), 'Ahorro USD');
     await user.type(within(accounts).getByLabelText('Saldo inicial (USD)'), '1000');
@@ -109,7 +109,7 @@ describe('App · carteras y deudas', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const accounts = await screen.findByRole('region', { name: 'Carteras y deudas' });
+    const accounts = await screen.findByRole('region', { name: 'Las carteras' });
     await user.click(within(accounts).getByRole('button', { name: 'Nueva cartera' }));
     await user.click(within(accounts).getByRole('button', { name: 'Crear cartera' }));
 
@@ -123,7 +123,7 @@ describe('App · carteras y deudas', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const accounts = await screen.findByRole('region', { name: 'Carteras y deudas' });
+    const accounts = await screen.findByRole('region', { name: 'Las carteras' });
     expect(within(accounts).getByText(`Restante ${money(60_000)}`)).toBeInTheDocument();
 
     await user.click(within(accounts).getByRole('button', { name: 'Registrar pago de Binance' }));
@@ -142,11 +142,11 @@ describe('App · carteras y deudas', () => {
     expect(bar).toHaveAttribute('aria-valuenow', '33');
 
     // The payment shows as a month expense with the debt badge.
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     expect(within(movements).getByText('Pago de deuda')).toBeInTheDocument();
     await waitFor(() => expect(within(movements).getByText('-$ 200')).toBeInTheDocument());
 
-    const kpi = await screen.findByRole('region', { name: 'Resumen del mes' });
+    const kpi = await screen.findByRole('region', { name: 'Los números del mes' });
     await waitFor(() => expect(within(kpi).getByText(money(20_000))).toBeInTheDocument());
   });
 
@@ -163,7 +163,7 @@ describe('App · carteras y deudas', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const table = within(await screen.findByRole('region', { name: /Movimientos/ })).getByRole('table');
+    const table = within(await screen.findByRole('region', { name: /^El libro/i })).getByRole('table');
     expect(within(table).getByText('Supermercado')).toBeInTheDocument();
     expect(within(table).getByText('Ocio')).toBeInTheDocument();
 
@@ -172,7 +172,7 @@ describe('App · carteras y deudas', () => {
 
     // Only Binance's movement remains (the table re-mounts while the query refetches).
     await waitFor(() => {
-      const filtered = within(screen.getByRole('region', { name: /Movimientos/ })).getByRole('table');
+      const filtered = within(screen.getByRole('region', { name: /^El libro/i })).getByRole('table');
       expect(within(filtered).queryByText('Supermercado')).not.toBeInTheDocument();
       expect(within(filtered).getByText('Ocio')).toBeInTheDocument();
     });
@@ -183,7 +183,7 @@ describe('App · carteras y deudas', () => {
     mount(debtSeed());
     renderAppTree(<App />);
 
-    const plan = await screen.findByRole('region', { name: 'Plan 25/15/50/10' });
+    const plan = await screen.findByRole('region', { name: 'El plan 25/15/50/10' });
     expect(within(plan).getByText(`Tenés ${money(60_000)} de deuda.`)).toBeInTheDocument();
     expect(within(plan).getByText('Pagarla es la prioridad antes de asignar a los frascos.')).toBeInTheDocument();
   });

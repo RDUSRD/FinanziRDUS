@@ -13,9 +13,9 @@
 
 :root{
   --board:#131a16; --board-2:#182119; --board-3:#0e1411;
-  --chalk:#ede8d9; --dim:rgba(237,232,217,.64); --dim-2:rgba(237,232,217,.58);
+  --chalk:#ede8d9; --dim:rgba(237,232,217,.64); --dim-2:rgba(237,232,217,.42);
   --rule:rgba(237,232,217,.15); --rule-strong:rgba(237,232,217,.32);
-  --red:#ff6a44; --red-fill:#b23a20; --ochre:#e0a92c;
+  --red:#ff6a44; --red-fill:#c9432a; --ochre:#e0a92c;
   --wood:#3b2a1b; --wood-hi:#5d452c;
   --display:"Chivo","Chivo Black",system-ui,sans-serif;
   --mono:"Chivo Mono",ui-monospace,monospace;
@@ -92,7 +92,7 @@ body{
 .pbtn .fill{content:""; position:absolute; inset:0; z-index:-1; border-radius:2px; filter:url(#rough); background:rgba(237,232,217,.09)}
 .pbtn:hover .fill{background:rgba(237,232,217,.17)}
 .pbtn:focus-visible{outline:2px solid var(--ochre); outline-offset:3px}
-.pbtn.primary{color:var(--chalk); font-weight:900}
+.pbtn.primary{color:#1b0d07; font-weight:900}
 .pbtn.primary .fill{background:var(--red-fill)}
 .pbtn.primary:hover .fill{background:#e0502c}
 
@@ -200,11 +200,10 @@ body{
 .book td{padding:9px 12px 9px 0; border-bottom:1px dashed var(--rule); vertical-align:baseline}
 .book td.d{font-family:var(--mono); color:var(--dim); white-space:nowrap}
 .book td.n{font-family:var(--mono); font-weight:700; text-align:right; white-space:nowrap}
-.book td.n.inc{color:var(--chalk)}
+.book td.n.inc{color:var(--ochre)}
 .book tr:last-child td{border-bottom:0}
 .tag{font-size:.66rem; letter-spacing:.14em; text-transform:uppercase; font-weight:900; color:var(--dim)}
-.tag.inc{color:var(--chalk)}
-.tag.inc::before{content:"+ "}
+.tag.inc{color:var(--ochre)}
 .ves{display:block; font-family:var(--mono); font-size:.72rem; color:var(--dim-2); font-weight:400}
 .linkb{appearance:none;border:0;background:none;color:var(--dim);font:inherit;font-size:.78rem;cursor:pointer;text-decoration:underline;text-underline-offset:3px;padding:6px 8px;min-height:32px}
 .linkb:hover{color:var(--chalk)}
@@ -252,38 +251,6 @@ body{
 .strip .k{font-size:.64rem; letter-spacing:.18em; text-transform:uppercase; color:var(--ochre); font-weight:900; display:block; margin-bottom:4px}
 .wfoot{display:flex; gap:10px; align-items:center; margin-top:16px; flex-wrap:wrap}
 .wfoot .hintp{font-size:.72rem; color:var(--dim-2); margin:0}
-
-/* ---------- phone: the board is a tall column, the price list stacks ---------- */
-@media (max-width:640px){
-  body{padding:12px 8px 30px}
-  .frame{padding:8px}
-  .board{padding:18px 14px 24px}
-  .head{gap:12px}
-  .brand .sub{border-left:0; padding-left:0}
-  .monthnav{width:100%; justify-content:space-between}
-  .monthnav .m{min-width:0; flex:1; font-size:1.02rem}
-  .rate{padding:8px 11px; gap:8px}
-  .rate .d{display:none}
-  .figs{grid-template-columns:minmax(0,1fr); gap:0}
-  .fig{padding-bottom:10px; margin-bottom:14px}
-  .fig .val{font-size:clamp(2rem,12vw,3rem)}
-  .cols{gap:30px}
-  .row{grid-template-columns:minmax(0,1fr) auto; gap:0 12px}
-  .row .name{grid-column:1; grid-row:1}
-  .row .spent{grid-column:2; grid-row:1; min-width:0}
-  .row .cap{grid-column:1 / -1; grid-row:2; margin-top:2px}
-  .row .bar{grid-row:3}
-  .chartbox{gap:16px}
-  .bars{overflow-x:auto}
-  .bars svg{min-width:430px}
-  .cats{grid-template-columns:minmax(0,1fr) !important}
-  .book{font-size:.8rem}
-  .book th:nth-child(3), .book td:nth-child(3),
-  .book th:nth-child(4), .book td:nth-child(4){display:none}
-  .book th, .book td{padding:9px 8px 9px 0}
-  .acc{grid-template-columns:minmax(0,1fr)}
-  .jar .meta{gap:10px}
-}
 </style>
 </head>
 <body>
@@ -323,9 +290,9 @@ body{
       <span class="plate"><button class="pbtn" type="button">Hoy</button></span>
     </div>
     <div class="rate">
-      <span class="k">Última tasa cargada</span>
+      <span class="k">Tasa del día</span>
       <span class="v">Bs 40,00 / USD</span>
-      <span class="d">de tu último movimiento en bolívares</span>
+      <span class="d">reescrita por última vez el 26/09</span>
       <button class="linkb" type="button">cambiar</button>
     </div>
   </div>
@@ -340,17 +307,17 @@ body{
       </div>
       <div class="fig">
         <span class="lab">Gastos</span>
-        <span class="val num">$ 962</span>
-        <span class="note">11 categorías, deuda incluida</span>
+        <span class="val num">$ 762</span>
+        <span class="note">10 categorías</span>
       </div>
       <div class="fig">
         <span class="lab">Te queda</span>
-        <span class="val num">$ 418</span>
+        <span class="val num">$ 618</span>
         <span class="note">deuda pendiente $ 600</span>
       </div>
     </div>
     <p class="compare">
-      Este mes gastaste <span class="up">166,6% más</span> que el promedio de los 6 meses
+      Este mes gastaste <span class="up">111,2% más</span> que el promedio de los 6 meses
       anteriores (promedio: <b>$ 360,83</b>, basado en 6 meses).
     </p>
   </section>
@@ -432,61 +399,57 @@ body{
       <div class="sect"><h2 id="s-reparto">El reparto</h2></div>
       <div class="chartbox">
         <div class="donut">
-          <svg width="188" height="188" viewBox="0 0 200 200" role="img" aria-label="Gastos por categoría, total $ 962">
+          <svg width="188" height="188" viewBox="0 0 200 200" role="img" aria-label="Gastos por categoría, total $ 762">
             <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.08)" stroke-width="26"/>
-            <!-- 26,5% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.92)" stroke-width="26" stroke-dasharray="111.3 316.0" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
-            <!-- 26,0% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.82)" stroke-width="26" stroke-dasharray="109.0 318.3" stroke-dashoffset="-111.3" transform="rotate(-90 100 100)"/>
-            <!-- 20,8% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.72)" stroke-width="26" stroke-dasharray="86.8 340.5" stroke-dashoffset="-220.3" transform="rotate(-90 100 100)"/>
-            <!-- 5,2% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.62)" stroke-width="26" stroke-dasharray="20.2 407.1" stroke-dashoffset="-307.1" transform="rotate(-90 100 100)"/>
-            <!-- 5,0% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.54)" stroke-width="26" stroke-dasharray="19.3 408.0" stroke-dashoffset="-327.3" transform="rotate(-90 100 100)"/>
-            <!-- 4,7% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.47)" stroke-width="26" stroke-dasharray="18.0 409.3" stroke-dashoffset="-346.6" transform="rotate(-90 100 100)"/>
-            <!-- 4,5% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.41)" stroke-width="26" stroke-dasharray="17.1 410.2" stroke-dashoffset="-364.6" transform="rotate(-90 100 100)"/>
-            <!-- 2,5% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.35)" stroke-width="26" stroke-dasharray="8.7 418.6" stroke-dashoffset="-381.7" transform="rotate(-90 100 100)"/>
-            <!-- 2,3% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.30)" stroke-width="26" stroke-dasharray="7.8 419.5" stroke-dashoffset="-390.4" transform="rotate(-90 100 100)"/>
-            <!-- 1,8% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.26)" stroke-width="26" stroke-dasharray="5.6 421.7" stroke-dashoffset="-398.2" transform="rotate(-90 100 100)"/>
-            <!-- 0,8% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.22)" stroke-width="26" stroke-dasharray="3.0 424.3" stroke-dashoffset="-403.8" transform="rotate(-90 100 100)"/>
+            <!-- 33.5% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.92)" stroke-width="26" stroke-dasharray="139.9 287.3" stroke-dashoffset="0" transform="rotate(-90 100 100)"/>
+            <!-- 32.8% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.74)" stroke-width="26" stroke-dasharray="137.0 290.2" stroke-dashoffset="-141.9" transform="rotate(-90 100 100)"/>
+            <!-- 6.6% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.58)" stroke-width="26" stroke-dasharray="25.6 401.6" stroke-dashoffset="-280.9" transform="rotate(-90 100 100)"/>
+            <!-- 6.3% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.50)" stroke-width="26" stroke-dasharray="24.3 402.9" stroke-dashoffset="-308.5" transform="rotate(-90 100 100)"/>
+            <!-- 5.9% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.43)" stroke-width="26" stroke-dasharray="22.6 404.6" stroke-dashoffset="-334.8" transform="rotate(-90 100 100)"/>
+            <!-- 5.6% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.37)" stroke-width="26" stroke-dasharray="21.5 405.7" stroke-dashoffset="-359.4" transform="rotate(-90 100 100)"/>
+            <!-- 3.1% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.31)" stroke-width="26" stroke-dasharray="10.9 416.3" stroke-dashoffset="-382.9" transform="rotate(-90 100 100)"/>
+            <!-- 2.9% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.26)" stroke-width="26" stroke-dasharray="10.1 417.1" stroke-dashoffset="-395.8" transform="rotate(-90 100 100)"/>
+            <!-- 2.2% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.21)" stroke-width="26" stroke-dasharray="6.5 420.7" stroke-dashoffset="-407.9" transform="rotate(-90 100 100)"/>
+            <!-- 1.0% --><circle cx="100" cy="100" r="68" fill="none" stroke="rgba(237,232,217,.17)" stroke-width="26" stroke-dasharray="3.0 424.2" stroke-dashoffset="-416.4" transform="rotate(-90 100 100)"/>
             <text x="100" y="94" text-anchor="middle" font-size="12" letter-spacing="2" fill="rgba(237,232,217,.6)">GASTOS</text>
-            <text x="100" y="122" text-anchor="middle" font-size="26" font-weight="900" fill="#ede8d9">$ 962</text>
+            <text x="100" y="122" text-anchor="middle" font-size="26" font-weight="900" fill="#ede8d9">$ 762</text>
           </svg>
         </div>
         <div class="bars">
-          <p class="chartlead">El mes más caro de los últimos seis: <b>$ 962</b></p>
-          <svg viewBox="0 0 520 250" width="100%" role="img" aria-label="Gastos de los últimos 6 meses">
+          <p class="chartlead">El mes más caro de los últimos siete: <b>$ 762</b></p>
+          <svg viewBox="0 0 520 250" width="100%" role="img" aria-label="Gastos de los últimos 7 meses">
             <g stroke="rgba(237,232,217,.12)" stroke-width="1">
               <line x1="46" y1="30" x2="510" y2="30"/><line x1="46" y1="113" x2="510" y2="113"/><line x1="46" y1="196" x2="510" y2="196"/>
             </g>
             <g font-size="13" fill="rgba(237,232,217,.5)" text-anchor="end">
-              <text x="40" y="34">$962</text><text x="40" y="117">$481</text><text x="40" y="200">$0</text>
+              <text x="40" y="34">$800</text><text x="40" y="117">$400</text><text x="40" y="200">$0</text>
             </g>
+            <!-- bars: mar..sep = 330,348,380,340,401,366,762 ; scale 762 -> 166px -->
             <g>
-              <rect x="63"  y="136" width="43" height="60"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
-              <rect x="140" y="130" width="43" height="66"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
-              <rect x="218" y="137" width="43" height="59"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
-              <rect x="295" y="127" width="43" height="69"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
-              <rect x="373" y="133" width="43" height="63"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
-              <rect x="450" y="30"  width="43" height="166" fill="rgba(237,232,217,.9)"/>
+              <rect x="58"  y="124" width="46" height="72"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
+              <rect x="124" y="120" width="46" height="76"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
+              <rect x="190" y="113" width="46" height="83"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
+              <rect x="256" y="122" width="46" height="74"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
+              <rect x="322" y="109" width="46" height="87"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
+              <rect x="388" y="116" width="46" height="80"  fill="rgba(237,232,217,.20)" stroke="rgba(237,232,217,.42)" stroke-width="1.5"/>
+              <rect x="454" y="30"  width="46" height="166" fill="rgba(237,232,217,.9)"/>
             </g>
             <g font-size="13" fill="rgba(237,232,217,.5)" text-anchor="middle">
-              <text x="85" y="220">abr</text><text x="162" y="220">may</text><text x="239" y="220">jun</text>
-              <text x="317" y="220">jul</text><text x="394" y="220">ago</text>
+              <text x="81" y="220">mar</text><text x="147" y="220">abr</text><text x="213" y="220">may</text>
+              <text x="279" y="220">jun</text><text x="345" y="220">jul</text><text x="411" y="220">ago</text>
             </g>
-            <text x="471" y="220" font-size="13" font-weight="900" fill="#ede8d9" text-anchor="middle">sep</text>
-            <text x="471" y="236" font-size="11" fill="rgba(237,232,217,.6)" text-anchor="middle">este mes</text>
+            <text x="477" y="220" font-size="13" font-weight="900" fill="#ede8d9" text-anchor="middle">sep</text>
+            <text x="477" y="236" font-size="11" fill="rgba(237,232,217,.6)" text-anchor="middle">este mes</text>
           </svg>
         </div>
       </div>
       <ul class="cats" style="list-style:none;margin:16px 0 0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:4px 18px">
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Supermercado</span><span class="mono" style="color:var(--dim)">$ 255</span><span class="mono">26,5%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Alquiler y servicios</span><span class="mono" style="color:var(--dim)">$ 250</span><span class="mono">26,0%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Deudas <span class="tag">pago</span></span><span class="mono" style="color:var(--dim)">$ 200</span><span class="mono">20,8%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Ahorro</span><span class="mono" style="color:var(--dim)">$ 50</span><span class="mono">5,2%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Ropa</span><span class="mono" style="color:var(--dim)">$ 48</span><span class="mono">5,0%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Comidas afuera</span><span class="mono" style="color:var(--dim)">$ 45</span><span class="mono">4,7%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Transporte</span><span class="mono" style="color:var(--dim)">$ 43</span><span class="mono">4,5%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Salud</span><span class="mono" style="color:var(--dim)">$ 24</span><span class="mono">2,5%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Ocio</span><span class="mono" style="color:var(--dim)">$ 22</span><span class="mono">2,3%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Suscripciones</span><span class="mono" style="color:var(--dim)">$ 17</span><span class="mono">1,8%</span></li>
-        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;padding:5px 0"><span style="flex:1">Otros</span><span class="mono" style="color:var(--dim)">$ 8</span><span class="mono">0,8%</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Supermercado</span><span class="mono" style="color:var(--dim)">$ 255</span><span class="mono">33,5%</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Alquiler y servicios</span><span class="mono" style="color:var(--dim)">$ 250</span><span class="mono">32,8%</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Ahorro</span><span class="mono" style="color:var(--dim)">$ 50</span><span class="mono">6,6%</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Ropa</span><span class="mono" style="color:var(--dim)">$ 48</span><span class="mono">6,3%</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Comidas afuera</span><span class="mono" style="color:var(--dim)">$ 45</span><span class="mono">5,9%</span></li>
+        <li style="display:flex;gap:10px;align-items:baseline;font-size:.82rem;border-bottom:1px dashed var(--rule);padding:5px 0"><span style="flex:1">Transporte</span><span class="mono" style="color:var(--dim)">$ 43</span><span class="mono">5,6%</span></li>
       </ul>
     </section>
   </div>
@@ -497,30 +460,30 @@ body{
     <section aria-labelledby="s-frascos">
       <div class="sect"><h2 id="s-frascos">El plan 25/15/50/10</h2></div>
       <div class="jar">
+        <div class="t"><span class="n">Esencial</span><span class="p">50%</span><span class="st ok">ok</span></div>
+        <div class="bar"><i style="width:49.7%"></i></div>
+        <div class="meta"><span>Objetivo $ 690</span><span>Gastado $ 343</span><span>Restante $ 347</span></div>
+        <ul class="cats"><li>Supermercado</li><li>Transporte</li><li>Comidas afuera</li></ul>
+      </div>
+      <div class="jar over">
+        <div class="t"><span class="n">Estabilidad</span><span class="p">15%</span><span class="st over">excedido</span></div>
+        <div class="bar"><i style="width:100%"></i></div>
+        <div class="meta"><span>Objetivo $ 207</span><span>Gastado $ 291</span><span>Restante −$ 84</span></div>
+        <ul class="cats"><li>Alquiler y servicios</li><li>Salud</li><li>Suscripciones</li></ul>
+      </div>
+      <div class="jar">
+        <div class="t"><span class="n">Recompensas</span><span class="p">10%</span><span class="st ok">ok</span></div>
+        <div class="bar"><i style="width:56.5%"></i></div>
+        <div class="meta"><span>Objetivo $ 138</span><span>Gastado $ 78</span><span>Restante $ 60</span></div>
+        <ul class="cats"><li>Ocio</li><li>Ropa</li><li>Otros</li></ul>
+      </div>
+      <div class="jar">
         <div class="t"><span class="n">Crecimiento</span><span class="p">25%</span><span class="st ok">ok</span></div>
         <div class="bar"><i style="width:14.5%"></i></div>
         <div class="meta"><span>Objetivo $ 345</span><span>Gastado $ 50</span><span>Restante $ 295</span></div>
         <ul class="cats"><li>Ahorro</li></ul>
       </div>
-      <div class="jar">
-        <div class="t"><span class="n">Estabilidad</span><span class="p">15%</span><span class="st ok">ok</span></div>
-        <div class="bar"><i style="width:3.9%"></i></div>
-        <div class="meta"><span>Objetivo $ 207</span><span>Gastado $ 8</span><span>Restante $ 199</span></div>
-        <ul class="cats"><li>Otros</li></ul>
-      </div>
-      <div class="jar warn">
-        <div class="t"><span class="n">Esencial</span><span class="p">50%</span><span class="st warn">cerca del objetivo</span></div>
-        <div class="bar"><i style="width:85.4%"></i></div>
-        <div class="meta"><span>Objetivo $ 690</span><span>Gastado $ 589</span><span>Restante $ 101</span></div>
-        <ul class="cats"><li>Supermercado</li><li>Transporte</li><li>Alquiler y servicios</li><li>Salud</li><li>Suscripciones</li></ul>
-      </div>
-      <div class="jar warn">
-        <div class="t"><span class="n">Recompensas</span><span class="p">10%</span><span class="st warn">cerca del objetivo</span></div>
-        <div class="bar"><i style="width:83.3%"></i></div>
-        <div class="meta"><span>Objetivo $ 138</span><span>Gastado $ 115</span><span>Restante $ 23</span></div>
-        <ul class="cats"><li>Comidas afuera</li><li>Ropa</li><li>Ocio</li></ul>
-      </div>
-      </section>
+    </section>
 
     <section aria-labelledby="s-carteras">
       <div class="sect"><h2 id="s-carteras">Las carteras</h2></div>
@@ -552,7 +515,7 @@ body{
   <div class="rule"></div>
 
   <section aria-labelledby="s-libro">
-    <div class="sect"><h2 id="s-libro">El libro · 25 movimientos</h2></div>
+    <div class="sect"><h2 id="s-libro">El libro · 23 movimientos</h2></div>
     <table class="book">
       <caption>Septiembre 2026, del más reciente al más viejo</caption>
       <thead>
@@ -621,5 +584,79 @@ body{
 </div>
 </div>
 
+<!-- the anotar window: the modal form -->
+<div class="scrim" aria-hidden="true"></div>
+<div class="window" role="dialog" aria-modal="true" aria-labelledby="wt">
+  <div class="wbar">
+    <span class="wt">Anotar en la pizarra</span>
+    <button class="wc" type="button" aria-label="Cerrar">✕</button>
+  </div>
+  <div class="wbody">
+    <h2 class="wtitle" id="wt">Nuevo movimiento</h2>
+    <p class="wsub">Se escribe en el libro de septiembre y la pizarra se reescribe sola.</p>
+
+    <div class="field">
+      <label id="l-tipo">Tipo</label>
+      <div class="seg" role="radiogroup" aria-labelledby="l-tipo">
+        <label class="on"><input type="radio" name="t" checked />Gasto</label>
+        <label><input type="radio" name="t" />Ingreso</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label id="l-mon">Moneda</label>
+      <div class="seg" role="radiogroup" aria-labelledby="l-mon">
+        <label class="on"><input type="radio" name="c" checked />USD</label>
+        <label><input type="radio" name="c" />Bolívares</label>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="f-monto">Monto en dólares</label>
+      <input id="f-monto" type="text" inputmode="decimal" value="42,50" />
+    </div>
+
+    <div class="two">
+      <div class="field">
+        <label for="f-cat">Categoría</label>
+        <select id="f-cat">
+          <option>Supermercado</option><option>Comidas afuera</option><option>Transporte</option>
+          <option>Alquiler y servicios</option><option>Salud</option><option>Suscripciones</option>
+          <option>Ropa</option><option>Ocio</option><option>Ahorro</option><option>Otros</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="f-car">Cartera</label>
+        <select id="f-car"><option>Cartera USD</option><option>Binance</option><option>Cartera USD normal</option></select>
+      </div>
+    </div>
+
+    <div class="two">
+      <div class="field">
+        <label for="f-fecha">Fecha</label>
+        <input id="f-fecha" type="date" value="2026-09-17" />
+      </div>
+      <div class="field">
+        <label for="f-nota">Nota (opcional)</label>
+        <input id="f-nota" type="text" value="Compra semanal" />
+      </div>
+    </div>
+
+    <div class="strip">
+      <span class="fill" aria-hidden="true"></span>
+      <span class="k">Prueba de tira · antes de escribir</span>
+      Supermercado quedaría en <strong>$ 297</strong> de $ 150 · <strong style="color:var(--red)">excedido 198%</strong><br />
+      Te quedaría <strong>$ 575,50</strong> este mes.
+    </div>
+
+    <div class="wfoot">
+      <span class="plate"><span class="fill red"></span>
+        <button class="pbtn primary" type="button">Escribir en la pizarra</button>
+      </span>
+      <button class="linkb" type="button">Cancelar</button>
+      <p class="hintp">Se guarda con la tasa Bs 40,00 si es en bolívares.</p>
+    </div>
+  </div>
+</div>
 </body>
 </html>

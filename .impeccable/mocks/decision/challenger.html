@@ -1,0 +1,907 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="color-scheme" content="light" />
+<meta name="description" content="FinanciRDUS · manual de referencia de la cartera en USD. Sección 7 — el mes: números, topes por categoría, reparto del gasto, plan 25/15/50/10, carteras y libro de movimientos." />
+<title>Sección 7 — El mes | FinanciRDUS</title>
+<style>
+/* ==========================================================================
+   MANUAL DE ACETATO — FinanciRDUS
+   Visual world: a boxed-software REFERENCE MANUAL lying open at a tabbed
+   section. Not a web app — a printed technical-manual page made of layered
+   sheets: a coloured divider BOARD at full strength, milky ACETATE LEAVES
+   laid over it carrying the content, and punch holes down the bound edge.
+   No gradients. No glassmorphism. No rounded corners (except the round
+   punch holes a punch makes). One hard 1px cut-side shadow per leaf.
+   ========================================================================== */
+
+/* ---- self-hosted faces (files already on disk, two levels up) ---- */
+@font-face{font-family:"EB Garamond";font-style:normal;font-weight:400;font-display:block;
+  src:url("../../fonts/eb-garamond-latin-400-normal.woff2") format("woff2")}
+@font-face{font-family:"EB Garamond";font-style:normal;font-weight:600;font-display:block;
+  src:url("../../fonts/eb-garamond-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-style:normal;font-weight:500;font-display:block;
+  src:url("../../fonts/archivo-latin-500-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-style:normal;font-weight:600;font-display:block;
+  src:url("../../fonts/archivo-latin-600-normal.woff2") format("woff2")}
+@font-face{font-family:"Archivo";font-style:normal;font-weight:700;font-display:block;
+  src:url("../../fonts/archivo-latin-700-normal.woff2") format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-style:normal;font-weight:400;font-display:block;
+  src:url("../../fonts/jetbrains-mono-latin-400-normal.woff2") format("woff2")}
+
+:root{
+  /* materials */
+  --paper:#e8e9e4;                     /* cool neutral page under the acetate */
+  --ink:#191a1b;
+  --ink-2:rgba(25,26,27,.72);
+  --ink-3:rgba(25,26,27,.55);
+  --rule:rgba(25,26,27,.38);
+  --rule-2:rgba(25,26,27,.2);
+
+  /* current section hue = september = sienna, at full strength on the board */
+  --hue:#8a4a2b;
+  --hue-deep:#592f1a;                  /* darkened board: spine + shadowed punch */
+  --hue-ink:#4a2714;                   /* hue dark enough to set small text */
+  --bone:#f6f4ef;                      /* errata-slip paper (near white) */
+
+  /* vermilion is HELD OUT: errors / errata / over-budget only */
+  --verm:#c0392b;
+  --verm-ink:#a8281b;
+
+  --acetate:rgba(255,255,255,.6);
+  --cut:rgba(25,26,27,.45);
+  --hole:#3a2013;
+  --focus:#191a1b;
+
+  --sans:"Archivo",system-ui,"Helvetica Neue",Arial,sans-serif;
+  --serif:"EB Garamond",Georgia,"Times New Roman",serif;
+  --mono:"JetBrains Mono",ui-monospace,"Courier New",monospace;
+}
+
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;
+  background:#b3b2ab;                  /* the work surface the manual lies on */
+  color:var(--ink);
+  font-family:var(--serif);
+  font-size:17px;
+  line-height:26px;
+  overflow-x:hidden;
+  padding:clamp(12px,2.2vw,26px);
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  text-rendering:optimizeLegibility;
+}
+h1,h2,h3,p,figure,ul,ol{margin:0}
+ul,ol{padding:0;list-style:none}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.vh{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+
+/* ==========================================================================
+   the spread  →  board  →  spine + rail
+   ========================================================================== */
+.spread{
+  max-width:1220px; margin:0 auto;
+  background:var(--paper);            /* the paper the whole manual sits on */
+  border:1px solid var(--ink);
+  padding:clamp(8px,1.1vw,13px);
+}
+.board{
+  position:relative;
+  background:var(--hue);              /* the divider BOARD, full strength */
+  padding:clamp(20px,2.8vw,34px) clamp(66px,7.4vw,92px) clamp(24px,3.2vw,40px) clamp(30px,4.2vw,52px);
+}
+
+/* binding spine, left */
+.spine{position:absolute;left:0;top:0;bottom:0;width:clamp(22px,2.6vw,38px);
+  background:var(--hue-deep);z-index:2}
+.spine::before,.spine::after{content:"";position:absolute;left:0;right:0;height:7px;
+  background:rgba(0,0,0,.3)}
+.spine::before{top:18%}
+.spine::after{bottom:18%}
+
+/* stepped tab rail, fore edge, right — one tab per month, height ∝ spend */
+.rail{position:absolute;right:0;top:0;bottom:0;width:clamp(58px,6.2vw,70px);
+  display:flex;flex-direction:column;z-index:3}
+.tab{
+  appearance:none;position:relative;flex:var(--spend) 1 0;min-height:44px;margin:0;
+  display:flex;flex-direction:column;gap:3px;align-items:flex-start;text-align:left;
+  padding:10px 8px 10px 12px;cursor:pointer;
+  background:var(--tab-hue);color:var(--on-hue);
+  border:0;border-bottom:1px solid rgba(0,0,0,.28);
+  font-family:var(--sans);font-weight:700;font-size:12px;letter-spacing:.16em;
+  text-transform:uppercase;line-height:1;white-space:nowrap;overflow-wrap:normal;
+  transition:all 90ms steps(2,end);
+}
+.tab:first-child{border-top:1px solid rgba(0,0,0,.28)}
+.tab .spend{font-family:var(--mono);font-weight:400;font-size:10px;letter-spacing:0;
+  text-transform:none;opacity:.9}
+.tab:hover{filter:none;background:var(--tab-hue);box-shadow:inset -4px 0 0 rgba(0,0,0,.22)}
+.tab.is-current{margin-right:calc(-1 * clamp(6px,1vw,12px));
+  padding-right:calc(8px + clamp(6px,1vw,12px));box-shadow:1px 0 0 0 var(--ink)}
+.tab .punch{position:absolute;right:8px;top:11px;width:10px;height:10px;border-radius:50%;
+  background:var(--hole);box-shadow:inset 0 0 0 1px rgba(255,255,255,.55)}
+.tab:focus-visible{outline:2px solid #fff;outline-offset:-3px}
+
+/* ==========================================================================
+   masthead / front matter (printed on the board, so it reads in white)
+   ========================================================================== */
+.masthead{color:#fff;padding-bottom:clamp(14px,1.8vw,20px);
+  border-bottom:1px solid rgba(255,255,255,.5);margin-bottom:clamp(20px,2.6vw,32px)}
+.front{font-family:var(--mono);font-size:11px;letter-spacing:.3em;text-transform:uppercase;
+  opacity:.94;margin-bottom:12px;overflow-wrap:break-word}
+.mast-row{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:flex-end;justify-content:space-between}
+.brand{font-family:var(--sans);font-weight:700;text-transform:uppercase;
+  font-size:clamp(1.6rem,1.05rem+2.1vw,2.4rem);line-height:1;letter-spacing:-.005em;
+  text-wrap:balance}
+.sub{font-family:var(--serif);font-size:17px;line-height:1.4;color:rgba(255,255,255,.92);margin-top:8px}
+.stampsec{text-align:right}
+.stampsec .k{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.24em;
+  text-transform:uppercase;opacity:.85}
+.stampsec .v{display:block;font-family:var(--sans);font-weight:700;font-size:clamp(1rem,.8rem+.6vw,1.25rem);
+  letter-spacing:.02em;margin-top:5px}
+
+/* ==========================================================================
+   the typeset grid: four columns + a fifth hanging margin column
+   ========================================================================== */
+.manual{display:grid;grid-template-columns:clamp(96px,10.6vw,132px) repeat(4,minmax(0,1fr));
+  column-gap:clamp(14px,1.7vw,20px);row-gap:clamp(22px,3vw,34px)}
+.sec{grid-column:1 / -1;display:grid;
+  grid-template-columns:clamp(96px,10.6vw,132px) repeat(4,minmax(0,1fr));
+  column-gap:clamp(14px,1.7vw,20px);align-items:start}
+
+/* section head, hanging in the fifth (left) margin column */
+.sec-head{grid-column:1;margin:0;font-family:var(--sans);font-weight:600;font-size:12px;
+  line-height:1.35;letter-spacing:.2em;text-transform:uppercase;color:#fff;
+  text-wrap:balance;overflow-wrap:break-word}
+.sec-head .n{display:block;font-weight:700;font-size:13px;letter-spacing:.16em;
+  margin-bottom:6px;opacity:.9}
+
+/* ==========================================================================
+   acetate leaves — milky panels over the board, content on them
+   ========================================================================== */
+.leaf{
+  grid-column:2 / -1;position:relative;background:var(--acetate);
+  padding:clamp(16px,2vw,22px) clamp(16px,2.2vw,26px) clamp(16px,2vw,22px) 38px;
+  box-shadow:1px 0 0 0 var(--cut);
+  transition:all 90ms steps(2,end);
+}
+/* ply depth: only the top ply may be fully clear; deeper leaves go milkier */
+.leaf.p1{background:rgba(255,255,255,.55)}
+.leaf.p2{background:rgba(255,255,255,.57)}
+.leaf.p3{background:rgba(255,255,255,.59)}
+.leaf.p4{background:rgba(255,255,255,.61)}
+.leaf.p5{background:rgba(255,255,255,.63)}
+.leaf.p6{background:rgba(255,255,255,.65)}
+.leaf.p7{background:rgba(255,255,255,.67)}
+/* two punch holes down the bound (left) edge */
+.leaf::before,.leaf::after{content:"";position:absolute;left:10px;width:13px;height:13px;
+  border-radius:50%;background:var(--hole);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
+.leaf::before{top:23%}
+.leaf::after{top:77%}
+.ply{position:absolute;top:8px;right:10px;font-family:var(--mono);font-size:9.5px;
+  letter-spacing:.16em;color:var(--ink-3)}
+
+/* ==========================================================================
+   running prose
+   ========================================================================== */
+.prose{font-family:var(--serif);font-size:17px;line-height:26px;max-width:62ch;
+  margin-top:16px;color:var(--ink);overflow-wrap:break-word;text-wrap:pretty}
+.prose b{font-weight:600}
+.lead{font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--hue-ink)}
+
+/* ==========================================================================
+   tables — ruled manual tables
+   ========================================================================== */
+.tbl{width:100%;border-collapse:collapse;font-size:15px;line-height:1.4}
+.tbl caption{caption-side:top;text-align:left;padding:0 0 9px;font-family:var(--sans);
+  font-weight:600;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--hue-ink)}
+.tbl th,.tbl td{text-align:left;vertical-align:top;padding:9px 14px 9px 0;
+  border-bottom:1px solid var(--rule-2);font-weight:400}
+.tbl thead th{font-family:var(--sans);font-weight:600;font-size:11px;letter-spacing:.13em;
+  text-transform:uppercase;color:var(--ink-2);border-bottom:1px solid var(--rule);white-space:nowrap}
+.tbl tbody th{font-weight:600;color:var(--ink)}
+.tbl tbody tr:last-child th,.tbl tbody tr:last-child td{border-bottom:0}
+.r{text-align:right}
+.tbl .fig{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.tbl .cats{display:block;margin-top:5px;font-family:var(--serif);font-weight:400;
+  font-size:14px;line-height:1.35;color:var(--ink-2)}
+.sub{display:block;margin-top:3px;font-family:var(--mono);font-size:12px;color:var(--ink-3)}
+
+/* ruled meter: a printed rule that fills, square, no rounding */
+.meter{display:block;height:6px;margin-top:6px;background:rgba(25,26,27,.13)}
+.meter i{display:block;height:100%;background:var(--hue)}
+.over .meter i{background:var(--verm-ink)}
+
+/* vermilion errata slip (over-budget / errors only) */
+.slip{display:inline-block;padding:2px 7px;background:var(--bone);border:1px solid var(--verm);
+  color:var(--verm-ink);font-family:var(--sans);font-weight:700;font-size:10.5px;
+  letter-spacing:.13em;text-transform:uppercase;line-height:1.5;white-space:nowrap}
+/* negative figures: vermilion, darkened to hold >=4.5:1 on the acetate */
+.neg{color:#8f2014;font-weight:600}
+
+/* ==========================================================================
+   spec table (leaf 7.1)
+   ========================================================================== */
+.spec{width:100%;border-collapse:collapse}
+.spec caption{caption-side:top;text-align:left;padding:0 0 10px;font-family:var(--sans);
+  font-weight:600;font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--hue-ink)}
+.spec th,.spec td{padding:11px 0;border-bottom:1px dotted var(--rule)}
+.spec th{text-align:left;font-family:var(--serif);font-weight:400;font-size:17px}
+.spec td{text-align:right;font-family:var(--mono);font-size:18px;font-variant-numeric:tabular-nums}
+.spec tr:last-child th,.spec tr:last-child td{border-bottom:1px solid var(--rule);
+  border-top:1px solid var(--rule);font-weight:600}
+.spec tr:last-child td{font-size:22px}
+
+/* ==========================================================================
+   donut + legend + monthly bars (leaf 7.3)
+   ========================================================================== */
+.donut-row{display:flex;flex-wrap:wrap;gap:20px 30px;align-items:center}
+.donut{flex:0 0 auto;margin:0}
+.donut svg{display:block;width:190px;max-width:100%;height:auto}
+.legend{flex:1 1 250px;min-width:0}
+.legend li{display:flex;align-items:baseline;gap:10px;padding:6px 0;
+  border-bottom:1px dotted var(--rule-2);font-size:15px}
+.legend li:last-child{border-bottom:0}
+.legend .sw{width:11px;height:11px;flex:0 0 auto;align-self:center;
+  border:1px solid rgba(25,26,27,.3);background:var(--sw)}
+.legend .nm{flex:1 1 auto;min-width:0;overflow-wrap:break-word}
+.legend .vl,.legend .pc{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:13px}
+.legend .pc{min-width:58px;text-align:right;font-weight:400}
+.chart{margin:22px 0 0;max-width:640px}
+.chart svg{display:block;width:100%;height:auto}
+.chart figcaption{margin-top:9px;font-family:var(--mono);font-size:11px;letter-spacing:.04em;color:var(--ink-2)}
+
+/* ==========================================================================
+   control strip (leaf 7.0)
+   ========================================================================== */
+.controls{display:flex;flex-wrap:wrap;gap:12px 16px;align-items:stretch}
+.group{border:1px solid var(--rule);margin:0;padding:9px 13px 11px;
+  display:flex;flex-wrap:wrap;gap:9px 13px;align-items:center}
+.group legend{padding:0 7px;font-family:var(--sans);font-weight:600;font-size:11px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--hue-ink)}
+.stepper{display:flex;align-items:center;gap:0}
+.step{appearance:none;width:34px;height:34px;flex:0 0 auto;cursor:pointer;
+  display:inline-flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:18px;line-height:1;color:var(--ink);
+  background:transparent;border:1px solid var(--rule);
+  transition:all 90ms steps(2,end)}
+.step+.steplab,.steplab+.step{margin-left:-1px}
+.step:hover:not([disabled]){border-color:var(--ink);background:rgba(25,26,27,.06)}
+.step[disabled]{opacity:.36;cursor:not-allowed}          /* face-down */
+.steplab{display:inline-flex;flex-wrap:wrap;align-items:center;gap:8px;
+  border:1px solid var(--rule);padding:7px 12px;min-height:34px;
+  font-family:var(--mono);font-size:12px;letter-spacing:.06em}
+.steplab .prev{color:var(--ink-2)}
+.steplab .cur{color:var(--ink)}
+.steplab .div{color:var(--ink-3)}
+
+.seg{display:flex;flex-wrap:wrap}
+.seg input{position:absolute;width:1px;height:1px;opacity:0;margin:0;pointer-events:none}
+.seg label{cursor:pointer;font-family:var(--sans);font-weight:600;font-size:11.5px;
+  letter-spacing:.1em;text-transform:uppercase;line-height:1;color:var(--ink-2);
+  padding:10px 12px;border:1px solid var(--rule);margin-left:-1px;
+  transition:all 90ms steps(2,end)}
+.seg label:hover{background:rgba(25,26,27,.06)}
+.seg input:checked+label{background:var(--hue-ink);color:#fff;border-color:var(--hue-ink)}
+.seg input:checked+label::before{content:"";display:inline-block;vertical-align:middle;
+  width:8px;height:8px;border-radius:50%;margin-right:8px;background:var(--bone);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.45)}
+.seg input:focus-visible+label{outline:2px solid var(--focus);outline-offset:2px}
+
+.plate{appearance:none;cursor:pointer;font-family:var(--sans);font-weight:600;font-size:11.5px;
+  letter-spacing:.13em;text-transform:uppercase;line-height:1;color:var(--ink);
+  background:transparent;border:1px solid var(--rule);padding:10px 13px;min-height:36px;
+  transition:all 90ms steps(2,end)}
+.plate:hover{border-color:var(--ink);background:rgba(25,26,27,.06)}
+
+/* the manual's own keystroke plate: 1px hard offset below, key-legend label */
+.keyplate{appearance:none;cursor:pointer;font-family:var(--sans);font-weight:700;font-size:12.5px;
+  letter-spacing:.16em;text-transform:uppercase;line-height:1;color:#fff;
+  background:var(--hue-ink);border:1px solid var(--ink);padding:13px 20px;min-height:44px;
+  box-shadow:0 1px 0 0 var(--ink);transition:all 90ms steps(2,end)}
+.keyplate:hover{background:#3a2010}
+.keyplate:active{transform:translateY(1px);box-shadow:0 0 0 0 var(--ink)}
+
+/* pending = half-hinged: a folded corner, neither open (selected) nor shut (disabled) */
+.plate.is-pending{position:relative;box-shadow:1px 0 0 0 var(--cut)}
+.plate.is-pending::after{content:"";position:absolute;top:0;right:0;width:0;height:0;
+  border-top:9px solid rgba(25,26,27,.2);border-left:9px solid transparent}
+
+/* ==========================================================================
+   carteras + movement ledger
+   ========================================================================== */
+.errata{background:var(--bone);border:1px solid var(--verm);
+  padding:13px 16px;color:var(--verm-ink);font-family:var(--serif);font-size:17px;line-height:26px;
+  max-width:62ch;margin-bottom:18px;transform:rotate(-.35deg);
+  box-shadow:0 1px 0 0 rgba(25,26,27,.2)}
+.errata b{font-weight:600}
+.errata .tag{display:block;font-family:var(--sans);font-weight:700;font-size:10.5px;
+  letter-spacing:.2em;text-transform:uppercase;margin-bottom:6px;padding-bottom:5px;
+  border-bottom:1px solid var(--verm)}
+.debt-act{margin-top:18px}
+.kind{display:inline-block;font-family:var(--sans);font-weight:600;font-size:10.5px;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);border:1px solid var(--rule);
+  padding:2px 6px;white-space:nowrap}
+tr.in th,tr.in td{background:rgba(255,255,255,.28)}
+
+/* colophon */
+.colophon{margin-top:clamp(22px,3vw,34px);padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.45);color:#fff;
+  display:flex;flex-wrap:wrap;gap:6px 22px;justify-content:space-between;
+  font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+
+/* ==========================================================================
+   focus visibility everywhere — 2px hard outline, never a blur
+   ========================================================================== */
+a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,
+[tabindex]:focus-visible,label:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+
+/* the one motion grammar: every change is a 90ms two-frame step */
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+
+/* ==========================================================================
+   responsive
+   ========================================================================== */
+@media (max-width:1080px){
+  .manual,.sec{grid-template-columns:clamp(92px,10vw,118px) repeat(4,minmax(0,1fr))}
+  .board{padding-left:clamp(26px,3.6vw,40px);padding-right:clamp(60px,6.6vw,78px)}
+}
+/* below 1000px: the fifth margin column folds inline */
+@media (max-width:1000px){
+  .manual,.sec{grid-template-columns:minmax(0,1fr)}
+  .sec-head{grid-column:1;padding-bottom:11px;margin-bottom:2px;
+    border-bottom:1px solid rgba(255,255,255,.4)}
+  .sec-head .n{display:inline;margin:0 8px 0 0}
+  .leaf{grid-column:1}
+  .spread{padding:9px}
+}
+/* below 640px: tab rail goes horizontal on top; tables become stacked lists */
+@media (max-width:640px){
+  body{padding:8px}
+  .spread{padding:6px}
+  .board{padding:14px 14px 22px}
+  .spine{display:none}
+  .rail{position:static;width:auto;height:auto;flex-direction:row;
+    margin:0 0 18px;border:1px solid rgba(0,0,0,.35)}
+  .tab{flex:var(--spend) 1 0;min-height:46px;height:auto;justify-content:center;
+    align-items:center;padding:6px 4px;border:0;border-right:1px solid rgba(0,0,0,.3);
+    font-size:10.5px;letter-spacing:.08em}
+  .tab:first-child{border-top:0}
+  .tab:last-child{border-right:0}
+  .tab .spend{display:none}
+  .tab.is-current{margin:0;height:58px;align-self:flex-end;padding-right:4px;
+    box-shadow:0 1px 0 0 var(--ink)}
+  .tab .punch{right:auto;left:50%;transform:translateX(-50%);top:auto;bottom:6px}
+  .mast-row{flex-direction:column;align-items:flex-start}
+  .stampsec{text-align:left}
+  /* stacked ruled lists: label above value, never a horizontal scrollbar */
+  .stack thead{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+    overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;border:0}
+  .stack,.stack tbody,.stack tr,.stack th,.stack td{display:block;width:100%}
+  .stack tbody tr{border-bottom:1px solid var(--rule);padding:11px 0}
+  .stack tbody tr:last-child{border-bottom:0}
+  .stack tbody th{border-bottom:0;padding:0 0 7px;font-size:16px}
+  .stack tbody td{border-bottom:0;padding:5px 0}
+  .stack tbody th::before{display:none}
+  .stack tbody td::before{content:attr(data-label);display:block;margin-bottom:2px;
+    font-family:var(--sans);font-weight:600;font-size:10px;letter-spacing:.2em;
+    text-transform:uppercase;color:var(--ink-3)}
+  .stack tbody td.r{text-align:left}
+  .stack .meter{max-width:200px}
+  .spec td,.spec tr:last-child td{font-size:17px}
+  .controls{gap:12px}
+  .group{flex:1 1 100%}
+  .keyplate{flex:1 1 100%;width:100%}
+}
+@media (max-width:400px){
+  body{font-size:16px;line-height:25px}
+  .prose,.errata{font-size:16px;line-height:25px}
+}
+</style>
+</head>
+<body>
+
+<main class="spread" aria-label="Manual de referencia FinanciRDUS, sección 7">
+  <div class="board">
+
+    <!-- binding -->
+    <div class="spine" aria-hidden="true"></div>
+
+    <!-- ===================== stepped tab rail (fore edge) ===================== -->
+    <nav class="rail" aria-label="Meses registrados, altura proporcional al gasto del mes">
+      <button type="button" class="tab" style="--spend:330;--tab-hue:#b8561f;--on-hue:#ffffff">mar<span class="spend">$ 330</span></button>
+      <button type="button" class="tab" style="--spend:348;--tab-hue:#c9a227;--on-hue:#191a1b">abr<span class="spend">$ 348</span></button>
+      <button type="button" class="tab" style="--spend:380;--tab-hue:#4e7a34;--on-hue:#ffffff">may<span class="spend">$ 380</span></button>
+      <button type="button" class="tab" style="--spend:340;--tab-hue:#1f6f74;--on-hue:#ffffff">jun<span class="spend">$ 340</span></button>
+      <button type="button" class="tab" style="--spend:401;--tab-hue:#2b3f8f;--on-hue:#ffffff">jul<span class="spend">$ 401</span></button>
+      <button type="button" class="tab" style="--spend:366;--tab-hue:#5f3a82;--on-hue:#ffffff">ago<span class="spend">$ 366</span></button>
+      <button type="button" class="tab is-current" aria-current="true" style="--spend:762;--tab-hue:#8a4a2b;--on-hue:#ffffff">sep<span class="spend">$ 762</span><span class="punch" aria-hidden="true"></span></button>
+    </nav>
+
+    <!-- ============================ front matter ============================ -->
+    <header class="masthead">
+      <p class="front">FinanciRDUS · Sección 7 — El mes</p>
+      <div class="mast-row">
+        <div>
+          <h1 class="brand">FinanciRDUS</h1>
+          <p class="sub">Manual de referencia · cartera en USD</p>
+        </div>
+        <p class="stampsec">
+          <span class="k">Mes del pliego</span>
+          <span class="v">septiembre 2026</span>
+        </p>
+      </div>
+    </header>
+
+    <!-- ============================ the sections ============================ -->
+    <div class="manual">
+
+      <!-- ===================== 7.0 control strip ===================== -->
+      <section class="sec" aria-labelledby="h-70">
+        <h2 class="sec-head" id="h-70"><span class="n">7.0</span>Mandos del pliego</h2>
+        <div class="leaf p1 controls">
+          <span class="ply" aria-hidden="true">PL · 01</span>
+
+          <fieldset class="group">
+            <legend>Mes</legend>
+            <div class="stepper">
+              <button type="button" class="step" aria-label="Mes anterior">&#8249;</button>
+              <span class="steplab">
+                <span class="prev">agosto 2026</span>
+                <span class="div" aria-hidden="true">·</span>
+                <span class="cur">septiembre 2026</span>
+              </span>
+              <button type="button" class="step" aria-label="Mes siguiente" disabled>&#8250;</button>
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Filtro de cartera</legend>
+            <div class="seg">
+              <input type="radio" name="wallet" id="w-all" checked />
+              <label for="w-all">Todas</label>
+              <input type="radio" name="wallet" id="w-usd" />
+              <label for="w-usd">Cartera USD</label>
+              <input type="radio" name="wallet" id="w-bin" />
+              <label for="w-bin">Binance</label>
+              <input type="radio" name="wallet" id="w-norm" />
+              <label for="w-norm">Cartera USD normal</label>
+            </div>
+          </fieldset>
+
+          <fieldset class="group">
+            <legend>Planilla</legend>
+            <button type="button" class="plate">Exportar JSON</button>
+            <button type="button" class="plate">Importar JSON</button>
+          </fieldset>
+
+          <button type="button" class="keyplate">Anotar movimiento</button>
+        </div>
+      </section>
+
+      <!-- ===================== 7.1 los números ===================== -->
+      <section class="sec" aria-labelledby="h-71">
+        <h2 class="sec-head" id="h-71"><span class="n">7.1</span>Los números del mes</h2>
+        <div class="leaf p2">
+          <span class="ply" aria-hidden="true">PL · 02</span>
+          <table class="spec">
+            <caption>Estado de la cartera · septiembre 2026</caption>
+            <tbody>
+              <tr>
+                <th scope="row">Ingresos del mes</th>
+                <td>$ 1.380</td>
+              </tr>
+              <tr>
+                <th scope="row">Gastos del mes</th>
+                <td>$ 762</td>
+              </tr>
+              <tr>
+                <th scope="row">Te queda</th>
+                <td>$ 618</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="prose">Este mes gastaste <b>111,2% más</b> que el promedio de los 6 meses
+            anteriores (promedio: <b>$ 360,83</b>, basado en 6 meses).</p>
+        </div>
+      </section>
+
+      <!-- ===================== 7.2 tope por categoría ===================== -->
+      <section class="sec" aria-labelledby="h-72">
+        <h2 class="sec-head" id="h-72"><span class="n">7.2</span>Tope por categoría</h2>
+        <div class="leaf p3">
+          <span class="ply" aria-hidden="true">PL · 03</span>
+          <table class="tbl stack">
+            <caption>Topes mensuales, gasto real y uso</caption>
+            <thead>
+              <tr>
+                <th scope="col">Categoría</th>
+                <th scope="col" class="r">Tope</th>
+                <th scope="col" class="r">Gastado</th>
+                <th scope="col" class="r">Uso</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="over">
+                <th scope="row">Supermercado</th>
+                <td class="r fig" data-label="Tope">$ 150</td>
+                <td class="r fig" data-label="Gastado">$ 255</td>
+                <td class="r" data-label="Uso"><span class="fig">170,0%</span><span class="meter" aria-hidden="true"><i style="width:100%"></i></span></td>
+                <td data-label="Estado"><span class="slip">Excedido</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Alquiler y servicios</th>
+                <td class="r fig" data-label="Tope">$ 300</td>
+                <td class="r fig" data-label="Gastado">$ 250</td>
+                <td class="r" data-label="Uso"><span class="fig">83,3%</span><span class="meter" aria-hidden="true"><i style="width:83.3%"></i></span></td>
+                <td data-label="Estado">cerca</td>
+              </tr>
+              <tr>
+                <th scope="row">Ahorro</th>
+                <td class="r fig" data-label="Tope">$ 60</td>
+                <td class="r fig" data-label="Gastado">$ 50</td>
+                <td class="r" data-label="Uso"><span class="fig">83,3%</span><span class="meter" aria-hidden="true"><i style="width:83.3%"></i></span></td>
+                <td data-label="Estado">cerca</td>
+              </tr>
+              <tr>
+                <th scope="row">Comidas afuera</th>
+                <td class="r fig" data-label="Tope">$ 50</td>
+                <td class="r fig" data-label="Gastado">$ 45</td>
+                <td class="r" data-label="Uso"><span class="fig">90,0%</span><span class="meter" aria-hidden="true"><i style="width:90%"></i></span></td>
+                <td data-label="Estado">cerca</td>
+              </tr>
+              <tr>
+                <th scope="row">Transporte</th>
+                <td class="r fig" data-label="Tope">$ 50</td>
+                <td class="r fig" data-label="Gastado">$ 43</td>
+                <td class="r" data-label="Uso"><span class="fig">86,0%</span><span class="meter" aria-hidden="true"><i style="width:86%"></i></span></td>
+                <td data-label="Estado">cerca</td>
+              </tr>
+              <tr>
+                <th scope="row">Ropa</th>
+                <td class="r fig" data-label="Tope">$ 60</td>
+                <td class="r fig" data-label="Gastado">$ 48</td>
+                <td class="r" data-label="Uso"><span class="fig">80,0%</span><span class="meter" aria-hidden="true"><i style="width:80%"></i></span></td>
+                <td data-label="Estado">cerca</td>
+              </tr>
+              <tr>
+                <th scope="row">Salud</th>
+                <td class="r fig" data-label="Tope">$ 30</td>
+                <td class="r fig" data-label="Gastado">$ 24</td>
+                <td class="r" data-label="Uso"><span class="fig">80,0%</span><span class="meter" aria-hidden="true"><i style="width:80%"></i></span></td>
+                <td data-label="Estado">cerca</td>
+              </tr>
+              <tr>
+                <th scope="row">Ocio</th>
+                <td class="r fig" data-label="Tope">$ 30</td>
+                <td class="r fig" data-label="Gastado">$ 22</td>
+                <td class="r" data-label="Uso"><span class="fig">73,3%</span><span class="meter" aria-hidden="true"><i style="width:73.3%"></i></span></td>
+                <td data-label="Estado">ok</td>
+              </tr>
+              <tr>
+                <th scope="row">Suscripciones</th>
+                <td class="r fig" data-label="Tope">$ 25</td>
+                <td class="r fig" data-label="Gastado">$ 17</td>
+                <td class="r" data-label="Uso"><span class="fig">68,0%</span><span class="meter" aria-hidden="true"><i style="width:68%"></i></span></td>
+                <td data-label="Estado">ok</td>
+              </tr>
+              <tr>
+                <th scope="row">Otros</th>
+                <td class="r fig" data-label="Tope">$ 20</td>
+                <td class="r fig" data-label="Gastado">$ 8</td>
+                <td class="r" data-label="Uso"><span class="fig">40,0%</span><span class="meter" aria-hidden="true"><i style="width:40%"></i></span></td>
+                <td data-label="Estado">ok</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== 7.3 reparto del gasto ===================== -->
+      <section class="sec" aria-labelledby="h-73">
+        <h2 class="sec-head" id="h-73"><span class="n">7.3</span>Reparto del gasto</h2>
+        <div class="leaf p4">
+          <span class="ply" aria-hidden="true">PL · 04</span>
+          <div class="donut-row">
+            <figure class="donut">
+              <svg viewBox="0 0 200 200" role="img"
+                aria-label="Anillo de reparto del gasto del mes, total 762 dólares: Supermercado 33,5%, Alquiler y servicios 32,8%, Ahorro 6,6%, Ropa 6,3%, Comidas afuera 5,9%, Transporte 5,6%, Salud 3,1%, Ocio 2,9%, Suscripciones 2,2%, Otros 1,0%.">
+                <circle cx="100" cy="100" r="68" fill="none" stroke="rgba(25,26,27,.14)" stroke-width="26" />
+                <g transform="rotate(-90 100 100)" fill="none" stroke-width="26">
+                  <circle cx="100" cy="100" r="68" stroke="#38180d" stroke-dasharray="143.1 284.16" stroke-dashoffset="0" />
+                  <circle cx="100" cy="100" r="68" stroke="#4a2a1e" stroke-dasharray="140.1 287.16" stroke-dashoffset="-143.1" />
+                  <circle cx="100" cy="100" r="68" stroke="#5c3c2e" stroke-dasharray="28.2 399.06" stroke-dashoffset="-283.2" />
+                  <circle cx="100" cy="100" r="68" stroke="#6e4e3f" stroke-dasharray="26.9 400.36" stroke-dashoffset="-311.4" />
+                  <circle cx="100" cy="100" r="68" stroke="#806050" stroke-dasharray="25.2 402.06" stroke-dashoffset="-338.3" />
+                  <circle cx="100" cy="100" r="68" stroke="#917160" stroke-dasharray="23.9 403.36" stroke-dashoffset="-363.5" />
+                  <circle cx="100" cy="100" r="68" stroke="#a38371" stroke-dasharray="13.2 414.06" stroke-dashoffset="-387.4" />
+                  <circle cx="100" cy="100" r="68" stroke="#b59582" stroke-dasharray="12.4 414.86" stroke-dashoffset="-400.6" />
+                  <circle cx="100" cy="100" r="68" stroke="#c7a792" stroke-dasharray="9.4 417.86" stroke-dashoffset="-413.0" />
+                  <circle cx="100" cy="100" r="68" stroke="#d9b9a3" stroke-dasharray="4.3 422.96" stroke-dashoffset="-422.4" />
+                </g>
+                <circle cx="100" cy="100" r="52" fill="#e8e9e4" stroke="rgba(25,26,27,.2)" stroke-width="1" />
+                <text x="100" y="94" text-anchor="middle" font-family="Archivo, sans-serif" font-size="10"
+                  letter-spacing="2" fill="#4a2714">TOTAL</text>
+                <text x="100" y="122" text-anchor="middle" font-family="'JetBrains Mono', monospace"
+                  font-size="24" fill="#191a1b">$ 762</text>
+              </svg>
+            </figure>
+            <ul class="legend" aria-label="Detalle del gasto por categoría">
+              <li><span class="sw" style="--sw:#38180d"></span><span class="nm">Supermercado</span><span class="vl">$ 255</span><span class="pc">33,5%</span></li>
+              <li><span class="sw" style="--sw:#4a2a1e"></span><span class="nm">Alquiler y servicios</span><span class="vl">$ 250</span><span class="pc">32,8%</span></li>
+              <li><span class="sw" style="--sw:#5c3c2e"></span><span class="nm">Ahorro</span><span class="vl">$ 50</span><span class="pc">6,6%</span></li>
+              <li><span class="sw" style="--sw:#6e4e3f"></span><span class="nm">Ropa</span><span class="vl">$ 48</span><span class="pc">6,3%</span></li>
+              <li><span class="sw" style="--sw:#806050"></span><span class="nm">Comidas afuera</span><span class="vl">$ 45</span><span class="pc">5,9%</span></li>
+              <li><span class="sw" style="--sw:#917160"></span><span class="nm">Transporte</span><span class="vl">$ 43</span><span class="pc">5,6%</span></li>
+              <li><span class="sw" style="--sw:#a38371"></span><span class="nm">Salud</span><span class="vl">$ 24</span><span class="pc">3,1%</span></li>
+              <li><span class="sw" style="--sw:#b59582"></span><span class="nm">Ocio</span><span class="vl">$ 22</span><span class="pc">2,9%</span></li>
+              <li><span class="sw" style="--sw:#c7a792"></span><span class="nm">Suscripciones</span><span class="vl">$ 17</span><span class="pc">2,2%</span></li>
+              <li><span class="sw" style="--sw:#d9b9a3"></span><span class="nm">Otros</span><span class="vl">$ 8</span><span class="pc">1,0%</span></li>
+            </ul>
+          </div>
+
+          <figure class="chart">
+            <svg viewBox="0 0 520 250" role="img"
+              aria-label="Gasto de los últimos siete meses, escala hasta 800 dólares: marzo 330, abril 348, mayo 380, junio 340, julio 401, agosto 366, septiembre 762.">
+              <g stroke="rgba(25,26,27,.28)" stroke-width="1" stroke-dasharray="2 4">
+                <line x1="46" y1="30" x2="510" y2="30" />
+                <line x1="46" y1="113" x2="510" y2="113" />
+                <line x1="46" y1="196" x2="510" y2="196" />
+              </g>
+              <g font-family="'JetBrains Mono', monospace" font-size="14" fill="rgba(25,26,27,.72)" text-anchor="end">
+                <text x="40" y="35">$ 800</text>
+                <text x="40" y="118">$ 400</text>
+                <text x="40" y="201">$ 0</text>
+              </g>
+              <g fill="none" stroke="#4a2714" stroke-width="1.6">
+                <rect x="57.1" y="127.5" width="44" height="68.5" />
+                <rect x="123.4" y="123.8" width="44" height="72.2" />
+                <rect x="189.7" y="117.1" width="44" height="78.9" />
+                <rect x="256" y="125.4" width="44" height="70.6" />
+                <rect x="322.3" y="112.8" width="44" height="83.2" />
+                <rect x="388.6" y="120.1" width="44" height="75.9" />
+              </g>
+              <rect x="454.9" y="37.9" width="44" height="158.1" fill="#191a1b" />
+              <g font-family="'JetBrains Mono', monospace" font-size="14" fill="rgba(25,26,27,.72)" text-anchor="middle">
+                <text x="79.1" y="216">mar</text>
+                <text x="145.4" y="216">abr</text>
+                <text x="211.7" y="216">may</text>
+                <text x="278" y="216">jun</text>
+                <text x="344.3" y="216">jul</text>
+                <text x="410.6" y="216">ago</text>
+              </g>
+              <text x="476.9" y="216" font-family="'JetBrains Mono', monospace" font-size="14" fill="#191a1b" text-anchor="middle">sep</text>
+              <text x="476.9" y="234" font-family="Archivo, sans-serif" font-size="10" letter-spacing="1.5" fill="#4a2714" text-anchor="middle">ESTE MES</text>
+            </svg>
+            <figcaption>Gasto por mes, escala hasta $ 800 · el mes corriente en tinta sólida</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <!-- ===================== 7.4 plan 25/15/50/10 ===================== -->
+      <section class="sec" aria-labelledby="h-74">
+        <h2 class="sec-head" id="h-74"><span class="n">7.4</span>Plan 25/15/50/10</h2>
+        <div class="leaf p5">
+          <span class="ply" aria-hidden="true">PL · 05</span>
+          <table class="tbl stack">
+            <caption>Reparto por frasco · objetivo, gastado y restante</caption>
+            <thead>
+              <tr>
+                <th scope="col">Frasco</th>
+                <th scope="col" class="r">%</th>
+                <th scope="col" class="r">Objetivo</th>
+                <th scope="col" class="r">Gastado</th>
+                <th scope="col" class="r">Restante</th>
+                <th scope="col">Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Esencial<span class="cats">Supermercado · Transporte · Comidas afuera</span></th>
+                <td class="r fig" data-label="%">50%</td>
+                <td class="r fig" data-label="Objetivo">$ 690</td>
+                <td class="r fig" data-label="Gastado">$ 343</td>
+                <td class="r fig" data-label="Restante">$ 347</td>
+                <td data-label="Estado">ok</td>
+              </tr>
+              <tr class="over">
+                <th scope="row">Estabilidad<span class="cats">Alquiler y servicios · Salud · Suscripciones</span></th>
+                <td class="r fig" data-label="%">15%</td>
+                <td class="r fig" data-label="Objetivo">$ 207</td>
+                <td class="r fig" data-label="Gastado">$ 291</td>
+                <td class="r fig neg" data-label="Restante">−$ 84</td>
+                <td data-label="Estado"><span class="slip">Excedido</span></td>
+              </tr>
+              <tr>
+                <th scope="row">Recompensas<span class="cats">Ocio · Ropa · Otros</span></th>
+                <td class="r fig" data-label="%">10%</td>
+                <td class="r fig" data-label="Objetivo">$ 138</td>
+                <td class="r fig" data-label="Gastado">$ 78</td>
+                <td class="r fig" data-label="Restante">$ 60</td>
+                <td data-label="Estado">ok</td>
+              </tr>
+              <tr>
+                <th scope="row">Crecimiento<span class="cats">Ahorro</span></th>
+                <td class="r fig" data-label="%">25%</td>
+                <td class="r fig" data-label="Objetivo">$ 345</td>
+                <td class="r fig" data-label="Gastado">$ 50</td>
+                <td class="r fig" data-label="Restante">$ 295</td>
+                <td data-label="Estado">ok</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ===================== 7.5 carteras ===================== -->
+      <section class="sec" aria-labelledby="h-75">
+        <h2 class="sec-head" id="h-75"><span class="n">7.5</span>Carteras</h2>
+        <div class="leaf p6">
+          <span class="ply" aria-hidden="true">PL · 06</span>
+          <p class="errata">
+            <span class="tag">Errata · deuda</span>
+            <b>$ 600</b> de deuda pendiente. Pagarla es la prioridad antes de repartir los frascos.
+          </p>
+          <table class="tbl stack">
+            <caption>Saldos y deuda por cartera</caption>
+            <thead>
+              <tr>
+                <th scope="col">Cartera</th>
+                <th scope="col" class="r">Saldo</th>
+                <th scope="col">Detalle</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">Cartera USD</th>
+                <td class="r fig" data-label="Saldo">$ 618</td>
+                <td class="fig" data-label="Detalle">ingresos $ 1.380 − gastos $ 762</td>
+              </tr>
+              <tr class="over">
+                <th scope="row">Binance</th>
+                <td class="r fig neg" data-label="Saldo">−$ 400</td>
+                <td class="fig" data-label="Detalle">apertura −$ 600 · pagado $ 200 · 33% pagado</td>
+              </tr>
+              <tr class="over">
+                <th scope="row">Cartera USD normal</th>
+                <td class="r fig neg" data-label="Saldo">−$ 200</td>
+                <td class="fig" data-label="Detalle">apertura −$ 200 · pagado $ 0 · 0%</td>
+              </tr>
+            </tbody>
+          </table>
+          <p class="debt-act"><button type="button" class="plate is-pending">Registrar pago de deuda</button></p>
+        </div>
+      </section>
+
+      <!-- ===================== 7.6 el libro del mes ===================== -->
+      <section class="sec" aria-labelledby="h-76">
+        <h2 class="sec-head" id="h-76"><span class="n">7.6</span>El libro del mes</h2>
+        <div class="leaf p7">
+          <span class="ply" aria-hidden="true">PL · 07</span>
+          <table class="tbl stack">
+            <caption>Septiembre 2026 · 23 movimientos en el mes, se listan los 11 últimos</caption>
+            <thead>
+              <tr>
+                <th scope="col">Fecha</th>
+                <th scope="col">Tipo</th>
+                <th scope="col">Cartera</th>
+                <th scope="col">Categoría</th>
+                <th scope="col">Nota</th>
+                <th scope="col" class="r">Monto</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">26/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto (Bs)</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Supermercado</td>
+                <td data-label="Nota">Compra en bolívares (@ 40 Bs/USD)</td>
+                <td class="r fig" data-label="Monto">−$ 100<span class="sub">Bs 4.000,00 @ 40</span></td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">24/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Supermercado</td>
+                <td data-label="Nota">Compra del finde</td>
+                <td class="r fig" data-label="Monto">−$ 25</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">23/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Binance</td>
+                <td data-label="Categoría">Ropa</td>
+                <td data-label="Nota">Campera</td>
+                <td class="r fig" data-label="Monto">−$ 18</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">22/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Transporte</td>
+                <td data-label="Nota">Service</td>
+                <td class="r fig" data-label="Monto">−$ 15</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">21/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Binance</td>
+                <td data-label="Categoría">Comidas afuera</td>
+                <td data-label="Nota">Café y panadería</td>
+                <td class="r fig" data-label="Monto">−$ 8</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">20/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto (pago de deuda)</span></td>
+                <td data-label="Cartera">Binance</td>
+                <td data-label="Categoría">Deudas</td>
+                <td data-label="Nota">Abono mensual</td>
+                <td class="r fig" data-label="Monto">−$ 200</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">20/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Ocio</td>
+                <td data-label="Nota">Libro</td>
+                <td class="r fig" data-label="Monto">−$ 7</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">19/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Salud</td>
+                <td data-label="Nota">Consulta copago</td>
+                <td class="r fig" data-label="Monto">−$ 6</td>
+              </tr>
+              <tr>
+                <th scope="row" class="fig" data-label="Fecha">16/09</th>
+                <td data-label="Tipo"><span class="kind">Gasto</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Otros</td>
+                <td data-label="Nota">Regalo</td>
+                <td class="r fig" data-label="Monto">−$ 8</td>
+              </tr>
+              <tr class="in">
+                <th scope="row" class="fig" data-label="Fecha">12/09</th>
+                <td data-label="Tipo"><span class="kind">Ingreso</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Freelance</td>
+                <td data-label="Nota">Proyecto web</td>
+                <td class="r fig" data-label="Monto">+$ 180</td>
+              </tr>
+              <tr class="in">
+                <th scope="row" class="fig" data-label="Fecha">01/09</th>
+                <td data-label="Tipo"><span class="kind">Ingreso</span></td>
+                <td data-label="Cartera">Cartera USD</td>
+                <td data-label="Categoría">Sueldo</td>
+                <td data-label="Nota">Sueldo del mes</td>
+                <td class="r fig" data-label="Monto">+$ 1.200</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+    </div><!-- /.manual -->
+
+    <footer class="colophon">
+      <span>FinanciRDUS · manual de referencia</span>
+      <span>sección 7 — el mes · septiembre 2026</span>
+      <span>cartera en USD</span>
+    </footer>
+
+  </div><!-- /.board -->
+</main>
+
+</body>
+</html>

@@ -35,6 +35,7 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     const amount = await screen.findByLabelText('Monto en dólares');
     await user.type(amount, '1000');
     await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));
@@ -49,10 +50,10 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     await user.click(within(movements).getByRole('button', { name: /Editar movimiento: Supermercado/ }));
 
-    const amount = screen.getByLabelText('Monto en dólares');
+    const amount = await screen.findByLabelText('Monto en dólares');
     await waitFor(() => expect(amount).toHaveValue('85000'));
     await user.clear(amount);
     await user.type(amount, '50000');
@@ -61,11 +62,11 @@ describe('App mutations', () => {
     await waitFor(() => expect(server.db.movements.find((m) => m.id === 1)?.amount_cents).toBe(5_000_000));
     expect(requestedWith('PATCH', '/api/movements/1')).toBe(true);
 
-    const table = within(await screen.findByRole('region', { name: /Movimientos/ }));
+    const table = within(await screen.findByRole('region', { name: /^El libro/i }));
     await waitFor(() => expect(table.getByText('-$ 50.000')).toBeInTheDocument());
     expect(table.queryByText('-$ 85.000')).not.toBeInTheDocument();
 
-    const kpi = screen.getByRole('region', { name: 'Resumen del mes' });
+    const kpi = screen.getByRole('region', { name: 'Los números del mes' });
     await waitFor(() => expect(within(kpi).getByText(money(41_200_000))).toBeInTheDocument());
     await waitFor(() => expect(within(kpi).getByText(money(96_800_000))).toBeInTheDocument());
     await waitFor(() =>
@@ -74,20 +75,20 @@ describe('App mutations', () => {
   });
 
   it('deletes a movement after confirmation and refreshes the KPIs', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true);
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     await user.click(within(movements).getByRole('button', { name: /Borrar movimiento: Supermercado/ }));
+    await user.click(screen.getByRole('button', { name: 'Borrar movimiento' }));
 
     await waitFor(() => expect(server.db.movements).toHaveLength(4));
     expect(requestedWith('DELETE', '/api/movements/1')).toBe(true);
 
-    const table = within(await screen.findByRole('region', { name: /Movimientos/ }));
+    const table = within(await screen.findByRole('region', { name: /^El libro/i }));
     await waitFor(() => expect(table.queryByText('-$ 85.000')).not.toBeInTheDocument());
 
-    const kpi = screen.getByRole('region', { name: 'Resumen del mes' });
+    const kpi = screen.getByRole('region', { name: 'Los números del mes' });
     await waitFor(() => expect(within(kpi).getByText(money(36_200_000))).toBeInTheDocument());
     await waitFor(() =>
       expect(liveStatusText()).toContain(`Movimiento borrado. Te queda ${money(101_800_000)}.`),
@@ -95,37 +96,47 @@ describe('App mutations', () => {
   });
 
   it('does not delete when the confirmation is dismissed', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false);
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     await user.click(within(movements).getByRole('button', { name: /Borrar movimiento: Supermercado/ }));
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
     expect(server.db.movements).toHaveLength(5);
     expect(requestedWith('DELETE', '/api/movements/1')).toBe(false);
   });
 
-  it('keeps typed input when the month changes without an active edit', async () => {
+  it('keeps the draft while the movement window is open and starts fresh when reopened', async () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
+    // The inline form is gone: the draft now lives inside the modal window,
+    // which blocks the board, so the notes stay until the window is closed.
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     const note = await screen.findByLabelText('Nota (opcional)');
     await user.type(note, 'borrador');
-
-    await user.click(screen.getByRole('button', { name: 'Mes anterior' }));
-    // The form is NOT remounted on month change: the draft survives.
     expect(screen.getByLabelText('Nota (opcional)')).toHaveValue('borrador');
+
+    await user.keyboard('{Escape}');
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
+    expect(await screen.findByLabelText('Nota (opcional)')).toHaveValue('');
   });
 
   it('defaults the new-movement date to the viewed month', async () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     expect(await screen.findByLabelText('Fecha')).toHaveValue(todayStr());
+    await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
     await user.click(screen.getByRole('button', { name: 'Mes anterior' }));
 
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     await waitFor(() =>
       expect(screen.getByLabelText('Fecha')).toHaveValue(`${shiftMonth(MONTH, -1)}-01`),
     );
@@ -135,18 +146,21 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /Movimientos/ });
+    const movements = await screen.findByRole('region', { name: /^El libro/i });
     await user.click(within(movements).getByRole('button', { name: /Editar movimiento: Supermercado/ }));
 
-    const amount = screen.getByLabelText('Monto en dólares');
+    const amount = await screen.findByLabelText('Monto en dólares');
     await waitFor(() => expect(amount).toHaveValue('85000'));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
-    await waitFor(() => expect(screen.getByLabelText('Monto en dólares')).toHaveValue(''));
+    // Reopening for a new movement starts from a clean slate.
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
+    expect(await screen.findByLabelText('Monto en dólares')).toHaveValue('');
     expect(screen.getByText('Nuevo movimiento')).toBeInTheDocument();
   });
 
-  it('sets a budget on blur and returns focus to that category input', async () => {
+  it('sets a budget on blur and never recaptures focus', async () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
@@ -157,7 +171,10 @@ describe('App mutations', () => {
 
     await waitFor(() => expect(server.db.budgets.supermercado).toBe(60_000));
     expect(requestedWith('PUT', '/api/budgets/supermercado')).toBe(true);
-    await waitFor(() => expect(screen.getByLabelText('Supermercado')).toHaveFocus());
+    // Blur must never move focus back into the field (regression guard for the
+    // old trap): Tab walks on to the next cap instead.
+    expect(screen.getByLabelText('Supermercado')).not.toHaveFocus();
+    expect(screen.getByLabelText('Comidas afuera')).toHaveFocus();
     await waitFor(() =>
       expect(liveStatusText()).toContain(`Presupuesto actualizado. Te queda ${money(93_300_000)}.`),
     );
@@ -183,7 +200,8 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    // Switch the entry currency to bolívares.
+    // Open the window, then switch the entry currency to bolívares.
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     await user.click(await screen.findByRole('radio', { name: 'VES' }));
 
     const amount = screen.getByLabelText('Monto en bolívares');
@@ -209,6 +227,7 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
+    await user.click(screen.getByRole('button', { name: /anotar movimiento/i }));
     await user.click(await screen.findByRole('radio', { name: 'VES' }));
     await user.type(screen.getByLabelText('Monto en bolívares'), '4000');
     await user.click(screen.getByRole('button', { name: 'Agregar movimiento' }));

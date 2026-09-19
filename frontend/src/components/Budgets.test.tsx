@@ -30,7 +30,7 @@ function progress(name: string): HTMLElement {
 describe('Budgets', () => {
   it('reports the real percentage through aria-valuetext for each status', () => {
     setup();
-    const region = screen.getByRole('region', { name: 'Presupuestos por categoría' });
+    const region = screen.getByRole('region', { name: 'La lista · tope y gastado' });
 
     const ok = progress('Supermercado');
     expect(ok).toHaveAttribute('aria-valuenow', '50');
@@ -53,12 +53,12 @@ describe('Budgets', () => {
     expect(within(region).getByText('sin tope')).toBeInTheDocument();
   });
 
-  it('marks the warn and over bars with the matching classes', () => {
+  it('marks the warn and over rows with the matching classes', () => {
     setup();
-    expect(progress('Transporte')).toHaveClass('progress', 'warn');
-    expect(progress('Ocio')).toHaveClass('progress', 'over');
-    expect(progress('Supermercado')).toHaveClass('progress');
-    expect(progress('Supermercado')).not.toHaveClass('warn');
+    expect(progress('Transporte').closest('.row')).toHaveClass('warn');
+    expect(progress('Ocio').closest('.row')).toHaveClass('over');
+    expect(progress('Supermercado').closest('.row')).not.toHaveClass('warn');
+    expect(progress('Supermercado').closest('.row')).not.toHaveClass('over');
   });
 
   it('commits a new cap on blur and a new cap via Enter', async () => {
@@ -102,6 +102,34 @@ describe('Budgets', () => {
     await user.type(supermercado, '100'); // 10.000 cents == current cap
     await user.tab();
 
+    expect(onSet).not.toHaveBeenCalled();
+    expect(onClear).not.toHaveBeenCalled();
+  });
+
+  it('never recaptures focus when leaving the field by Tab, Shift+Tab or a click', async () => {
+    const { onSet, onClear } = setup();
+    const user = userEvent.setup();
+
+    const supermercado = screen.getByLabelText('Supermercado');
+    await user.click(supermercado);
+    expect(supermercado).toHaveFocus();
+
+    // Leaving by clicking another field must not bounce focus back.
+    const transporte = screen.getByLabelText('Transporte');
+    await user.click(transporte);
+    expect(supermercado).not.toHaveFocus();
+    expect(transporte).toHaveFocus();
+
+    // Shift+Tab walks backwards out of the field without recapture.
+    await user.tab({ shift: true });
+    expect(transporte).not.toHaveFocus();
+
+    // Tab forward from the re-focused input also leaves it behind.
+    await user.click(transporte);
+    await user.tab();
+    expect(transporte).not.toHaveFocus();
+
+    // Nothing changed, so no cap was set or cleared along the way.
     expect(onSet).not.toHaveBeenCalled();
     expect(onClear).not.toHaveBeenCalled();
   });

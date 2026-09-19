@@ -1,80 +1,93 @@
-import { useRef, type ChangeEvent } from 'react';
-import type { Account, AccountFilter, ImportMode } from '../api/types';
+import type { Account, AccountFilter } from '../api/types';
+import { formatRate } from '../lib/money';
+import { formatDateDisplay } from '../lib/month';
+import { ChevronLeftIcon, ChevronRightIcon } from './Icons';
 
 interface AppHeaderProps {
   monthLabel: string;
+  /** Current month as the app's "YYYY-MM" key, for the month jump field. */
+  month: string;
   onPrev: () => void;
   onNext: () => void;
   onCurrentMonth: () => void;
+  onMonthChange: (month: string) => void;
   onExport: () => void;
-  onImport: (file: File, mode: ImportMode) => void;
+  onImport: () => void;
+  onNewMovement: () => void;
   accounts: Account[];
   account: AccountFilter;
   onAccountChange: (value: AccountFilter) => void;
   busy?: boolean;
+  /** Rate (Bs per USD x 1e6) of the user's last VES movement, or null. */
+  lastRateMicros?: number | null;
 }
 
+/**
+ * The document letterhead (`Nº YYYY-MM`, closed by the double rule): the house
+ * name and its tag line at the left, the correlative number and the document's
+ * date at the right. The month is the document's own date, so its navigation
+ * lives here, together with the wallet filter, the last-rate plaque and the
+ * single saturated action plate.
+ *
+ * The rate plaque is explicitly the USER'S last loaded rate — never a global or
+ * automatic one: the product has no such feature.
+ */
 export function AppHeader({
   monthLabel,
+  month,
   onPrev,
   onNext,
   onCurrentMonth,
+  onMonthChange,
   onExport,
   onImport,
+  onNewMovement,
   accounts,
   account,
   onAccountChange,
   busy = false,
+  lastRateMicros = null,
 }: AppHeaderProps) {
-  const fileRef = useRef<HTMLInputElement>(null);
-  const modeRef = useRef<ImportMode>('merge');
-
-  function triggerImport(mode: ImportMode) {
-    modeRef.current = mode;
-    fileRef.current?.click();
-  }
-
-  function handleFileChange(event: ChangeEvent<HTMLInputElement>) {
-    const file = event.target.files?.[0];
-    if (file) onImport(file, modeRef.current);
-    event.target.value = '';
-  }
+  const docDate = formatDateDisplay(`${month}-01`);
 
   return (
-    <header className="mb-5 flex flex-wrap items-start justify-between gap-4">
-      <div className="min-w-0">
-        <p className="m-0 mb-1 text-[.78rem] font-bold uppercase tracking-[.08em] text-muted">
-          Cartera en USD
-        </p>
-        <h1 className="m-0 mb-1 text-[clamp(1.35rem,1rem+1.4vw,1.75rem)] tracking-[-.01em]">
-          Gastos e ingresos
-        </h1>
-        <p className="m-0 text-[.92rem] text-muted">
-          Cargá en dólares o en bolívares con su tasa; el total siempre se muestra en USD.
-        </p>
+    <header className="membrete">
+      <div className="brand">
+        <h1 className="house">FinanciRDUS</h1>
+        <span className="tag-line">Cuentas de la casa · cartera en dólares</span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className="btn" onClick={onExport} disabled={busy}>
-          Exportar JSON
-        </button>
-        <button type="button" className="btn" onClick={() => triggerImport('merge')} disabled={busy}>
-          Importar y fusionar
-        </button>
-        <button type="button" className="btn" onClick={() => triggerImport('replace')} disabled={busy}>
-          Importar y reemplazar
-        </button>
-        <input
-          ref={fileRef}
-          type="file"
-          accept="application/json,.json"
-          className="sr-only"
-          tabIndex={-1}
-          aria-label="Archivo JSON a importar"
-          onChange={handleFileChange}
-        />
+      <div className="doc-no">
+        <div>
+          Nº <b>{month}</b>
+        </div>
+        <div>{docDate}</div>
+      </div>
 
-        <div className="filter-field" role="group" aria-label="Filtro de cartera">
+      <div className="monthnav">
+        <button type="button" className="iconb" onClick={onPrev} aria-label="Mes anterior">
+          <ChevronLeftIcon />
+        </button>
+        <span className="m">{monthLabel}</span>
+        <button type="button" className="iconb" onClick={onNext} aria-label="Mes siguiente">
+          <ChevronRightIcon />
+        </button>
+        <button type="button" className="pbtn" onClick={onCurrentMonth}>
+          Mes actual
+        </button>
+        <div className="monthjump">
+          <label htmlFor="month-jump">Ir a un mes</label>
+          <input
+            id="month-jump"
+            type="month"
+            value={month}
+            onChange={(event) => onMonthChange(event.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="sect-actions">
+        <div className="field" role="group" aria-label="Filtro de cartera">
           <label htmlFor="filter-account">Cartera</label>
           <select
             id="filter-account"
@@ -92,18 +105,33 @@ export function AppHeader({
           </select>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Navegación por mes">
-          <button type="button" className="btn icon-btn" onClick={onPrev} aria-label="Mes anterior">
-            &#8249;
-          </button>
-          <span className="min-w-40 text-center text-[1.02rem] font-bold capitalize">{monthLabel}</span>
-          <button type="button" className="btn icon-btn" onClick={onNext} aria-label="Mes siguiente">
-            &#8250;
-          </button>
-          <button type="button" className="btn btn-sm" onClick={onCurrentMonth}>
-            Mes actual
-          </button>
+        <div className="rate">
+          <span>Última tasa cargada</span>
+          {lastRateMicros ? (
+            <>
+              <b>{formatRate(lastRateMicros)} Bs/USD</b>
+              <span>el último entre los movimientos en bolívares que estás viendo</span>
+            </>
+          ) : (
+            <span>sin movimientos en bolívares entre los que estás viendo</span>
+          )}
         </div>
+
+        <button type="button" className="plate" onClick={onNewMovement}>
+          Anotar movimiento
+        </button>
+        <button
+          type="button"
+          className="pbtn"
+          onClick={onExport}
+          disabled={busy}
+          aria-label="Exportar JSON"
+        >
+          Exportar
+        </button>
+        <button type="button" className="pbtn" onClick={onImport} disabled={busy}>
+          Importar
+        </button>
       </div>
     </header>
   );
