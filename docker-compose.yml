@@ -41,6 +41,10 @@ services:
   web:
     build:
       context: ./frontend
+    environment:
+      # Upstream de /api para el nginx del frontend (ver frontend/nginx.conf.template).
+      # Dentro de la red de compose la API es el servicio `api`.
+      API_UPSTREAM: api:8000
     depends_on:
       api:
         condition: service_healthy

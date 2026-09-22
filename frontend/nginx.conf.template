@@ -1,3 +1,7 @@
+# Plantilla de nginx. El entrypoint de la imagen sustituye ${API_UPSTREAM} con envsubst
+# antes de arrancar, así el mismo archivo sirve en Compose (api:8000) y en Railway
+# (api.railway.internal:8000). Las variables de nginx ($host, $uri, …) no se tocan:
+# envsubst sólo reemplaza nombres que existan en el entorno.
 server {
     listen 8080;
     server_name _;
@@ -27,7 +31,7 @@ server {
 
     # El SPA habla con la API en el mismo origen: sin CORS en producción.
     location /api/ {
-        proxy_pass http://api:8000;
+        proxy_pass http://${API_UPSTREAM};
         proxy_http_version 1.1;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
