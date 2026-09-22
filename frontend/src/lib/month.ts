@@ -134,3 +134,26 @@ export function formatDateDisplay(dateStr: string): string {
   if (parts.length !== 3) return dateStr;
   return `${parts[2]}/${parts[1]}/${parts[0]}`;
 }
+
+const WEEKDAYS_ES = [
+  'domingo',
+  'lunes',
+  'martes',
+  'miércoles',
+  'jueves',
+  'viernes',
+  'sábado',
+] as const;
+
+/**
+ * "2026-09-04" -> "viernes 4". The weekday comes from the local `Date`, built
+ * from the parts: `new Date("2026-09-04")` parses as UTC and would shift the day
+ * back one west of Greenwich.
+ */
+export function dayLabel(dateStr: string): string {
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const day = Number(parts[2]);
+  const date = new Date(Number(parts[0]), Number(parts[1]) - 1, day);
+  return `${WEEKDAYS_ES[date.getDay()]} ${day}`;
+}

@@ -21,7 +21,8 @@
 @theme {
   --color-paper: #fafaf8;        /* la hoja */
   --color-paper-2: #f2f3f0;      /* la copia / el bloque secundario */
-  --color-desk: #e2e5e1;         /* la superficie detrás de la hoja */
+  --color-desk: #cba877;         /* el tablero: madera clara, tono medio */
+  --color-desk-hi: #dcbe92;      /* la veta clara de esa madera */
   --color-ink: #11161b;          /* tinta de imprenta: texto principal */
   --color-ink-deep: #05080a;     /* la tinta cuando se presiona */
   --color-dim: rgba(17, 22, 27, 0.66);
@@ -29,7 +30,7 @@
   --color-rule: rgba(17, 22, 27, 0.16);
   --color-rule-strong: rgba(17, 22, 27, 0.34);
   --color-control: rgba(17, 22, 27, 0.46);    /* borde de controles, >=3:1 */
-  --color-edge: #d3d7d2;         /* el filo de la hoja */
+  --color-edge: #d3d7d2;         /* el filo de una ventana; la hoja lleva una hairline cálida */
   --color-danger: #b12e22;       /* texto en rojo de sello */
   --color-danger-fill: #b23a20;  /* relleno de la placa de acción */
   --color-danger-deep: #8d2a17;  /* la presión del sello */
@@ -74,10 +75,77 @@
     color-scheme: light;
   }
 
-  html,
+  /* La madera va en el root a propósito: el fondo del root pinta todo el canvas
+   * y ningún margen de un descendiente puede recortarlo. En `.desk` quedaba una
+   * franja plana sin veta arriba de la hoja y otra abajo, porque el margen de la
+   * hoja se colapsa hacia afuera y encoge la caja que pinta el degradado.
+   *
+   * Las capas van de arriba hacia abajo: nudos, juntas de tabla, veta y, al
+   * fondo, bandas anchas de tono. Las tres vetas tienen períodos distintos
+   * (3px, 7px, 13px) justamente para que no se lea el patrón de la repetición. */
+  html {
+    margin: 0;
+    background-color: var(--color-desk);
+    background-image:
+      radial-gradient(ellipse 30px 15px at 1.5% 22%, rgba(104, 68, 32, 0.22), transparent 68%),
+      radial-gradient(ellipse 22px 11px at 1.5% 22%, rgba(255, 240, 215, 0.32), transparent 62%),
+      radial-gradient(ellipse 34px 17px at 98.5% 64%, rgba(104, 68, 32, 0.2), transparent 68%),
+      radial-gradient(ellipse 24px 12px at 98.5% 64%, rgba(255, 240, 215, 0.28), transparent 62%),
+      radial-gradient(ellipse 26px 13px at 6% 88%, rgba(104, 68, 32, 0.16), transparent 70%),
+      repeating-linear-gradient(
+        90deg,
+        rgba(92, 62, 28, 0.2) 0 2px,
+        rgba(255, 246, 228, 0.32) 2px 3px,
+        transparent 3px 180px
+      ),
+      repeating-linear-gradient(88deg, rgba(126, 88, 46, 0.06) 0 1px, transparent 1px 3px),
+      repeating-linear-gradient(91deg, rgba(126, 88, 46, 0.05) 0 1px, transparent 1px 7px),
+      repeating-linear-gradient(89deg, rgba(92, 62, 28, 0.04) 0 2px, transparent 2px 13px),
+      linear-gradient(
+        90deg,
+        rgba(255, 244, 224, 0.32) 0 3%,
+        rgba(186, 142, 88, 0.24) 5% 9%,
+        rgba(255, 244, 224, 0.24) 12% 14%,
+        rgba(176, 132, 80, 0.22) 95% 97%,
+        rgba(255, 244, 224, 0.26) 100%
+      );
+  }
+
+  /* En el celular el canto de tablero es angosto (~18px), así que la madera se
+   * dibuja a escala chica Y más marcada: nudos de ~9px, una junta de tabla cada
+   * 54px y una veta de más contraste. Con la veta del escritorio (alfa 0.06
+   * sobre un período de 3px) esa franja medía como una banda plana de color, no
+   * como madera. */
+  @media (max-width: 679px) {
+    html {
+      background-image:
+        radial-gradient(ellipse 9px 6px at 2% 16%, rgba(96, 62, 28, 0.34), transparent 66%),
+        radial-gradient(ellipse 6px 4px at 2% 16%, rgba(255, 242, 220, 0.42), transparent 60%),
+        radial-gradient(ellipse 10px 7px at 97.5% 63%, rgba(96, 62, 28, 0.3), transparent 68%),
+        radial-gradient(ellipse 6px 4px at 97.5% 63%, rgba(255, 242, 220, 0.38), transparent 62%),
+        repeating-linear-gradient(
+          90deg,
+          rgba(88, 58, 24, 0.3) 0 1.5px,
+          rgba(255, 246, 228, 0.36) 1.5px 2.5px,
+          transparent 2.5px 54px
+        ),
+        repeating-linear-gradient(88deg, rgba(120, 82, 40, 0.16) 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(90deg, rgba(96, 64, 30, 0.11) 0 1px, transparent 1px 5px),
+        repeating-linear-gradient(89deg, rgba(96, 64, 30, 0.09) 0 1px, transparent 1px 4px),
+        linear-gradient(
+          180deg,
+          rgba(255, 244, 224, 0.34) 0 5%,
+          rgba(168, 122, 68, 0.3) 14% 24%,
+          rgba(255, 244, 224, 0.24) 36% 48%,
+          rgba(168, 122, 68, 0.32) 62% 74%,
+          rgba(255, 244, 224, 0.26) 88% 100%
+        );
+    }
+  }
+
   body {
     margin: 0;
-    background: var(--color-desk);
+    background: none;
   }
 
   body {
@@ -157,31 +225,39 @@
 }
 
 /* ================================================================== *
- * La hoja
+ * El tablero y la hoja
  * ================================================================== */
 .desk {
   min-height: 100vh;
-  background: var(--color-desk);
 }
 
 .sheet {
   position: relative;
   background-color: var(--color-paper);
-  border: 1px solid var(--color-edge);
+  /* El filo de la hoja es una hairline cálida: sobre madera, un gris frío
+   * peleaba con el tono del tablero. */
+  border: 1px solid rgba(74, 48, 20, 0.42);
   border-radius: 0;
+  /* La hoja apoyada en la madera: contacto de 1px y una sombra cálida, que es
+   * lo que sostiene la silueta del papel contra el tablero. */
   box-shadow:
-    0 1px 0 rgba(17, 22, 27, 0.04),
-    0 14px 34px -18px rgba(17, 22, 27, 0.34);
+    0 1px 0 rgba(58, 36, 10, 0.14),
+    0 16px 34px -18px rgba(58, 36, 10, 0.56);
   padding: 26px 18px 34px;
-  max-width: 1180px;
-  margin: 0 auto;
+  /* En el celular la hoja lleva un canto de tablero de 18px: el mismo papel
+   * sobre la misma madera que en escritorio, con los controles y las piezas en
+   * su tamaño de siempre. */
+  width: min(1400px, 100% - 36px);
+  margin: 18px auto;
 }
 
-/* El ancho completo sólo en pantallas chicas: en escritorio la hoja se
- * posa sobre el escritorio con aire alrededor. */
+/* En escritorio la hoja se posa con más aire sobre el tablero y deja un canto
+ * de madera de verdad —60px por lado como mínimo—: con 12px la madera se leía
+ * como un borde y ni los nudos ni las juntas entraban en pantalla. */
 @media (min-width: 680px) {
   .sheet {
     padding: 34px 40px 46px;
+    width: min(1400px, 100% - 120px);
     margin: 30px auto;
   }
 }
@@ -323,29 +399,8 @@
   flex: 1 1 300px;
 }
 
-/* El libro scrollea en su propio carril en pantallas angostas. El
- * `position: relative` no es decorativo: sin él, el contenido posicionado de
- * la tabla (su caption oculto) escapa del recorte, se posiciona contra la
- * hoja y arrastra la página entera 194px de costado. El `min-width: 0` es lo
- * que impide que, como hijo de un flex/grid, estire a su contenedor. */
-.table-scroll {
-  position: relative;
-  min-width: 0;
-  max-width: 100%;
-  overflow-x: auto;
-  overflow-y: hidden;
-}
-
-/* En el celular la columna de acciones envuelve en vez de empujar el ancho. */
-@media (max-width: 719px) {
-  .book .acts {
-    white-space: normal;
-    max-width: 96px;
-  }
-}
-
 /* El bloque inferior de un frasco cae bajo la columna de contenido. */
-.margin-col .j .meta {
+.margin-col .j .jar-meta {
   grid-column: 2 / -1;
 }
 
@@ -401,7 +456,7 @@
   top: -4px;
   width: 7px;
   height: 7px;
-  border: 1px solid var(--color-edge);
+  border: 1px solid rgba(92, 62, 28, 0.28);
   border-radius: 50%;
   background: var(--color-desk);
 }
@@ -435,19 +490,36 @@
 /* ================================================================== *
  * Banda de subtotales — las tres cifras del mes
  * ================================================================== */
+/* Las tres cifras del mes en UNA sola raya: la banda no se apila, se cierra
+ * abajo con la raya gruesa del total. */
 .subtotals {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   margin-top: 18px;
+  border-bottom: 3px solid var(--color-ink);
+  box-shadow: 0 5px 0 -4px var(--color-ink);
 }
 
 .sub-line {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 7px 0;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  border-left: 1px solid var(--color-rule);
+}
+
+.sub-line:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.sub-line:last-child {
+  padding-right: 0;
 }
 
 .sub-line .lab {
-  font-size: 0.7rem;
+  font-size: 0.66rem;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -455,36 +527,21 @@
   white-space: nowrap;
 }
 
-/* El punteado del formulario: lleva la vista del rótulo a la cifra. */
-.sub-line .leader {
-  flex: 1;
-  min-width: 14px;
-  border-bottom: 1px dotted var(--color-rule-strong);
-  transform: translateY(-3px);
-}
-
 .sub-line .val {
   font-family: var(--font-mono);
   font-weight: 700;
-  font-size: 1.22rem;
+  font-size: clamp(0.94rem, 3.4vw, 1.22rem);
   letter-spacing: -0.03em;
   white-space: nowrap;
 }
 
-/* La raya gruesa antes del cierre: la convención de todo subtotal. */
-.sub-line.total {
-  border-top: 3px solid var(--color-ink);
-  box-shadow: 0 5px 0 -4px var(--color-ink);
-  margin-top: 8px;
-  padding-top: 10px;
-}
-
-.sub-line.total .val {
-  font-size: 1.72rem;
-}
-
 .sub-line.total .lab {
   color: var(--color-ink);
+}
+
+/* La cifra que cierra el mes es la más grande de la hoja. */
+.sub-line.total .val {
+  font-size: clamp(1.06rem, 4.6vw, 1.72rem);
 }
 
 .sub-line.neg .val {
@@ -864,16 +921,68 @@ input[type="file"]::file-selector-button {
  * ================================================================== */
 .monthnav {
   display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* El mes manda: las flechas a sus costados y el nombre centrado entre las dos.
+ * El ancho mínimo lo fija el mes más largo, así que las flechas no se corren
+ * cuando el mes cambia de largo. */
+.monthnav-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
 }
 
 .monthnav .m {
-  font-size: 0.98rem;
+  min-width: 16ch;
+  font-size: 1.04rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   text-transform: capitalize;
+  text-align: center;
+}
+
+/* Flechas de papel: redondas, cómodas (46px) y con la sombra corta de una ficha
+ * apoyada en el tablero. */
+.mnav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 46px;
+  padding: 0;
+  border: 1px solid var(--color-control);
+  border-radius: 50%;
+  background: var(--color-paper);
+  color: var(--color-ink);
+  cursor: pointer;
+  box-shadow: 0 3px 5px -2px rgba(58, 36, 10, 0.38);
+  transition: background-color 120ms ease, transform 60ms ease, box-shadow 120ms ease;
+}
+
+.mnav-btn:hover {
+  background: var(--color-paper-2);
+  border-color: var(--color-ink);
+}
+
+.mnav-btn:active {
+  transform: translateY(1px);
+  box-shadow: 0 1px 2px -1px rgba(58, 36, 10, 0.38);
+}
+
+/* El resto de la navegación, en su propia fila y centrado. */
+.monthnav-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 8px 12px;
+}
+
+.monthnav-tools .pbtn {
+  min-height: 46px;
 }
 
 .monthjump {
@@ -898,98 +1007,222 @@ input[type="file"]::file-selector-button {
 }
 
 /* ================================================================== *
- * El libro — renglones de la factura
+ * El tablero — una facturita por registro
  * ================================================================== */
-.book {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.86rem;
-}
-
-.book thead th {
-  padding: 8px 8px;
-  border-bottom: 2px solid var(--color-ink);
-  text-align: left;
-  font-size: 0.62rem;
-  font-weight: 900;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+/* Lo que el alfiler clavó queda fuera del mosaico, arriba de todo. */
+.pin-empty {
+  margin: 0;
+  max-width: 68ch;
+  font-size: 0.78rem;
+  line-height: 1.55;
   color: var(--color-dim);
-  white-space: nowrap;
-  vertical-align: bottom;
 }
 
-.book thead th.right,
-.book tbody td.right,
-.book tbody th.right {
-  text-align: right;
+.pin-row,
+.tickets {
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-.book tbody tr {
-  border-bottom: 1px dashed var(--color-rule);
+.pin-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 10px;
 }
 
-.book tbody th,
-.book tbody td {
-  padding: 9px 8px;
-  text-align: left;
-  font-weight: 400;
-  vertical-align: top;
+/* El mosaico: los días del mes como bloques reglados, a dos columnas en el
+ * escritorio y a una sola en el celular. */
+.mosaic {
+  display: grid;
+  gap: 18px 26px;
+  align-items: start;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
-/* El número de renglón: la numeración correlativa de la factura. */
-.book .ln {
-  width: 1%;
-  padding-right: 2px;
-  font-family: var(--font-mono);
-  font-size: 0.68rem;
-  font-weight: 700;
-  color: var(--color-dim-2);
-  white-space: nowrap;
-  font-variant-numeric: tabular-nums;
+@media (min-width: 720px) {
+  .mosaic {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.book .ln-head {
-  width: 1%;
+/* En una hoja ancha entran tres días por fila; el celular no cambia. */
+@media (min-width: 1100px) {
+  .mosaic {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
-.book .amt {
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.94rem;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
-.book .amt.income {
-  color: var(--color-ink);
-}
-
-.book .amt.expense {
-  color: var(--color-ink);
-}
-
-.book .desc {
+.day {
   min-width: 0;
 }
 
-.book .desc .who {
-  display: block;
+.day-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+  padding-bottom: 5px;
+  border-bottom: 2px solid var(--color-ink);
+}
+
+.day-name {
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.day-count {
+  font-size: 0.7rem;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-dim-2);
 }
 
-.book .desc .what {
-  display: block;
+.tickets {
+  display: grid;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* El papel apoyado. La sombra va como filtro sobre la pieza y no como
+ * box-shadow: la máscara del borde roto recortaría una box-shadow (que se dibuja
+ * fuera de la caja), mientras que drop-shadow sigue la silueta real.
+ *
+ * Esa silueta es además lo único que hace visible el corte: la facturita está
+ * apoyada sobre la HOJA, no sobre la madera, así que debajo del borde roto hay
+ * más papel y el corte se lee por la sombra que proyecta. */
+.tickets li,
+.pin-row li {
+  filter: drop-shadow(0 4px 3px rgba(58, 36, 10, 0.42));
+}
+
+/* La facturita: un papel impreso, cortado arriba y a los costados y ROTO abajo.
+ * En la cabeza van el número correlativo, la fecha y el monto; después el
+ * concepto, la cartera y la nota; y bajo la raya fina, lo que se puede hacer
+ * con ella. */
+.fact {
+  /* El perfil del corte: una sola pieza de 320x12 que se repite a lo ancho. Los
+   * saltos en x van de 3 a 34px y la profundidad de 2,4 a 7,9, justamente para
+   * que no se lea la sierra: un borde parejo se ve mecánico, el papel no. */
+  --tear: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='12'%3E%3Cpath fill='black' d='M0 3.2L4 4.1L13 2.6L19 5.4L36 3L39 6.8L50 4.4L75 2.5L80 3.8L88 7.9L101 4.6L105 2.9L124 5.1L131 3.3L134 6.2L156 4L162 2.4L172 3.6L187 5.8L192 4.3L204 2.7L207 7.1L225 4.8L233 3.1L239 5.6L259 4.2L263 2.8L277 3.9L286 4.4L320 3.4V0H0Z'/%3E%3C/svg%3E");
+  padding: 10px 12px 16px;
+  /* El filo de la facturita es un borde de control: 3,0:1 sobre el papel. */
+  border: 1px solid var(--color-control);
+  background: var(--color-paper);
+  /* Con las dos capas unidas (que es el modo por defecto) queda el papel entero
+   * salvo los últimos 12px, que es donde el borde se rompe. Abajo de la
+   * facturita hay HOJA, no madera: el corte no muestra el tablero, se lee por la
+   * sombra que proyecta (ver `.tickets li`). */
+  -webkit-mask-image: var(--tear), linear-gradient(#000 calc(100% - 12px), transparent calc(100% - 12px));
+  mask-image: var(--tear), linear-gradient(#000 calc(100% - 12px), transparent calc(100% - 12px));
+  -webkit-mask-size: 320px 12px, 100% 100%;
+  mask-size: 320px 12px, 100% 100%;
+  -webkit-mask-position: left bottom, 0 0;
+  mask-position: left bottom, 0 0;
+  -webkit-mask-repeat: repeat-x, no-repeat;
+  mask-repeat: repeat-x, no-repeat;
+}
+
+.fact-top {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding-bottom: 7px;
+  border-bottom: 1px solid var(--color-rule);
+}
+
+.fact-no {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-dim-2);
+}
+
+/* La fecha viaja con la factura: también cuando el alfiler la saca de su día. */
+.fact-date {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--color-dim);
+}
+
+.fact-amt {
+  margin-left: auto;
+  font-size: 1.02rem;
+  white-space: nowrap;
+}
+
+.fact-body {
+  padding-top: 8px;
+}
+
+.fact-who {
+  margin: 0;
+  font-weight: 700;
+  font-size: 0.9rem;
+  overflow-wrap: anywhere;
+}
+
+.fact-what,
+.fact-note {
+  margin: 3px 0 0;
   font-size: 0.76rem;
   color: var(--color-dim);
   overflow-wrap: anywhere;
 }
 
-.book .desc .note {
-  display: block;
-  font-size: 0.76rem;
-  color: var(--color-dim);
-  overflow-wrap: anywhere;
+.fact-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  margin-top: 9px;
+  padding-top: 8px;
+  /* El punteado de siempre, el mismo de una fila de lista: separa el contenido
+   * de las acciones. El corte literal es el borde de abajo del papel, no esta
+   * raya. */
+  border-top: 1px dashed var(--color-rule);
+}
+
+.fact-acts .linkb {
+  font-size: 0.68rem;
+}
+
+/* El alfiler: una marca de tinta sobre el papel, nunca un color nuevo. */
+.pinb {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.pinb:hover,
+.fact.pinned .pinb {
+  text-decoration: underline;
+  text-decoration-color: var(--color-ink);
+  text-underline-offset: 3px;
+}
+
+/* Clavada: el rectángulo pasa a ser la copia de la factura. */
+.fact.pinned {
+  background: var(--color-paper-2);
 }
 
 /* La copia del renglón: el monto original en bolívares, en bolígrafo. */
@@ -1003,27 +1236,18 @@ input[type="file"]::file-selector-button {
   white-space: nowrap;
 }
 
-.book .acts {
-  white-space: nowrap;
-  text-align: right;
-}
-
-.book .acts .linkb {
-  min-height: 30px;
-  font-size: 0.68rem;
-}
-
-/* El renglón recién escrito destella una sola vez. */
-.book tbody tr.flash {
+/* La facturita recién escrita se entinta una sola vez: el filo se cierra. */
+.tickets .flash .fact,
+.pin-row .flash .fact {
   animation: ink-set 900ms ease-out 1;
 }
 
 @keyframes ink-set {
   0% {
-    background: rgba(178, 58, 32, 0.14);
+    box-shadow: inset 0 0 0 2px rgba(178, 58, 32, 0.5);
   }
   100% {
-    background: transparent;
+    box-shadow: inset 0 0 0 2px rgba(178, 58, 32, 0);
   }
 }
 
@@ -1554,6 +1778,8 @@ input[type="file"]::file-selector-button {
   }
   .monthnav,
   .pager,
+  .filters,
+  .fact-acts,
   .skip-link,
   .plate,
   .action-stamp {
@@ -1569,7 +1795,8 @@ input[type="file"]::file-selector-button {
  * ================================================================== */
 @media (pointer: coarse) {
   .linkb,
-  .book .acts .linkb,
+  .fact-acts .linkb,
+  .pinb,
   .iconb,
   .pbtn,
   .row .capfield,

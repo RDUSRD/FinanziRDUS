@@ -1,11 +1,11 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-09-18T19:37:32-04:00",
+  "generatedAt": "2026-09-21T12:01:24-04:00",
   "title": "Design System: FinanciRDUS",
   "source": {
     "tokens": "frontend/src/index.css (@theme, @layer base, @font-face, unlayered primitives)",
     "shell": "frontend/index.html (favicon only; the direction contract is no longer embedded in the document)",
-    "direction": ".impeccable/surface-brief-body.md and .impeccable/questions/direction-invoices.json",
+    "direction": ".impeccable/surfaces/frontend-src-app-tsx.md (the amended direction contract: El Mosaico de Días)",
     "fonts": "frontend/public/fonts/libre-franklin-latin-var.woff2, frontend/public/fonts/chivo-mono-latin-{400,700}-normal.woff2 (self-hosted, same origin, CSP font-src 'self')",
     "reviewRasters": ".impeccable/review/desktop.png, mobile.png, window.png, window-mobile.png"
   },
@@ -133,17 +133,32 @@
       },
       "desk": {
         "role": "neutral",
-        "displayName": "Desk Grey",
-        "canonical": "#e2e5e1",
+        "displayName": "Honey Board",
+        "canonical": "#cba877",
         "tonalRamp": [
-          "#0a0c09",
-          "#242623",
-          "#404340",
-          "#5f625f",
-          "#808380",
-          "#a3a6a2",
-          "#c7cac6",
-          "#ecefeb"
+          "#130900",
+          "#352000",
+          "#593b05",
+          "#7a5b2b",
+          "#9d7c4c",
+          "#c19f6e",
+          "#e7c391",
+          "#ffebd1"
+        ]
+      },
+      "desk-hi": {
+        "role": "neutral",
+        "displayName": "Board Light Grain",
+        "canonical": "#dcbe92",
+        "tonalRamp": [
+          "#130900",
+          "#342100",
+          "#563d12",
+          "#775c33",
+          "#997d53",
+          "#bda075",
+          "#e2c498",
+          "#ffeccf"
         ]
       },
       "ink": {
@@ -261,7 +276,7 @@
       },
       "edge": {
         "role": "neutral",
-        "displayName": "Sheet Edge",
+        "displayName": "Window Edge",
         "canonical": "#d3d7d2",
         "tonalRamp": [
           "#090c09",
@@ -282,15 +297,15 @@
       },
       "figure": {
         "displayName": "Figure",
-        "purpose": "The closing total (\"Te queda\"): 1.72rem Chivo Mono, tabular. The largest number on the sheet, and the only one that turns red when the month closes negative."
+        "purpose": "The closing total (\"Te queda\"): clamp(1.06rem, 4.6vw, 1.72rem) Chivo Mono, tabular. The largest number on the sheet, and the only one that turns red when the month closes negative."
       },
       "subtotal": {
         "displayName": "Subtotal",
-        "purpose": "The income and expense figures on the subtotal band: 1.22rem Chivo Mono, tabular."
+        "purpose": "The income and expense figures beside it on the month's band: clamp(0.94rem, 3.4vw, 1.22rem) Chivo Mono, tabular."
       },
-      "ledger-amount": {
-        "displayName": "Ledger Amount",
-        "purpose": "A movement's amount in the ledger and the cap field: 0.94rem Chivo Mono, right-aligned behind its + / -."
+      "ticket-amount": {
+        "displayName": "Ticket Amount",
+        "purpose": "A facturita's amount on its header line and the cap field: 1.02rem Chivo Mono, tabular, pushed to the right edge by margin-left: auto."
       },
       "heading": {
         "displayName": "Section Head",
@@ -306,19 +321,29 @@
       },
       "mono-micro": {
         "displayName": "Mono Micro",
-        "purpose": "The document number Nº YYYY-MM, the page folio, the pager state and the ledger's line numbers: 0.68-0.76rem Chivo Mono."
+        "purpose": "The document number Nº YYYY-MM, a facturita's correlative Nº and its date, the day count, the page folio and the pager state: 0.68-0.76rem Chivo Mono."
       }
     },
     "shadows": [
       {
         "name": "sheet-rest",
-        "value": "0 1px 0 rgba(17, 22, 27, 0.04), 0 14px 34px -18px rgba(17, 22, 27, 0.34)",
-        "purpose": "The sheet lying on the grey desk: a 1px hairline at the top edge plus one offset, soft, negatively-spread ground shadow. The system's only large shadow besides a window's."
+        "value": "0 1px 0 rgba(58, 36, 10, 0.14), 0 16px 34px -18px rgba(58, 36, 10, 0.56)",
+        "purpose": "The sheet lying on the light honey board: a warm 1px hairline at the top edge plus one offset, soft, negatively-spread, warm ground shadow. Warm because it is cast on wood, not grey, and it is what holds the paper's silhouette against the board, since the sheet's hairline edge measures under the 3:1 a rim would need."
+      },
+      {
+        "name": "facturita-tear",
+        "value": "drop-shadow(0 4px 3px rgba(58, 36, 10, 0.42))",
+        "purpose": "The one shadow each torn facturita's <li> carries, as a filter and never a box-shadow (which the tear's mask clips). It follows the torn silhouette, and because the tickets rest on the sheet and not on the board it is the only thing that makes the tear legible."
+      },
+      {
+        "name": "month-arrow",
+        "value": "0 3px 5px -2px rgba(58, 36, 10, 0.38)",
+        "purpose": "The short paper shadow under each 46px month arrow circle, dropping to 0 1px 2px -1px while pressed. The second of the user's two pinned breaks."
       },
       {
         "name": "window-over",
         "value": "0 24px 60px -22px rgba(17, 22, 27, 0.5)",
-        "purpose": "A window thrown over the sheet. Never applied to a band, a field or a row."
+        "purpose": "A window thrown over the sheet. Never applied to a band, a field or a facturita."
       },
       {
         "name": "plate-float",
@@ -328,7 +353,7 @@
       {
         "name": "double-rule",
         "value": "0 5px 0 -4px #11161b",
-        "purpose": "Draws the second line of the invoice's double rule under the 3px ink border of .membrete, .sub-line.total and .wtitle. It is a rule, not depth."
+        "purpose": "Draws the second line of the double rule under the 3px ink border of .membrete, the month's band .subtotals and .wtitle. It is a rule, not depth."
       },
       {
         "name": "plate-edge",
@@ -350,12 +375,12 @@
       {
         "name": "ink-dry",
         "value": "240ms ease-out 1",
-        "purpose": "The one authored moment: the month's figures re-print in place (opacity 0.35 -> 1). Replayed by remounting the value spans with App's repaintKey after a save or a month change (KpiSummary, .repaint)."
+        "purpose": "The first authored moment: the month's figures re-print in place (opacity 0.35 -> 1). Replayed by remounting the value spans with App's repaintKey after a save or a month change (KpiSummary, .repaint)."
       },
       {
         "name": "ink-set",
         "value": "900ms ease-out 1",
-        "purpose": "The row just written takes one highlight (background rgba(178, 58, 32, 0.14) -> transparent) as the ink sets (.book tbody tr.flash)."
+        "purpose": "The second authored moment: the facturita just written is ringed once by an inset 2px stamp ring (inset 0 0 0 2px rgba(178, 58, 32, 0.5) -> transparent) as the ink sets (.tickets .flash .fact, .pin-row .flash .fact)."
       },
       {
         "name": "plate-state",
@@ -375,24 +400,34 @@
     ],
     "breakpoints": [
       {
+        "name": "board-narrow",
+        "value": "679px (max-width)",
+        "purpose": "The phone's board band is only ~18px wide, and the wide desktop grain (a hairline at alpha 0.06 on a 3px period) reads there as a flat colour band, not as wood: html carries a second authored background set — knots of ~9px at x 2%/97.5%, a plank joint every 54px, three grain periods of 3px/5px/4px at alphas 0.16/0.11/0.09, and a 180° tonal ramp that runs down the band instead of across it. The same board drawn for the room it has; the cost is two rule sets to keep in step (The Authored-Board Rule)."
+      },
+      {
         "name": "desk",
         "value": "680px",
-        "purpose": "The sheet lifts off the desk: 30px auto margins and 34px 40px 46px padding instead of running edge to edge."
+        "purpose": "The sheet lifts off the board: width min(1400px, 100% - 120px), 30px auto margins and 34px 40px 46px padding, guaranteeing at least 60px of board on each side. Below it the sheet is width min(1400px, 100% - 36px) with margin: 18px auto — an 18px cravat of board all around it, the same paper over the same board as on the desktop, with the controls and the pieces at their usual sizes — and that ~18px band is the board redrawn at the narrow scale (see the board-narrow breakpoint)."
       },
       {
         "name": "columns",
         "value": "720px",
-        "purpose": ".cols (donut + bars), .two (window form rows) and .jar-meta (reassignment selects) become two columns."
+        "purpose": "The .mosaic of day blocks, .cols (donut + bars), .two (window form rows) and .jar-meta (reassignment selects) become two columns."
       },
       {
-        "name": "phone-table",
+        "name": "columns-wide",
+        "value": "1100px",
+        "purpose": "The .mosaic of day blocks goes to three columns; the desktop sheet carries ~395px day blocks."
+      },
+      {
+        "name": "phone",
         "value": "719px (max-width)",
-        "purpose": "Below this the ledger's action column wraps (white-space: normal; max-width: 96px) instead of widening the row; the letterhead's action plate leaves the flow (position: fixed, 16px from the right and bottom edges, z-index: 30) with the body reserving 104px of foot; and the pagination's buttons stack into a column so they never sit under the floating plate."
+        "purpose": "Below this the letterhead's action plate leaves the flow (position: fixed, 16px from the right and bottom edges, z-index: 30) with the body reserving 104px of foot, and the pagination's buttons stack into a column so they never sit under the floating plate."
       },
       {
         "name": "pointer-coarse",
         "value": "@media (pointer: coarse)",
-        "purpose": "Raises every control below the comfortable minimum to 44px: .linkb, .book .acts .linkb, .iconb (width included), .pbtn, .row .capfield and .monthjump input[type=month]. Declared last in index.css on purpose: at equal specificity these only win by order, and higher up they stay inert."
+        "purpose": "Raises every control below the comfortable minimum to 44px: .linkb, .fact-acts .linkb, .pinb, .iconb (width included), .pbtn, .row .capfield and .monthjump input[type=month]. Declared last in index.css on purpose: at equal specificity these only win by order, and higher up they stay inert."
       }
     ],
     "browserSurfaces": [
@@ -409,7 +444,7 @@
       {
         "name": "scrollbars",
         "value": "scrollbar-width: thin; scrollbar-color: var(--color-rule-strong) transparent; ::-webkit-scrollbar 10px, thumb 2px transparent border with background-clip: content-box",
-        "purpose": "The scrollbars of the ledger (beside .table-scroll), the bars scroller and a window body belong to the palette."
+        "purpose": "The scrollbars of the bars scroller and a window body belong to the palette."
       },
       {
         "name": "focus-ring",
@@ -418,7 +453,7 @@
       },
       {
         "name": "print",
-        "value": "@media print hides .monthnav, .pager, .skip-link, .plate, .action-stamp; the sheet loses its shadow, its border and its max-width",
+        "value": "@media print hides .monthnav, .pager, .filters, .fact-acts, .skip-link, .plate, .action-stamp; the sheet loses its shadow, its border and its max-width",
         "purpose": "A real document also leaves by printer."
       }
     ],
@@ -447,8 +482,7 @@
           "/fonts/chivo-mono-latin-700-normal.woff2"
         ],
         "weight": 700,
-        "format": "woff2",
-        "purpose": "Every amount, rate, date, count and line number."
+        "purpose": "Every amount, rate, date, count and correlative number."
       }
     ],
     "accessibility": {
@@ -471,15 +505,17 @@
       },
       "constraints": [
         "Zero horizontal overflow at 390px.",
-        "Touch targets 42-46px at rest (.plate/.field/.seg 46px, .pbtn/.iconb 42px, .skip-link 44px) with a 44px floor on a coarse pointer.",
+        "Touch targets 42-46px at rest (.plate/.field/.seg 46px, .pbtn/.iconb 42px, .pinb/.linkb 34px, .skip-link 44px) with a 44px floor on a coarse pointer.",
         "Every control has an associated label; the gasto/ingreso, USD/VES and import groups are role=radiogroup with an aria-label.",
         "Form errors use aria-invalid + aria-describedby and focus moves to the first field with an error; no role=alert per field.",
-        "No window.confirm anywhere: every interruption is the one Window primitive with focus moved in, trapped, restored, Escape to close and body scroll locked."
+        "No window.confirm anywhere: every interruption is the one Window primitive with focus moved in, trapped, restored, Escape to close and body scroll locked.",
+        "The board's search is a native input[type=search]; each facturita is an article and each day block a list item, so the mosaic keeps list semantics."
       ]
     },
     "superseded": [
       "docs/architecture.md still documents the retired teal system (single hue 188, paletteFor, dark mode). docs/** is frozen by the project's ownership contract, so it was not edited; DESIGN.md supersedes it for visual decisions.",
-      ".impeccable/NEW-WORLD-SPEC.md and .impeccable/build-packet.md describe the previous chalk-board world (\"La pizarra de la tasa\", board/chalk/wood tokens, the #paint-rough filter). index.css no longer carries any of those tokens or classes; the contract also no longer ships inside frontend/index.html."
+      ".impeccable/NEW-WORLD-SPEC.md and .impeccable/build-packet.md describe the previous chalk-board world (\"La pizarra de la tasa\", board/chalk/wood tokens, the #paint-rough filter). index.css no longer carries any of those tokens or classes; the contract also no longer ships inside frontend/index.html.",
+      "The incumbent DESIGN.md described the month as one invoice with a numbered ledger table (.book, .book .ln, .book .desc, .book .acts, .table-scroll) and a .leader dot leader. That surface was replaced by the board of facturitas (El Mosaico de Días); every one of those rules is retired and removed."
     ]
   },
   "components": [
@@ -498,6 +534,14 @@
       "description": "The document's secondary control: pager steps, Mes actual, Exportar, Importar, Reintentar, Nueva cartera and the window cancel actions.",
       "html": "<button class=\"ds-pbtn\" type=\"button\">SIGUIENTE</button>",
       "css": ".ds-pbtn { display: inline-flex; align-items: center; justify-content: center; min-height: 42px; padding: 9px 14px; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: background-color 120ms ease, border-color 120ms ease; } .ds-pbtn:hover:not(:disabled) { border-color: var(--color-ink); background: var(--color-paper-2); } .ds-pbtn:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-pbtn:disabled { color: var(--color-dim-2); cursor: not-allowed; }"
+    },
+    {
+      "name": "Month Arrow",
+      "kind": "button",
+      "refersTo": "month-arrow",
+      "description": "The month's step control: a 46px paper circle with a 1px Control Line border, flanking the centred month name in .monthnav-main. One of the user's two pinned breaks of the document's squareness, with a short paper shadow that drops while pressed.",
+      "html": "<button type=\"button\" class=\"ds-mnav\" aria-label=\"Mes anterior\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" aria-hidden=\"true\"><polyline points=\"12 4 6 10 12 16\"></polyline></svg></button>",
+      "css": ".ds-mnav { display: inline-flex; align-items: center; justify-content: center; width: 46px; height: 46px; padding: 0; border: 1px solid var(--color-control); border-radius: 50%; background: var(--color-paper); color: var(--color-ink); cursor: pointer; box-shadow: 0 3px 5px -2px rgba(58, 36, 10, 0.38); transition: background-color 120ms ease, transform 60ms ease, box-shadow 120ms ease; } .ds-mnav:hover { background: var(--color-paper-2); border-color: var(--color-ink); } .ds-mnav:active { transform: translateY(1px); box-shadow: 0 1px 2px -1px rgba(58, 36, 10, 0.38); } .ds-mnav:focus-visible { outline: 2px solid var(--color-danger); outline-offset: 2px; }"
     },
     {
       "name": "Ink Plate",
@@ -519,7 +563,7 @@
       "name": "Text Field",
       "kind": "input",
       "refersTo": "field",
-      "description": "The document's casillero: paper ground, 1px Control Line border, square corners, 46px tall. Focus and invalid states are the stamp's red.",
+      "description": "The document's casillero: paper ground, 1px Control Line border, square corners, 46px tall. Focus and invalid states are the stamp's red. The board's search is the same casillero as a native input[type=search].",
       "html": "<div class=\"ds-field\"><label class=\"ds-field-label\" for=\"ds-amount\">MONTO EN DÓLARES</label><input class=\"ds-input\" id=\"ds-amount\" type=\"text\" inputmode=\"decimal\" placeholder=\"1.234,56\" /></div>",
       "css": ".ds-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; } .ds-field-label { font-family: var(--font-sans); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-dim); } .ds-input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.92rem; font-variant-numeric: tabular-nums; } .ds-input::placeholder { color: var(--color-dim-2); } .ds-input:focus-visible { border-color: var(--color-danger); outline: 2px solid var(--color-danger); outline-offset: 2px; } .ds-input[aria-invalid=\"true\"] { border-color: var(--color-danger); border-width: 2px; } .ds-input:disabled { background: var(--color-paper-2); color: var(--color-dim-2); }"
     },
@@ -535,7 +579,7 @@
       "name": "Tag",
       "kind": "chip",
       "refersTo": "tag",
-      "description": "The square label of a row's kind (Gasto, Ingreso, Pago de deuda, Deuda) or of a jar's status. Never carries colour.",
+      "description": "The square label of a facturita's kind (Gasto, Ingreso, Pago de deuda) or of a jar's status. Never carries colour.",
       "html": "<span class=\"ds-tag\">GASTO</span> <span class=\"ds-tag\">PAGO DE DEUDA</span>",
       "css": ".ds-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--color-rule-strong); border-radius: 0; font-family: var(--font-sans); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; }"
     },
@@ -556,20 +600,52 @@
       "css": ".ds-notice { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; padding: 10px 12px; border: 1px solid var(--color-rule-strong); border-top: 2px solid var(--color-ink); border-radius: 0; background: var(--color-paper-2); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.8rem; line-height: 1.55; } .ds-notice p { margin: 0; } .ds-notice .ds-notice-x { min-height: 42px; padding: 9px 14px; border: 1px solid var(--color-control); border-radius: 0; background: var(--color-paper); color: var(--color-ink); font-family: var(--font-sans); font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; } .ds-notice .ds-notice-x:hover { border-color: var(--color-ink); background: var(--color-paper-2); } .ds-notice.success { border-color: var(--color-ink); } .ds-notice.error { border-color: var(--color-danger); border-width: 2px; background: rgba(178, 58, 32, 0.05); } .ds-notice.error p { color: var(--color-danger); font-weight: 700; }"
     },
     {
-      "name": "Subtotal Band",
+      "name": "Month's Band",
       "kind": "custom",
       "refersTo": "sheet",
-      "description": "The month in three ruled lines: label, dot leader, figure - closing on the 3px heavy rule with its double rule. The closing figure turns stamp red when the month is negative.",
-      "html": "<div class=\"ds-sub\"><div class=\"ds-sub-line\"><span class=\"ds-sub-lab\">INGRESOS</span><span class=\"ds-leader\"></span><span class=\"ds-sub-val\">$ 4.850,00</span></div><div class=\"ds-sub-line\"><span class=\"ds-sub-lab\">GASTOS</span><span class=\"ds-leader\"></span><span class=\"ds-sub-val\">$ 3.120,40</span></div><div class=\"ds-sub-line ds-sub-total ds-sub-neg\"><span class=\"ds-sub-lab\">TE QUEDA</span><span class=\"ds-leader\"></span><span class=\"ds-sub-val\">- $ 1.000,00</span></div></div>",
-      "css": ".ds-sub { display: grid; gap: 0; } .ds-sub-line { display: flex; align-items: baseline; gap: 8px; padding: 7px 0; } .ds-sub-lab { font-family: var(--font-sans); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; } .ds-leader { flex: 1; min-width: 14px; border-bottom: 1px dotted var(--color-rule-strong); transform: translateY(-3px); } .ds-sub-val { font-family: var(--font-mono); font-weight: 700; font-size: 1.22rem; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-sub-total { border-top: 3px solid var(--color-ink); box-shadow: 0 5px 0 -4px var(--color-ink); margin-top: 8px; padding-top: 10px; } .ds-sub-total .ds-sub-lab { color: var(--color-ink); } .ds-sub-total .ds-sub-val { font-size: 1.72rem; } .ds-sub-neg .ds-sub-val { color: var(--color-danger); }"
+      "description": "The month in three stacked cells on ONE ruled band: label above figure, a 1px hairline between cells, no rule of its own - closed by the 3px heavy rule with its double rule BELOW. The closing figure turns stamp red when the month is negative. The dot leader is gone.",
+      "html": "<div class=\"ds-sub\"><div class=\"ds-sub-line\"><span class=\"ds-sub-lab\">INGRESOS</span><span class=\"ds-sub-val\">$ 4.850,00</span></div><div class=\"ds-sub-line\"><span class=\"ds-sub-lab\">GASTOS</span><span class=\"ds-sub-val\">$ 3.120,40</span></div><div class=\"ds-sub-line ds-sub-total ds-sub-neg\"><span class=\"ds-sub-lab\">TE QUEDA</span><span class=\"ds-sub-val\">- $ 1.000,00</span></div></div>",
+      "css": ".ds-sub { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: 3px solid var(--color-ink); box-shadow: 0 5px 0 -4px var(--color-ink); } .ds-sub-line { display: flex; flex-direction: column; gap: 3px; min-width: 0; padding: 9px 10px; border-left: 1px solid var(--color-rule); } .ds-sub-line:first-child { border-left: 0; padding-left: 0; } .ds-sub-line:last-child { padding-right: 0; } .ds-sub-lab { font-family: var(--font-sans); font-size: 0.66rem; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; } .ds-sub-total .ds-sub-lab { color: var(--color-ink); } .ds-sub-val { font-family: var(--font-mono); font-weight: 700; font-size: clamp(0.94rem, 3.4vw, 1.22rem); letter-spacing: -0.03em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-sub-total .ds-sub-val { font-size: clamp(1.06rem, 4.6vw, 1.72rem); } .ds-sub-neg .ds-sub-val { color: var(--color-danger); }"
     },
     {
-      "name": "Ledger Line",
+      "name": "Facturita",
       "kind": "custom",
-      "refersTo": "sheet",
-      "description": "A numbered line item of the month: line number, date, tag + category, wallet, note, and the amount right-aligned in mono with the ballpoint detail (original Bs amount and rate) underneath.",
-      "html": "<div class=\"ds-line\"><span class=\"ds-ln\">7</span><span class=\"ds-date\">12/09/2026</span><span class=\"ds-desc\"><span class=\"ds-who\"><span class=\"ds-tag\">GASTO</span> Supermercado</span><span class=\"ds-what\">Binance</span><span class=\"ds-note\">compra semanal</span></span><span class=\"ds-amt\"><span>- $ 84,20</span><span class=\"ds-pen\">3.368,00 Bs @ 40,00</span></span></div>",
-      "css": ".ds-line { display: grid; grid-template-columns: auto minmax(96px, auto) minmax(0, 1fr) auto; gap: 4px 12px; align-items: baseline; padding: 9px 8px; border-bottom: 1px dashed var(--color-rule); } .ds-ln { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; color: var(--color-dim-2); font-variant-numeric: tabular-nums; } .ds-date { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-size: 0.86rem; } .ds-desc { min-width: 0; } .ds-who { display: block; font-weight: 700; font-size: 0.86rem; } .ds-what, .ds-note { display: block; font-size: 0.76rem; color: var(--color-dim); overflow-wrap: anywhere; } .ds-amt { text-align: right; } .ds-amt > span { display: block; font-family: var(--font-mono); font-weight: 700; font-size: 0.94rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-pen { font-size: 0.72rem !important; color: var(--color-pen); } .ds-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--color-rule-strong); border-radius: 0; font-family: var(--font-sans); font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; }"
+      "refersTo": "facturita",
+      "description": "The month's atom: one little torn piece of paper per record. Square and printed above, torn along the bottom by an authored SVG mask ('--tear', a 320x12 path repeated at mask-size 320px 12px); each ticket's <li> carries one filter: drop-shadow (a filter, because the mask clips a box-shadow) and that shadow is the only thing that makes the tear legible, since the paper rests on the sheet and not on the board. Header line: correlative Nº (aria-hidden), date, amount pushed right; then the tag + category, the wallet and the note, and the ballpoint .pen detail for a bolívar entry; below a 1px dashed --color-rule divider sit the alfiler and the .linkb actions.",
+      "html": "<article class=\"ds-fact\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 07</span><span class=\"ds-fact-date\">12/09/2026</span><span class=\"ds-fact-amt\">- $ 84,20</span></div><div class=\"ds-fact-body\"><p class=\"ds-fact-who\"><span class=\"ds-tag\">GASTO</span> Supermercado</p><p class=\"ds-fact-what\">Binance</p><p class=\"ds-fact-note\">compra semanal</p><span class=\"ds-pen\">3.368,00 Bs @ 40,00</span></div><div class=\"ds-fact-acts\"><button type=\"button\" class=\"ds-pinb\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" aria-hidden=\"true\"><line x1=\"5\" y1=\"4\" x2=\"15\" y2=\"4\"></line><polyline points=\"7 4 8.5 11 11.5 11 13 4\"></polyline><line x1=\"10\" y1=\"11\" x2=\"10\" y2=\"17\"></line></svg><span>FIJAR</span></button><button type=\"button\" class=\"ds-linkb\">EDITAR</button><button type=\"button\" class=\"ds-linkb\">BORRAR</button></div></article>",
+      "css": ".ds-fact { padding: 10px 12px 16px; border: 1px solid var(--color-control); background: var(--color-paper); border-radius: 0; font-family: var(--font-sans); --tear: url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='12'%3E%3Cpath fill='black' d='M0 3.2L4 4.1L13 2.6L19 5.4L36 3L39 6.8L50 4.4L75 2.5L80 3.8L88 7.9L101 4.6L105 2.9L124 5.1L131 3.3L134 6.2L156 4L162 2.4L172 3.6L187 5.8L192 4.3L204 2.7L207 7.1L225 4.8L233 3.1L239 5.6L259 4.2L263 2.8L277 3.9L286 4.4L320 3.4V0H0Z'/%3E%3C/svg%3E\"); -webkit-mask-image: var(--tear), linear-gradient(#000 calc(100% - 12px), transparent calc(100% - 12px)); mask-image: var(--tear), linear-gradient(#000 calc(100% - 12px), transparent calc(100% - 12px)); -webkit-mask-size: 320px 12px, 100% 100%; mask-size: 320px 12px, 100% 100%; -webkit-mask-position: left bottom, 0 0; mask-position: left bottom, 0 0; -webkit-mask-repeat: repeat-x, no-repeat; mask-repeat: repeat-x, no-repeat; filter: drop-shadow(0 4px 3px rgba(58, 36, 10, 0.42)); } .ds-fact-top { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--color-rule); } .ds-fact-no { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-dim-2); } .ds-fact-date { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; color: var(--color-dim); } .ds-fact-amt { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: 1.02rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-fact-body { padding-top: 8px; } .ds-fact-who { margin: 0; font-weight: 700; font-size: 0.9rem; overflow-wrap: anywhere; } .ds-fact-what, .ds-fact-note { margin: 3px 0 0; font-size: 0.76rem; color: var(--color-dim); overflow-wrap: anywhere; } .ds-pen { display: block; margin-top: 2px; font-family: var(--font-mono); font-size: 0.72rem; font-weight: 700; color: var(--color-pen); white-space: nowrap; } .ds-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--color-rule-strong); border-radius: 0; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; } .ds-fact-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 9px; padding-top: 8px; border-top: 1px dashed var(--color-rule); } .ds-linkb { display: inline-flex; align-items: center; min-height: 34px; padding: 4px 2px; border: 0; background: none; color: var(--color-ink); font-family: var(--font-sans); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; text-decoration: underline; text-decoration-color: var(--color-rule-strong); text-underline-offset: 3px; cursor: pointer; } .ds-linkb:hover { text-decoration-color: var(--color-ink); }"
+    },
+    {
+      "name": "Alfiler (Pin Button)",
+      "kind": "button",
+      "refersTo": "pin-button",
+      "description": "The pin. A borderless ink text button at 0.68rem/uppercase carrying the drawn thumbtack (PinIcon, 0 0 20 20, currentColor) before its word (fijar / soltar), 34px at rest (44px on a coarse pointer). It is an ink mark and a pressed state, never a fourth colour: hover underlines it, and a pinned facturita keeps it underlined while its ground swaps to Copy Paper.",
+      "html": "<button type=\"button\" class=\"ds-pinb\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" aria-hidden=\"true\"><line x1=\"5\" y1=\"4\" x2=\"15\" y2=\"4\"></line><polyline points=\"7 4 8.5 11 11.5 11 13 4\"></polyline><line x1=\"10\" y1=\"11\" x2=\"10\" y2=\"17\"></line></svg><span>FIJAR</span></button> <button type=\"button\" class=\"ds-pinb ds-pinb-on\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"square\" stroke-linejoin=\"miter\" aria-hidden=\"true\"><line x1=\"5\" y1=\"4\" x2=\"15\" y2=\"4\"></line><polyline points=\"7 4 8.5 11 11.5 11 13 4\"></polyline><line x1=\"10\" y1=\"11\" x2=\"10\" y2=\"17\"></line></svg><span>SOLTAR</span></button>",
+      "css": ".ds-pinb { display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 4px 2px; border: 0; background: none; color: var(--color-ink); font-family: var(--font-sans); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; cursor: pointer; } .ds-pinb:hover { text-decoration: underline; text-decoration-color: var(--color-ink); text-underline-offset: 3px; } .ds-pinb-on { text-decoration: underline; text-decoration-color: var(--color-ink); text-underline-offset: 3px; }"
+    },
+    {
+      "name": "Pinned Strip",
+      "kind": "card",
+      "refersTo": "pinned-strip",
+      "description": "Fijadas: the strip that crosses the sheet above the board, headed by its own .sect. A grid of repeat(auto-fill, minmax(250px, 1fr)); each pinned facturita is the same ticket with .fact.pinned, ground swapped to Copy Paper while its 1px border stays. With nothing pinned, one dim line explains how to pin. The pin lives in this browser (localStorage), never in the frozen API.",
+      "html": "<ul class=\"ds-pin-row\"><li><article class=\"ds-fact ds-fact-pinned\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 03</span><span class=\"ds-fact-date\">04/09/2026</span><span class=\"ds-fact-amt\">- $ 84,20</span></div><div class=\"ds-fact-body\"><p class=\"ds-fact-who\"><span class=\"ds-tag\">GASTO</span> Supermercado</p><p class=\"ds-fact-what\">Binance</p></div></article></li></ul><p class=\"ds-pin-empty\">Todavía no fijaste ninguna factura. El alfiler de cada una la clava acá arriba.</p>",
+      "css": ".ds-pin-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 0; } .ds-pin-empty { margin: 0; max-width: 68ch; font-size: 0.78rem; line-height: 1.55; color: var(--color-dim); font-family: var(--font-sans); } .ds-fact { padding: 10px 12px 16px; border: 1px solid var(--color-control); background: var(--color-paper); border-radius: 0; font-family: var(--font-sans); } .ds-fact-pinned { background: var(--color-paper-2); } .ds-fact-top { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--color-rule); } .ds-fact-no { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-dim-2); } .ds-fact-date { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; color: var(--color-dim); } .ds-fact-amt { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: 1.02rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-fact-body { padding-top: 8px; } .ds-fact-who { margin: 0; font-weight: 700; font-size: 0.9rem; } .ds-fact-what { margin: 3px 0 0; font-size: 0.76rem; color: var(--color-dim); } .ds-tag { display: inline-block; padding: 1px 6px; border: 1px solid var(--color-rule-strong); border-radius: 0; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; color: var(--color-dim); white-space: nowrap; }"
+    },
+    {
+      "name": "Day Block",
+      "kind": "card",
+      "refersTo": "day-block",
+      "description": "A ruled block, not a card: a .day-head carrying the day and the COUNT of its facturas, closed by a 2px ink rule, then its .tickets list. The day is spelled out in Spanish (lib/month.ts#dayLabel, e.g. \"viernes 4\"); the count is mono micro in Ink Dim 2 (\"n factura\" / \"n facturas\"). Headed by the count, never by a money subtotal (The Counted-Day Rule).",
+      "html": "<div class=\"ds-day\"><div class=\"ds-day-head\"><h3 class=\"ds-day-name\">viernes 4</h3><span class=\"ds-day-count\">2 facturas</span></div><ul class=\"ds-tickets\"><li><article class=\"ds-fact\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 06</span><span class=\"ds-fact-date\">04/09/2026</span><span class=\"ds-fact-amt\">- $ 12,00</span></div></article></li><li><article class=\"ds-fact\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 07</span><span class=\"ds-fact-date\">04/09/2026</span><span class=\"ds-fact-amt\">- $ 84,20</span></div></article></li></ul></div>",
+      "css": ".ds-day { min-width: 0; font-family: var(--font-sans); } .ds-day-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-bottom: 5px; border-bottom: 2px solid var(--color-ink); } .ds-day-name { margin: 0; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; } .ds-day-count { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-dim-2); } .ds-tickets { display: grid; gap: 10px; list-style: none; margin: 10px 0 0; padding: 0; } .ds-fact { padding: 10px 12px 16px; border: 1px solid var(--color-control); background: var(--color-paper); border-radius: 0; } .ds-fact-top { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--color-rule); } .ds-fact-no { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-dim-2); } .ds-fact-date { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; color: var(--color-dim); } .ds-fact-amt { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: 1.02rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }"
+    },
+    {
+      "name": "Mosaic",
+      "kind": "card",
+      "refersTo": "mosaic",
+      "description": "The board's layout: a <ul class=\"mosaic\" aria-label=\"Días del mes\"> of day blocks - one <li class=\"day\"> per day - three columns from 1100px, two from 720px and one below, with 18px 26px gaps. Each day block keeps its head, its count and its facturitas on the same measure at 390px.",
+      "html": "<ul class=\"ds-mosaic\" aria-label=\"Días del mes\"><li class=\"ds-day\"><div class=\"ds-day-head\"><h3 class=\"ds-day-name\">jueves 3</h3><span class=\"ds-day-count\">1 factura</span></div><ul class=\"ds-tickets\"><li><article class=\"ds-fact\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 05</span><span class=\"ds-fact-date\">03/09/2026</span><span class=\"ds-fact-amt\">- $ 25,00</span></div></article></li></ul></li><li class=\"ds-day\"><div class=\"ds-day-head\"><h3 class=\"ds-day-name\">viernes 4</h3><span class=\"ds-day-count\">2 facturas</span></div><ul class=\"ds-tickets\"><li><article class=\"ds-fact\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 06</span><span class=\"ds-fact-date\">04/09/2026</span><span class=\"ds-fact-amt\">- $ 12,00</span></div></article></li><li><article class=\"ds-fact\"><div class=\"ds-fact-top\"><span class=\"ds-fact-no\">Nº 07</span><span class=\"ds-fact-date\">04/09/2026</span><span class=\"ds-fact-amt\">- $ 84,20</span></div></article></li></ul></li></ul>",
+      "css": ".ds-mosaic { display: grid; gap: 18px 26px; align-items: start; list-style: none; margin: 0; padding: 0; font-family: var(--font-sans); } @media (min-width: 720px) { .ds-mosaic { grid-template-columns: repeat(2, minmax(0, 1fr)); } } @media (min-width: 1100px) { .ds-mosaic { grid-template-columns: repeat(3, minmax(0, 1fr)); } } .ds-day { min-width: 0; } .ds-day-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-bottom: 5px; border-bottom: 2px solid var(--color-ink); } .ds-day-name { margin: 0; font-size: 0.78rem; font-weight: 900; letter-spacing: 0.12em; text-transform: uppercase; } .ds-day-count { font-family: var(--font-mono); font-size: 0.7rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--color-dim-2); } .ds-tickets { display: grid; gap: 10px; list-style: none; margin: 10px 0 0; padding: 0; } .ds-fact { padding: 10px 12px 16px; border: 1px solid var(--color-control); background: var(--color-paper); border-radius: 0; } .ds-fact-top { display: flex; align-items: baseline; gap: 10px; padding-bottom: 7px; border-bottom: 1px solid var(--color-rule); } .ds-fact-no { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--color-dim-2); } .ds-fact-date { font-family: var(--font-mono); font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; color: var(--color-dim); } .ds-fact-amt { margin-left: auto; font-family: var(--font-mono); font-weight: 700; font-size: 1.02rem; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; white-space: nowrap; }"
     },
     {
       "name": "Window",
@@ -582,25 +658,26 @@
   ],
   "narrative": {
     "northStar": "La Factura del Mes",
-    "overview": "The month is one white invoice, bound like a savings passbook, that the visitor keeps re-writing. The whole screen is one sheet of cool white paper lying on a grey desk: the letterhead at the top, the month's three figures ruled into a subtotal band, the numbered line items of the ledger, the margin column of jars and wallets, and the perforation that ends the page. Nothing in it is a card: bands are separated by rules, and the rules are the structure.\n\nThe sheet is written with the marks a person physically makes on a document. A rubber stamp carries anything negative, anything over its cap, and the one action plate; a ballpoint carries the original bolívar amount of a movement; a highlighter marks a cap that is running out — always as a stroke behind the ink, never as a colour of its own. Attention that has to be legible as text uses a darker amber instead. Income is not a colour at all: it is print ink at full strength with a leading `+`, the way a signed ledger reads.\n\nEvery figure on the sheet carries its provenance in the line beside it — its date, its line number, the wallet and the note that produced it — so the visitor sees the month already closed into a total and still knows where each part of it came from. The two things this world refuses are named in its own material: the dashboard of soft-shadowed KPI cards (there is one sheet, and nothing on it is elevated) and the bureaucratic form (the movement form is a window over the sheet that first shows a \"prueba de tira\" — an estimate of where the movement will land, labelled as an estimate, before anything is saved).",
+    "overview": "**Creative North Star: \"La Factura del Mes\"** — the month is a white invoice, bound like a\nsavings passbook, that the visitor keeps re-writing. The whole screen is one sheet of cool white\npaper lying on a light honey wooden board — drawn, never photographed: its knots, plank joint and\ngrain are authored in CSS on the root element, with no raster and no external request. The\nletterhead at the top, the month's three figures on one ruled band, and — under the small\nperforation — the month's balance. Between the band and the cut sits the month itself as a **board\nof facturitas**: one little invoice per record, grouped into ruled day blocks laid as a mosaic,\nwith the ones that matter pinned into a strip above. Nothing in it is a card: bands are separated\nby rules, and the rules are the structure.\n\nThe sheet is written with the marks a person physically makes on a document. A rubber stamp\ncarries anything negative, anything over its cap, and the one action plate; a ballpoint carries\nthe original bolívar amount of a movement; a highlighter marks a cap that is running out — always\nas a stroke behind the ink, never as a colour of its own. Attention that has to be legible as\ntext uses a darker amber instead. Income is not a colour at all: it is print ink at full strength\nwith a leading `+`, the way a signed page reads. Pinning is not a colour either: the alfiler is\nan ink mark and a pressed state.\n\nEvery figure carries its provenance on the ticket beside it — the correlative `Nº`, the date, the\nwallet and the note that produced it — so the visitor sees the month already closed into a total\nand still knows where each part of it came from. The memorable moment is pinning: the alfiler\npresses, the ticket lifts out of its day into the strip above, and the day block closes over the\ngap it left. The two things this world refuses are named in its own material: the dashboard of\nsoft-shadowed KPI cards (there is one sheet, and nothing on it is elevated) and the bureaucratic\nform (the movement form is a window over the sheet that first shows a \"prueba de tira\" — an\nestimate of where the movement will land, labelled as an estimate, before anything is saved).",
     "keyCharacteristics": [
-      "One sheet on a grey desk, ruled into bands; zero cards, zero rounded corners.",
+      "One sheet on a light honey wooden board, ruled into bands; zero cards, and square corners belong to the paper (only the month's arrows and the perforation break it).",
       "Cool white paper, near-black print ink; the only saturated fill is the stamp-red action plate.",
       "Three marks only: stamp red, ballpoint blue, highlighter yellow — plus amber for attention text.",
       "Libre Franklin for the document, Chivo Mono for every measured column, tabular figures everywhere.",
-      "Depth is material: one shadow for the sheet on the desk, one for a window over the sheet, and one for the action plate once it leaves the flow on a phone.",
+      "Depth is material: one warm shadow for the sheet on the board, one for a window over the sheet, one for the action plate once it leaves the flow on a phone, and one drop-shadow that reads each torn facturita.",
+      "The board is drawn, never photographed — grain, plank joints and knots in CSS on the root element; no raster, no external request.",
       "Both faces self-hosted and served from this origin; no external font, CDN or network request.",
-      "Two authored motions: the ink-dry re-print of the month's figures, and one flash on the row just written."
+      "Two authored motions: the ink-dry re-print of the month's figures, and one flash on the facturita just written."
     ],
     "rules": [
       {
         "name": "The Three-Marks Rule",
-        "body": "Only three marks carry colour: the rubber stamp (red), the ballpoint (blue) and the highlighter (yellow). Amber is the same \"attention\" ink made readable as text. A fourth hue does not exist — a new state finds its mark, or it stays ink.",
+        "body": "Only three marks carry colour: the rubber stamp (red), the ballpoint (blue) and the highlighter (yellow). Amber is the same \"attention\" ink made readable as text. A fourth hue does not exist — a new state finds its mark, or it stays ink, and the alfiler is an ink mark and a pressed state, never a fourth colour.",
         "section": "colors"
       },
       {
         "name": "The Ink-Only-Income Rule",
-        "body": "Income is never a colour: `.amt.income` is print ink at full strength with a leading `+`, exactly like `.amt.expense`. The sign carries the meaning.",
+        "body": "Income is never a colour: `.fact-amt.income` is print ink at full strength with a leading `+`, exactly like `.fact-amt.expense`. The sign carries the meaning.",
         "section": "colors"
       },
       {
@@ -614,13 +691,18 @@
         "section": "colors"
       },
       {
+        "name": "The Authored-Board Rule",
+        "body": "The board is drawn, never photographed: a flat `--color-desk` ground carrying, top to bottom, its knots, a plank joint, three de-synchronised grain periods and one wide tonal band set — all CSS gradients on the root element, with no raster and no external request. It is authored at **two scales**, because the band it has to read in is not the same size on both screens. From `680px` up the side band is at least `60px`, and the wide set draws knots at x `1.5%`/`98.5%`, an `180px` plank joint, grain periods of `3px`/`7px`/`13px` and one horizontal tonal band set. At `679px` and below the band is only ~`18px` wide, and there the wide set's hairline grain (alpha `0.06` on a `3px` period) measured as a flat colour band, not as wood: the narrow set draws knots of ~`9px` (a dark ellipse at alpha `0.34` plus a light ring at `0.42`) at x `2%`/`97.5%`, a plank joint every `54px` so that both the left and the right band contain a plank edge, grain periods of `3px`/`5px`/`4px` at alphas `0.16`/`0.11`/`0.09`, and a `180°` tonal ramp that runs down the band instead of across it. Both sets are the same board drawn for the room it has, and that is the cost: two rule sets must be kept in step. It sits on the root element and not on a `.desk` wrapper, because the sheet's collapsed margins used to shrink that wrapper's box and leave flat, ungrained bands at the top and bottom of the document. And it only exists where it is visible: the knots sit at each scale's own x on purpose, so they land in the board's side band and are never hidden under the sheet.",
+        "section": "colors"
+      },
+      {
         "name": "The Tabular Rule",
         "body": "`font-variant-numeric: tabular-nums` is declared on `body` and inherited by everything, and restated on `.mono`/`.num`. No column of figures may shift width.",
         "section": "typography"
       },
       {
         "name": "The Measured-Mono Rule",
-        "body": "Chivo Mono is for money, rates, dates, counts, line numbers and codes — things that are measured, matched or listed in a column. It is never used to make something look technical.",
+        "body": "Chivo Mono is for money, rates, dates, counts, correlative numbers and codes — things that are measured, matched or listed in a column. It is never used to make something look technical.",
         "section": "typography"
       },
       {
@@ -629,36 +711,52 @@
         "section": "typography"
       },
       {
+        "name": "The Counted-Day Rule",
+        "body": "A day block is headed by its day and the COUNT of its facturas, never by a money subtotal. PRODUCT.md makes the backend own every business figure and freezes the API, so the frontend may not sum: a day total waits for an API field.",
+        "section": "layout"
+      },
+      {
         "name": "The Flat-Sheet Rule",
-        "body": "A surface never lifts. It is either printed on the sheet (fields, bars, tags, stamps) or it is a window over it. A card with a soft shadow does not belong to this world.",
+        "body": "A surface never lifts. It is either printed on the sheet (fields, bars, tags, stamps, facturitas) or it is a window over it. A card with a soft shadow does not belong to this world. A facturita's drop-shadow does not lift it: it follows the torn silhouette and reads the cut, not height.",
         "section": "elevation"
       },
       {
         "name": "The One-Shadow Rule",
-        "body": "A surface declares its depth once, as ground contact: the sheet has one shadow, the window has one shadow. Nothing else in the sheet casts anything — except the action plate, and only once it has left the flow to float over the sheet on a phone.",
+        "body": "A surface declares its depth once, as contact with what is under it: the sheet has one warm shadow on the board, the window has one over the sheet, the torn facturita has one on the paper beneath it, and the month's arrow chips have their one short paper shadow. Nothing else in the sheet casts anything — except the action plate, and only once it has left the flow to float over the sheet on a phone.",
         "section": "elevation"
+      },
+      {
+        "name": "The Two Pinned Breaks",
+        "body": "Two deliberate breaks of the old squareness are the user's, not drift. The month's `‹`/`›` arrows are `46px` paper **circles** (`border-radius: 50%`, `.mnav-btn`), and every facturita carries **one** `filter: drop-shadow` following its torn edge. \"Square corners everywhere\" is now \"square corners belong to the paper\": the sheet, the facturita, the month's band and the lists stay square, and the `7px` perforation punch holes are no longer the only curve.",
+        "section": "shapes"
       }
     ],
     "dos": [
-      "Do keep one sheet and divide it with rules (`.sect`, `.rule`, 2px/3px closers, dashed row separators). Bands are separated by ink, never by a card.",
-      "Do measure every figure in Chivo Mono with tabular numerals (`.num`, `.mono`, `.pen`, `.cap`, `.ln`) and right-align money.",
+      "Do keep one sheet and divide it with rules (`.sect`, `.rule`, 2px/3px closers, dashed tear lines). Bands are separated by ink, never by a card.",
+      "Do draw the board, never photograph it — grain, plank joints and knots as CSS gradients on the root element, no raster and no external request — keeping an `18px` cravat of board around the sheet below `680px` and at least `60px` of board on each side from `680px`; the phone's band is the same board at a smaller scale, and the two sets must be kept in step (The Authored-Board Rule).",
+      "Do measure every figure in Chivo Mono with tabular numerals (`.num`, `.mono`, `.pen`, `.cap`, `.fact-amt`) and push money to the right edge of its line.",
       "Do set income as full ink with a leading `+`; the sign carries the meaning.",
       "Do use the highlighter as a background stroke behind ink (`.mark`) and switch to amber (`--color-warn`, 4.8:1) the moment attention has to be lettering.",
+      "Do head a day block by its day and the COUNT of its facturas, never by a money subtotal (The Counted-Day Rule).",
       "Do keep the stamp-red `.plate` the loudest element of the flow it belongs to.",
+      "Do keep the alfiler an ink mark and a pressed state, and swap only a pinned facturita's ground to Copy Paper.",
+      "Do cut a facturita's bottom edge with the authored `--tear` mask and give each ticket **one** `filter: drop-shadow` — a filter, not a `box-shadow`, because the mask clips it — since the tear is legible by that shadow alone, the paper resting on the sheet and not on the board (The Two Pinned Breaks).",
       "Do put every interruption, form and destructive confirmation in the one window primitive with focus moved in, trapped and restored, Escape working, body scroll locked, and the panel positioned against the viewport so opening it never scrolls the document.",
-      "Do let every figure show its provenance: date, line number, wallet and note stay in the row beside the amount.",
+      "Do let every figure show its provenance: the correlative `Nº`, the date, the wallet and the note stay on the ticket beside the amount.",
       "Do label a client-side estimate as an estimate (\"Estimado, todavía sin guardar\") and never as the stored figure.",
-      "Do verify contrast as a number against the real ground (ink 0.66 → 5.7:1, ink 0.6 → 4.7:1, control 0.46 → 3.0:1, stamp on paper 6.1:1, paper on stamp fill 5.7:1), and size the controls for touch — fields and the plate 46px, page and icon buttons 42px, and a 44px floor on a coarse pointer — with one visible 2px focus ring.",
+      "Do verify contrast as a number against the real ground (ink 0.66 → 5.7:1, ink 0.6 → 4.7:1, control 0.46 → 3.0:1, stamp on paper 6.1:1, paper on stamp fill 5.7:1), and size the controls for touch — fields and the plate 46px, page and icon buttons 42px, the alfiler and the ticket actions 34px, and a 44px floor on a coarse pointer — with one visible 2px focus ring.",
       "Do keep both faces self-hosted and versioned in the document's own stylesheet: no CDN, no external font, no network request at runtime."
     ],
     "donts": [
-      "Don't introduce a fourth hue or a coloured fill that is not the stamp plate. The only other full fill in the system is print ink (`.pbtn.primary`), which is not a colour.",
-      "Don't round a corner: the sheet has `border-radius: 0` everywhere. The punch holes of `.perf` are the only curve.",
-      "Don't let a surface cast a shadow other than the sheet's, a window's or the floating action plate's; a band's depth is its rule.",
+      "Don't introduce a fourth hue or a coloured fill that is not the stamp plate. The only other full fill in the system is print ink (`.pbtn.primary`), which is not a colour — and the alfiler is not a colour at all.",
+      "Don't round a corner beyond the two pinned breaks: the sheet, the facturita, the month's band and the lists stay `border-radius: 0`, and the only curves are the `.perf` punch holes and the month's `46px` arrow circles.",
+      "Don't wrap a facturita in a card: it is a printed rectangle with a 1px Control Line border on a flat paper ground, torn along its bottom edge. Its one `filter: drop-shadow` reads the tear, not a lift — never a `box-shadow`, which the mask would clip.",
+      "Don't let a surface cast a shadow other than the sheet's warm ground shadow, a window's, the floating action plate's, a torn facturita's one drop-shadow or the month arrow chips'; a band's depth is its rule.",
       "Don't use the highlighter yellow as a text colour, and don't colour an income.",
-      "Don't recompute a stored business figure in the client; the API owns the numbers.",
+      "Don't recompute a stored business figure in the client, and never sum a day: the API owns the numbers.",
+      "Don't lay the month out as rows behind table columns: a record is a facturita, a little printed rectangle, never a line in a table that a figure can hide behind.",
       "Don't use `window.confirm`, a `role=\"alert\"` per field, or a second live region.",
-      "Don't add an entrance animation per section: the only two motions in the system are the ink-dry re-print of the month's figures (240ms) and the single flash of the row just written."
+      "Don't add an entrance animation per section: the only two motions in the system are the ink-dry re-print of the month's figures (240ms) and the single flash of the facturita just written."
     ]
   }
 }

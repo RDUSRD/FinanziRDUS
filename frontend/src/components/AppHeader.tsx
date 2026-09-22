@@ -65,24 +65,29 @@ export function AppHeader({
       </div>
 
       <div className="monthnav">
-        <button type="button" className="iconb" onClick={onPrev} aria-label="Mes anterior">
-          <ChevronLeftIcon />
-        </button>
-        <span className="m">{monthLabel}</span>
-        <button type="button" className="iconb" onClick={onNext} aria-label="Mes siguiente">
-          <ChevronRightIcon />
-        </button>
-        <button type="button" className="pbtn" onClick={onCurrentMonth}>
-          Mes actual
-        </button>
-        <div className="monthjump">
-          <label htmlFor="month-jump">Ir a un mes</label>
-          <input
-            id="month-jump"
-            type="month"
-            value={month}
-            onChange={(event) => onMonthChange(event.target.value)}
-          />
+        <div className="monthnav-main">
+          <button type="button" className="mnav-btn" onClick={onPrev} aria-label="Mes anterior">
+            <ChevronLeftIcon size={20} />
+          </button>
+          <span className="m">{monthLabel}</span>
+          <button type="button" className="mnav-btn" onClick={onNext} aria-label="Mes siguiente">
+            <ChevronRightIcon size={20} />
+          </button>
+        </div>
+
+        <div className="monthnav-tools">
+          <button type="button" className="pbtn" onClick={onCurrentMonth}>
+            Mes actual
+          </button>
+          <div className="monthjump">
+            <label htmlFor="month-jump">Ir a un mes</label>
+            <input
+              id="month-jump"
+              type="month"
+              value={month}
+              onChange={(event) => onMonthChange(event.target.value)}
+            />
+          </div>
         </div>
       </div>
 

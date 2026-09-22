@@ -30,6 +30,28 @@ export function CloseIcon({ size = 16 }: IconProps) {
   );
 }
 
+/** A thumbtack: head bar, body and needle, drawn to a point. */
+export function PinIcon({ size = 16 }: IconProps) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 20 20"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="square"
+      strokeLinejoin="miter"
+      aria-hidden="true"
+      focusable="false"
+    >
+      <line x1="5" y1="4" x2="15" y2="4" />
+      <polyline points="7 4 8.5 11 11.5 11 13 4" />
+      <line x1="10" y1="11" x2="10" y2="17" />
+    </svg>
+  );
+}
+
 /** A left chevron as a single polyline. */
 export function ChevronLeftIcon({ size = 16 }: IconProps) {
   return (

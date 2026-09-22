@@ -2,13 +2,13 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { AppHeader } from './components/AppHeader';
 import { AccountsPanel } from './components/AccountsPanel';
 import { BarsChart } from './components/BarsChart';
+import { Board } from './components/Board';
 import { Budgets } from './components/Budgets';
 import { DonutChart } from './components/DonutChart';
 import { ImportWindow } from './components/ImportWindow';
 import { JarsPanel } from './components/JarsPanel';
 import { KpiSummary } from './components/KpiSummary';
 import { MovementWindow } from './components/MovementWindow';
-import { MovementsTable } from './components/MovementsTable';
 import { ErrorState, LoadingState } from './components/States';
 import { Notice } from './components/Notice';
 import { ConfirmWindow } from './components/Window';
@@ -408,9 +408,7 @@ export function App() {
               />
             ) : null}
 
-            <div className="rule" />
-
-            {/* El libro · los renglones del documento */}
+            {/* El tablero · las facturas del mes */}
             {movementsQuery.isPending ? (
               <LoadingState label="Cargando movimientos…" />
             ) : movementsQuery.isError ? (
@@ -421,7 +419,8 @@ export function App() {
                 }}
               />
             ) : (
-              <MovementsTable
+              <Board
+                month={month}
                 movements={movementsQuery.data ?? []}
                 labelOf={labelOf}
                 accountNameOf={accountNameOf}
@@ -438,7 +437,7 @@ export function App() {
               />
             )}
 
-            <div className="rule" />
+            <div className="perf" />
 
             {/* La lista · tope y gastado */}
             {budgetsQuery.isPending ? (

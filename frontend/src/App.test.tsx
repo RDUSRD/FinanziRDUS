@@ -39,7 +39,7 @@ describe('App', () => {
     expect(within(budgets).getByText('excedido')).toBeInTheDocument();
     expect(within(budgets).getByText('cerca del tope')).toBeInTheDocument();
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     expect(within(movements).getByText('-$ 85.000')).toBeInTheDocument();
     expect(within(movements).getByText('(5)')).toBeInTheDocument();
   });
@@ -68,7 +68,7 @@ describe('App', () => {
     expect(await screen.findByText('Falla temporal')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Reintentar' }));
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     expect(within(movements).getByText('-$ 85.000')).toBeInTheDocument();
   });
 
@@ -97,7 +97,7 @@ describe('App', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(within(movements).getByRole('button', { name: /Borrar movimiento: Supermercado/ }));
     await user.click(screen.getByRole('button', { name: 'Borrar movimiento' }));
 
@@ -109,12 +109,14 @@ describe('App', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
-    await user.selectOptions(within(movements).getByLabelText('Filtrar por categoría'), 'transporte');
+    const board = await screen.findByRole('region', { name: /^El tablero/i });
+    await user.selectOptions(within(board).getByLabelText('Filtrar por categoría'), 'transporte');
 
-    const table = within(movements).getByRole('table');
-    await waitFor(() => expect(within(table).queryByText('Supermercado')).not.toBeInTheDocument());
-    expect(within(table).getByText('Transporte')).toBeInTheDocument();
+    // The filter selects live in the same region as the mosaic: the figures are
+    // read from the mosaic so a category option never matches a text query.
+    const mosaic = within(board).getByRole('list', { name: 'Días del mes' });
+    await waitFor(() => expect(within(mosaic).queryByText('Supermercado')).not.toBeInTheDocument());
+    expect(within(mosaic).getByText('Transporte')).toBeInTheDocument();
   });
 
   it('exports every movement in the JSON payload', async () => {
@@ -134,7 +136,7 @@ describe('App', () => {
 
     try {
       renderAppTree(<App />);
-      await screen.findByRole('region', { name: /^El libro/i });
+      await screen.findByRole('region', { name: /^El tablero/i });
 
       await user.click(screen.getByRole('button', { name: 'Exportar JSON' }));
 
@@ -194,7 +196,7 @@ describe('App', () => {
 
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     // The amount column stays USD; the Bs + rate is a secondary line.
     expect(within(movements).getByText('-$ 100')).toBeInTheDocument();
     expect(within(movements).getByText('Bs 4.000,00 @ 40')).toBeInTheDocument();

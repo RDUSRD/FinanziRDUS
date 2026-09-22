@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 
-.PHONY: help up down build logs ps restart seed migrate test test-backend test-frontend lint typecheck dev-api dev-web clean nuke
+.PHONY: help up dev down build logs ps restart seed migrate test test-backend test-frontend lint typecheck dev-api dev-web clean nuke
 
 help: ## Muestra esta ayuda
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -9,6 +9,11 @@ help: ## Muestra esta ayuda
 up: ## Levanta todo (db + api + web) construyendo las imágenes
 	$(COMPOSE) up --build -d
 	@echo "Frontend: http://localhost:8080  ·  API docs: http://localhost:8000/api/docs"
+
+dev: ## Levanta todo en modo desarrollo: código montado, recarga en caliente, sin docker build
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.dev.yml up -d
+	@echo "Frontend (Vite + HMR): http://localhost:8080  ·  API docs: http://localhost:8000/api/docs"
+	@echo "El primer arranque instala los módulos del frontend dentro del contenedor."
 
 down: ## Baja los contenedores (conserva los datos)
 	$(COMPOSE) down

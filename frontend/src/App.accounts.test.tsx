@@ -142,7 +142,7 @@ describe('App · carteras y deudas', () => {
     expect(bar).toHaveAttribute('aria-valuenow', '33');
 
     // The payment shows as a month expense with the debt badge.
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     expect(within(movements).getByText('Pago de deuda')).toBeInTheDocument();
     await waitFor(() => expect(within(movements).getByText('-$ 200')).toBeInTheDocument());
 
@@ -163,18 +163,23 @@ describe('App · carteras y deudas', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const table = within(await screen.findByRole('region', { name: /^El libro/i })).getByRole('table');
-    expect(within(table).getByText('Supermercado')).toBeInTheDocument();
-    expect(within(table).getByText('Ocio')).toBeInTheDocument();
+    const board = await screen.findByRole('region', { name: /^El tablero/i });
+    const mosaic = within(board).getByRole('list', { name: 'Días del mes' });
+    expect(within(mosaic).getByText('Supermercado')).toBeInTheDocument();
+    expect(within(mosaic).getByText('Ocio')).toBeInTheDocument();
 
     const filter = within(screen.getByRole('group', { name: 'Filtro de cartera' })).getByLabelText('Cartera');
     await user.selectOptions(filter, '2');
 
-    // Only Binance's movement remains (the table re-mounts while the query refetches).
+    // Only Binance's movement remains (the board re-mounts while the query refetches).
     await waitFor(() => {
-      const filtered = within(screen.getByRole('region', { name: /^El libro/i })).getByRole('table');
-      expect(within(filtered).queryByText('Supermercado')).not.toBeInTheDocument();
-      expect(within(filtered).getByText('Ocio')).toBeInTheDocument();
+      const filtered = within(
+        within(screen.getByRole('region', { name: /^El tablero/i })).getByRole('list', {
+          name: 'Días del mes',
+        }),
+      );
+      expect(filtered.queryByText('Supermercado')).not.toBeInTheDocument();
+      expect(filtered.getByText('Ocio')).toBeInTheDocument();
     });
     expect(server.fetchMock.mock.calls.some(([input]) => String(input).includes('account=2'))).toBe(true);
   });

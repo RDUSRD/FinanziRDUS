@@ -142,7 +142,7 @@ describe('App month navigation', () => {
     const user = userEvent.setup();
     const previous = shiftMonth(MONTH, -1);
 
-    await screen.findByRole('region', { name: /^El libro/i });
+    await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(screen.getByRole('button', { name: 'Mes anterior' }));
 
     expect(screen.getByText(monthFullLabel(previous))).toBeInTheDocument();
@@ -165,7 +165,7 @@ describe('App import', () => {
   it('rejects a file bigger than 5 MB with a clear message and without calling the API', async () => {
     mount([movement(1, 'gasto', 'supermercado', 30_000_000, day(MONTH, 5))]);
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /^El libro/i });
+    await screen.findByRole('region', { name: /^El tablero/i });
 
     const big = importFile('grande.json', { version: 1, movements: [], budgets: {} });
     Object.defineProperty(big, 'size', { value: 6 * 1024 * 1024 });
@@ -183,7 +183,7 @@ describe('App import', () => {
       movement(2, 'ingreso', 'sueldo', 50_000_000, day(MONTH, 6)),
     ]);
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /^El libro/i });
+    await screen.findByRole('region', { name: /^El tablero/i });
 
     await user.click(screen.getByRole('button', { name: /importar/i }));
     await user.upload(
@@ -213,7 +213,7 @@ describe('App import', () => {
       movement(2, 'ingreso', 'sueldo', 50_000_000, day(MONTH, 6)),
     ]);
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /^El libro/i });
+    await screen.findByRole('region', { name: /^El tablero/i });
 
     await user.click(screen.getByRole('button', { name: /importar/i }));
     await user.click(screen.getByRole('radio', { name: 'Reemplazar' }));
@@ -255,7 +255,7 @@ describe('App import', () => {
     vi.stubGlobal('fetch', failing);
 
     const user = userEvent.setup();
-    await screen.findByRole('region', { name: /^El libro/i });
+    await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(screen.getByRole('button', { name: /importar/i }));
     await user.upload(
       screen.getByLabelText('Archivo JSON a importar'),

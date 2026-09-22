@@ -50,7 +50,7 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(within(movements).getByRole('button', { name: /Editar movimiento: Supermercado/ }));
 
     const amount = await screen.findByLabelText('Monto en dólares');
@@ -62,7 +62,7 @@ describe('App mutations', () => {
     await waitFor(() => expect(server.db.movements.find((m) => m.id === 1)?.amount_cents).toBe(5_000_000));
     expect(requestedWith('PATCH', '/api/movements/1')).toBe(true);
 
-    const table = within(await screen.findByRole('region', { name: /^El libro/i }));
+    const table = within(await screen.findByRole('region', { name: /^El tablero/i }));
     await waitFor(() => expect(table.getByText('-$ 50.000')).toBeInTheDocument());
     expect(table.queryByText('-$ 85.000')).not.toBeInTheDocument();
 
@@ -78,14 +78,14 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(within(movements).getByRole('button', { name: /Borrar movimiento: Supermercado/ }));
     await user.click(screen.getByRole('button', { name: 'Borrar movimiento' }));
 
     await waitFor(() => expect(server.db.movements).toHaveLength(4));
     expect(requestedWith('DELETE', '/api/movements/1')).toBe(true);
 
-    const table = within(await screen.findByRole('region', { name: /^El libro/i }));
+    const table = within(await screen.findByRole('region', { name: /^El tablero/i }));
     await waitFor(() => expect(table.queryByText('-$ 85.000')).not.toBeInTheDocument());
 
     const kpi = screen.getByRole('region', { name: 'Los números del mes' });
@@ -99,7 +99,7 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(within(movements).getByRole('button', { name: /Borrar movimiento: Supermercado/ }));
     await user.click(screen.getByRole('button', { name: 'Cancelar' }));
 
@@ -146,7 +146,7 @@ describe('App mutations', () => {
     const user = userEvent.setup();
     renderAppTree(<App />);
 
-    const movements = await screen.findByRole('region', { name: /^El libro/i });
+    const movements = await screen.findByRole('region', { name: /^El tablero/i });
     await user.click(within(movements).getByRole('button', { name: /Editar movimiento: Supermercado/ }));
 
     const amount = await screen.findByLabelText('Monto en dólares');

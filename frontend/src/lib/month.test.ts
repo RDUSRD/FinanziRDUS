@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   currentMonthKey,
+  dayLabel,
   formatDateDisplay,
   isFutureMonth,
   isSameMonth,
@@ -106,5 +107,17 @@ describe('isFutureMonth', () => {
 
   it('returns false for invalid input', () => {
     expect(isFutureMonth('bad', '2026-09')).toBe(false);
+  });
+});
+
+describe('dayLabel', () => {
+  it('names the weekday in Spanish and drops the leading zero', () => {
+    expect(dayLabel('2026-09-04')).toBe('viernes 4');
+    expect(dayLabel('2026-09-21')).toBe('lunes 21');
+    expect(dayLabel('2026-01-01')).toBe('jueves 1');
+  });
+
+  it('returns the input untouched when it is not a date', () => {
+    expect(dayLabel('2026-09')).toBe('2026-09');
   });
 });

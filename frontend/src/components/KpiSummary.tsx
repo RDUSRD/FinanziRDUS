@@ -59,21 +59,18 @@ export function KpiSummary({
       <div className="subtotals">
         <div className="sub-line">
           <span className="lab">Ingresos</span>
-          <span className="leader" aria-hidden="true" />
           <span className="val num repaint" key={repaintKey}>
             {formatMoney(summary.income_cents, 'USD')}
           </span>
         </div>
         <div className="sub-line">
           <span className="lab">Gastos</span>
-          <span className="leader" aria-hidden="true" />
           <span className="val num repaint" key={repaintKey}>
             {formatMoney(summary.expenses_cents, 'USD')}
           </span>
         </div>
         <div className={negative ? 'sub-line total neg' : 'sub-line total'}>
           <span className="lab">Te queda</span>
-          <span className="leader" aria-hidden="true" />
           <span className="val num repaint" key={repaintKey}>
             {formatMoney(summary.balance_cents, 'USD')}
           </span>
