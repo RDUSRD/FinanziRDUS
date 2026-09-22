@@ -38,6 +38,7 @@ function movement(id: number, dayOfMonth: number, overrides: Partial<Movement> =
     rate_micros: null,
     date,
     note: '',
+    items: [],
     created_at: `${date}T10:00:00-03:00`,
     ...overrides,
   };
@@ -160,6 +161,25 @@ describe('Board', () => {
     expect(within(mosaic()).queryByText('Alquiler')).not.toBeInTheDocument();
   });
 
+  it('finds a factura by the description of one of its detail lines', async () => {
+    const user = userEvent.setup();
+    setup([
+      movement(1, 3, {
+        category_id: 'alquiler',
+        items: [{ description: 'Honorarios del contador', amount_cents: 45_000 }],
+      }),
+      movement(2, 4, { category_id: 'ocio', note: 'Cine' }),
+    ]);
+
+    // The line description is part of the haystack, so it finds its factura
+    // even though the header fields never mention it.
+    await user.type(screen.getByLabelText('Buscar'), 'contador');
+
+    expect(within(mosaic()).getByText('Honorarios del contador')).toBeInTheDocument();
+    expect(within(mosaic()).getByText('Alquiler')).toBeInTheDocument();
+    expect(within(mosaic()).queryByText('Ocio')).not.toBeInTheDocument();
+  });
+
   it('narrows the board by type', async () => {
     const user = userEvent.setup();
     setup([movement(1, 3), movement(2, 4, { type: 'ingreso', category_id: 'sueldo' })]);
@@ -278,6 +298,33 @@ describe('Board', () => {
 
     expect(within(mosaic()).getByText('-$ 100')).toBeInTheDocument();
     expect(within(mosaic()).getByText('Bs 4.000,00 @ 40')).toBeInTheDocument();
+  });
+
+  it('renders a VES movement breakdown in bolívares', () => {
+    setup([
+      movement(1, 3, {
+        entry_currency: 'VES',
+        entry_amount_cents: 400_000,
+        rate_micros: 40_000_000,
+        amount_cents: 10_000,
+        items: [
+          { description: 'Leche', amount_cents: 250_000 },
+          { description: 'Pan', amount_cents: 150_000 },
+        ],
+      }),
+    ]);
+
+    const factura = within(mosaic()).getByText('Leche').closest('.fact') as HTMLElement;
+    const breakdown = factura.querySelector('.fact-items') as HTMLElement;
+    expect(breakdown).toBeTruthy();
+    // The lines are shown in bolívares, like the pen, with no per-line USD figure.
+    expect(within(breakdown).getByText('Bs 2.500,00')).toBeInTheDocument();
+    expect(within(breakdown).getByText('Bs 1.500,00')).toBeInTheDocument();
+    expect(within(breakdown).queryByText(/\$/)).not.toBeInTheDocument();
+
+    // The header stays USD; the pen keeps the Bs total at the rate.
+    expect(within(factura).getByText('-$ 100')).toBeInTheDocument();
+    expect(within(factura).getByText('Bs 4.000,00 @ 40')).toBeInTheDocument();
   });
 
   it('sends a debt payment to the wallets instead of offering an edit', () => {

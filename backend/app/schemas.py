@@ -30,11 +30,15 @@ class CategoryOut(BaseModel):
 
 
 class MovementItemIn(BaseModel):
+    """A movement detail line; ``amount_cents`` is in the movement entry currency."""
+
     description: str
     amount_cents: int
 
 
 class MovementItemOut(BaseModel):
+    """A movement detail line; ``amount_cents`` is in the movement entry currency."""
+
     description: str
     amount_cents: int
 

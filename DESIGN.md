@@ -14,8 +14,8 @@ colors:
   desk-hi: "#dcbe92"
   ink: "#11161b"
   ink-deep: "#05080a"
-  ink-dim: "rgba(17, 22, 27, 0.66)"
-  ink-dim-2: "rgba(17, 22, 27, 0.6)"
+  ink-dim: "rgba(17, 22, 27, 0.78)"
+  ink-dim-2: "rgba(17, 22, 27, 0.66)"
   rule: "rgba(17, 22, 27, 0.16)"
   rule-strong: "rgba(17, 22, 27, 0.34)"
   control-line: "rgba(17, 22, 27, 0.46)"
@@ -153,6 +153,9 @@ components:
   segmented-control-active:
     backgroundColor: "{colors.ink}"
     textColor: "{colors.paper}"
+  segmented-control-disabled:
+    backgroundColor: "{colors.paper-2}"
+    textColor: "{colors.ink-dim-2}"
   field:
     backgroundColor: "{colors.paper}"
     textColor: "{colors.ink}"
@@ -261,6 +264,9 @@ estimate of where the movement will land, labelled as an estimate, before anythi
 - Depth is material: one warm shadow for the sheet on the board, one for a window over the sheet,
   one for the action plate once it leaves the flow on a phone, and one drop-shadow that reads each
   torn facturita.
+- The sheet reads as pinned to the board: its own engraved ink thumbtack (`SheetPin.tsx`) sits over
+  its top edge, and from `720px` up the whole sheet carries a `-0.3deg` tilt with its warm contact
+  shadow retuned (The Three Pinned Breaks).
 - The board is drawn, never photographed — grain, plank joints and knots in CSS on the root
   element; no raster, no external request.
 - Both faces self-hosted and served from this origin; no external font, CDN or network request.
@@ -306,9 +312,9 @@ The palette is paper and print ink, with exactly three marks allowed to carry co
 - **Print Ink** (`#11161b`): all text, every drawn rule, the donut and the bars, the caret.
 - **Ink Deep** (`#05080a`, `--color-ink-deep`): the same ink under the hand. It appears in exactly
   one place — the hover ground and border of the ink plate (`.pbtn.primary`).
-- **Ink Dim** (`rgba(17, 22, 27, 0.66)`, 5.7:1 on paper): secondary text — notes, legends, hints,
+- **Ink Dim** (`rgba(17, 22, 27, 0.78)`, 8.8:1 on paper): secondary text — notes, legends, hints,
   field labels, a facturita's wallet line, its note and its date.
-- **Ink Dim 2** (`rgba(17, 22, 27, 0.6)`, 4.7:1 on paper): tertiary text — placeholders, a
+- **Ink Dim 2** (`rgba(17, 22, 27, 0.66)`, 5.7:1 on paper): tertiary text — placeholders, a
   facturita's correlative `Nº`, the day count, the page folio.
 - **Rule** / **Rule Strong** (`0.16` / `0.34`): the hairline divider and the dashed tear line
   under a facturita's actions.
@@ -331,9 +337,12 @@ strength with a leading `+`, exactly like `.fact-amt.expense`. The sign carries 
 **The Highlighter-Behind-Ink Rule.** The highlighter is a background stroke, never a text colour.
 When attention must be legible as lettering it is amber (`.row.warn`, `.wbar.warn`) or it is ink.
 
-**The Never-Grey Rule.** Secondary and tertiary text are ink at reduced alpha over paper (0.66 →
-5.7:1, 0.6 → 4.7:1). No grey and no tinted neutral is ever used to lower the voice, because the
-sheet has to stay legible in daylight.
+**The Never-Grey Rule.** Secondary and tertiary text are ink at reduced alpha over paper (0.78 →
+8.8:1, 0.66 → 5.7:1). No grey and no tinted neutral is ever used to lower the voice, because the
+sheet has to stay legible in daylight. Both neutrals were raised one step — `0.66` → `0.78` and
+`0.6` → `0.66` — when the invoice's secondary lines read washed out: at 0.66 and 0.6 the ticket's
+own lines were AA-passing but faint, and faint is what grey means here. Full ink stays `17.4:1`, so
+the hierarchy still reads; it is just no longer grey.
 
 **The Authored-Board Rule.** The board is drawn, never photographed: a flat `--color-desk` ground
 carrying, top to bottom, its knots, a plank joint, three de-synchronised grain periods and one
@@ -382,7 +391,8 @@ from anywhere else.
   `.pin-empty` at 68ch and `.chartlead` at 70ch): reading copy, notes and hints.
 - **Label** (700, `0.66rem`, `0.14em`, uppercase): field labels, plate lettering, `.tag`.
 - **Mono micro** (Chivo Mono, 700, `0.68`–`0.76rem`, `0.04`–`0.12em`, uppercase): the document
-  number (`Nº YYYY-MM`), a facturita's correlative `Nº` and its date, the day count, the page folio
+  number (`Nº YYYY-MM`), a facturita's correlative `Nº` and its date — both at the top of the range,
+  `0.76rem`, raised from `0.68rem` — the day count, the page folio
   — which carries the balance forward, "Pasa a la hoja siguiente · <monto>" — and the pager state.
 
 ### Named Rules
@@ -432,7 +442,10 @@ more space above a heading than below it.
 Responsive: below `680px` the sheet keeps an `18px` cravat of board on every side, and from
 `680px` it gains its wide inset — at least `60px` of wood per side; at
 `>=720px` the `.mosaic`, `.cols`, `.two` and `.jar-meta` become two columns, and from `1100px` the
-`.mosaic` goes to three. Below `719px` the letterhead's action plate leaves the
+`.mosaic` goes to three. A jar's three figures (`.jar-figs`) hold their three columns down to
+`560px` and below that become three ruled rows — label left, figure right — because at `390px` a
+three-column grid leaves each figure ~`87px` while a long amount needs `105–112px`. Below `719px`
+the letterhead's action plate leaves the
 flow (`position: fixed`, `16px` from the right and bottom edges, `z-index: 30`) with the body
 reserving `104px` of foot so it never covers the pagination, and the pagination's buttons stack
 into a column. On a coarse pointer every control below the comfortable minimum is raised to `44px`
@@ -467,6 +480,11 @@ warm — it is cast on wood, not on grey — and it is what holds the paper's si
 board, because the sheet's warm hairline edge measures under the `3:1` a rim would need. The scrim
 is a flat ink wash (`rgba(17, 22, 27, 0.42)`) with no backdrop blur.
 
+From `720px` up — where the sheet is tilted as a pinned paper — that warm contact shadow is
+retuned to `0 1px 0 rgba(58, 36, 10, 0.16), 0 13px 28px -17px rgba(58, 36, 10, 0.6)`: a touch
+firmer at the edge and a closer, slightly darker ground, so the sheet reads as lying pinned rather
+than floating (The Three Pinned Breaks).
+
 The one state that lifts is the action plate: on a phone, once it leaves the flow and floats over
 the sheet, it gains `0 12px 28px -12px rgba(17, 22, 27, 0.55)` so it is not read as printed on the
 paper. In the flow it declares no drop shadow — only its inset edge.
@@ -500,7 +518,9 @@ the cut, not height.
 sheet has one warm shadow on the board, the window has one over the sheet, the torn facturita has
 one on the paper beneath it, and the month's arrow chips have their one short paper shadow.
 Nothing else in the sheet casts anything — except the action plate, and only once it has left the
-flow to float over the sheet on a phone.
+flow to float over the sheet on a phone. The sheet's pin is not a second exception: its penumbra is
+an ink radial fill inside its own SVG (`.sheet-pin stop`), part of the drawing, not a shadow cast
+by a surface.
 
 ## Shapes
 
@@ -508,8 +528,8 @@ Square and ruled — square corners belong to the paper. Every surface declares 
 no pills, no rounded cards. The one other radius in the system is the `7px` punch hole
 (`border-radius: 50%`) at each end of `.perf`, and the donut is drawn SVG geometry. A facturita is
 a little printed rectangle — square and printed above, torn along the bottom by an authored mask,
-a 1px Control Line border on a flat ground — and it is a list item, never a nested card. Two breaks
-of the old squareness are pinned by the user, not drift — see The Two Pinned Breaks.
+a 1px Control Line border on a flat ground — and it is a list item, never a nested card. Three breaks
+of the old squareness are pinned by the user, not drift — see The Three Pinned Breaks.
 
 Boundaries are one of four rules: a 1px solid hairline at 16% ink (`.rule`, row separators), a
 1px dashed rule at 16% (list rows, the cap field's baseline, and `.fact-acts` — the same dashed
@@ -522,19 +542,36 @@ separators. The literal cut of a facturita is the paper's bottom edge, not the `
 divider above its actions.
 
 ### Named Rules
-**The Two Pinned Breaks.** Two deliberate breaks of the old squareness are the user's, not drift.
-The month's `‹`/`›` arrows are `46px` paper **circles** (`border-radius: 50%`, `.mnav-btn`), and
-every facturita carries **one** `filter: drop-shadow` following its torn edge. "Square corners
-everywhere" is now "square corners belong to the paper": the sheet, the facturita, the month's band
-and the lists stay square, and the `7px` perforation punch holes are no longer the only curve.
-
-**The Pinned-Sheet Break.** A third user-directed break, added on request: the sheet reads as a
-paper **pinned to the board** — a visible thumbtack (the drawn `PinIcon`, an ink mark, never a
-fourth colour) sits over its top edge, and on desktop (`>= 720px`) the whole sheet carries a very
-slight tilt with its warm contact shadow re-tuned so it reads as lying pinned, not floating. The
-tilt is **desktop-only on purpose**: below `720px` the action plate is `position: fixed`, and a
-`transform` on `.sheet` would make that `fixed` resolve against the sheet and break the floating
-button. The board stays drawn (never photographed) and the sheet stays the only container.
+**The Three Pinned Breaks.** Three deliberate breaks of the old squareness are the user's, not
+drift. The month's `‹`/`›` arrows are `46px` paper **circles** (`border-radius: 50%`, `.mnav-btn`),
+and every facturita carries **one** `filter: drop-shadow` following its torn edge. The third is the
+sheet itself: it reads as a paper **pinned to the board**. The pin is now **its own engraved
+drawing** — `frontend/src/components/SheetPin.tsx`, mounted as `.sheet-pin` inside an
+`aria-hidden="true"` span with `pointer-events: none`, decoration only; the facturitas' own alfiler
+is a different thing and keeps the small inline `PinIcon`. It draws a head whose radial gradient
+runs from `0.4` to `1.0` of ink opacity — the same wide "engraved" opacity family the world's
+printed charts use, because a narrow range read as a flat black shape — an **unprinted highlight**
+on the dome (`.sheet-pin-gleam`, filled with `--color-paper`), the head's rim as a darker band, a
+collar and the needle's entry into the paper, over a **soft radial penumbra** for the cast shadow
+(it read as a flat base before). Its gradient stops take their colour from the token (`.sheet-pin
+stop { stop-color: var(--color-ink) }`), so the pin is ink and nothing else. `.sheet-pin` is
+anchored with `top: 0; left: 50%; transform: translate(-50%, -87%)`, which lands the drawing's
+entry line on the sheet's top edge: the head is pinned on the board, the entry on the paper. On
+`max-width: 719px` the same drawing renders smaller (`26×19.5px`), because the phone's board edge is
+only `18px` and the desktop size pushed the head off the top of the screen. And from `min-width:
+720px` up the whole sheet carries a `rotate(-0.3deg)` tilt with its warm contact shadow retuned
+(`0 1px 0 rgba(58, 36, 10, 0.16), 0 13px 28px -17px rgba(58, 36, 10, 0.6)`) so it reads as lying
+pinned, not floating. The tilt is **desktop-only on purpose**: below `719px` the action plate is
+`position: fixed`, and a `transform` on `.sheet` would make that `fixed` resolve against the sheet
+and break the floating button — so on a phone the pin appears with no tilt. `.desk` carries
+`overflow-x: clip` so the tilt cannot cause horizontal overflow, and `@media print` hides the pin
+and drops the transform. One consequence belongs here because it comes from the same transform:
+because `.sheet` becomes the containing block for `fixed` descendants, the `.skip-link` was moved
+**out of** the sheet — it is now the first focusable element in the document, a sibling of `.desk`
+— so it keeps resolving against the viewport and still slides into the top-left corner. "Square
+corners everywhere" is now "square corners belong to the paper": the sheet, the facturita, the
+month's band and the lists stay square, and the `7px` perforation punch holes are no longer the
+only curve.
 
 ## Components
 
@@ -563,13 +600,15 @@ text action 34px (`0.68rem` inside a facturita).
 - **Month arrow** (`.mnav-btn`): a `46×46` paper **circle** (`border-radius: 50%`, 1px Control
   Line border) holding one chevron, with the short paper shadow `0 3px 5px -2px rgba(58, 36, 10,
   0.38)`; hover is the Copy Paper wash with an ink border, and pressing drops it `1px` with a
-  shallower shadow (`0 1px 2px -1px`). It is one of the two pinned breaks (The Two Pinned Breaks).
+  shallower shadow (`0 1px 2px -1px`). It is one of the three pinned breaks (The Three Pinned
+  Breaks).
 - **Text button** (`.linkb`): ink lettering underlined in Rule Strong, `text-underline-offset: 3px`,
   34px minimum height; the underline darkens to ink on hover. `.destructive` turns both to stamp
   red. Inside a facturita (`.fact-acts .linkb`) it drops to `0.68rem`.
 - **Alfiler** (`.pinb`): the pin. A borderless ink text button at `0.68rem`/uppercase carrying the
-  drawn thumbtack (`PinIcon`, `0 0 20 20`, `currentColor`) before its word ("fijar" / "soltar"),
-  34px at rest. It is an ink mark and a pressed state, never a fourth colour: hover underlines it,
+  small inline thumbtack (`PinIcon`, `0 0 20 20`, `currentColor`, 16px — the sheet's own pin is the
+  separate `SheetPin.tsx` drawing) before its word ("fijar" / "soltar"), 34px at rest. It is an ink
+  mark and a pressed state, never a fourth colour: hover underlines it,
   and once its facturita is pinned the label stays underlined while the ticket's ground swaps to
   Copy Paper. On a coarse pointer it joins the 44px floor.
 
@@ -583,7 +622,9 @@ text action 34px (`0.68rem` inside a facturita).
   disabled is a Copy Paper ground with Ink Dim 2 lettering.
 - **Search:** the board's search is a native `input[type="search"]` on the same casillero (46px,
   1px Control Line, paper ground), so the browser's own clear affordance is kept rather than
-  redrawn.
+  redrawn. Its haystack is every field a facturita shows — the date and its spelled-out day, the
+  wallet, the category, the note, the amount as decimal text, the bolívar detail, and each detail
+  line's description.
 - **Select:** `appearance: none` with the chevron drawn in CSS — two 5×5px ink wedges (45°/135°
   gradients) at `calc(100% - 17px)` and `calc(100% - 12px)` — and `option` forced onto an opaque
   paper ground. A transparent popup would leave the native list light under ink lettering, which
@@ -594,7 +635,12 @@ text action 34px (`0.68rem` inside a facturita).
   a written list, not as a grid of boxes.
 - **Segmented control** (`.seg`): a 1px-bordered rectangle; each option is `10px 16px`, 46px tall,
   uppercase, divided by 1px separators, and the chosen one (from `aria-pressed` / `aria-checked`)
-  turns ink with paper lettering. Used for gasto/ingreso, USD/VES and the import modes.
+  turns ink with paper lettering. Used for gasto/ingreso, USD/VES and the import modes. A segment
+  is disabled for real only while it is not offered — the import modes while an import is in flight
+  — with a Copy Paper ground, Ink Dim 2 lettering and
+  `cursor: not-allowed`; the chosen-segment rule is declared after it, so the checked segment keeps
+  its ink. The currency control is no longer one of those: with detail lines on screen both `USD`
+  and `VES` stay selectable, and nothing forces USD.
 
 ### Tags and stamps (chips)
 - **Tag** (`.tag`): transparent ground, 1px Rule Strong border, square, `1px 6px`, `0.62rem`/900
@@ -611,7 +657,12 @@ text action 34px (`0.68rem` inside a facturita).
   `min(1400px, 100% − 36px)` with `margin: 18px auto` — an `18px` cravat of board all around it,
   the same paper over the same board as on the desktop — and from `680px` `min(1400px, 100% −
   120px)` with `margin: 30px auto` (at least `60px` of board per side). It is the only container;
-  bands inside it are divided by rules, not wrapped in cards.
+  bands inside it are divided by rules, not wrapped in cards. From `min-width: 720px` up it is
+  tilted `rotate(-0.3deg)` as a pinned paper sitting on the board and carries the drawn `.sheet-pin`
+  thumbtack — `SheetPin.tsx`, its own engraved drawing, anchored so its entry line lands on the
+  sheet's top edge; the `.desk` that holds it carries `overflow-x: clip` so the tilt cannot cause
+  horizontal overflow, and `@media print` hides the pin and drops the transform
+  (The Three Pinned Breaks).
 - **Section head** (`.sect`): a `.74rem`/900/`0.16em` uppercase heading and its `sect-note` on one
   baseline row, closed by a 1px ink rule.
 - **Chart box** (`.chartbox`): a 1px Rule border on Copy Paper with `14px` padding — the frame
@@ -637,7 +688,10 @@ text action 34px (`0.68rem` inside a facturita).
 - **Filters** (`.filters`): the board's search and its two selects, as `.field`s that wrap at
   `300px` flex-basis and sit on one line when there is room. The search is a `type="search"` field.
 - **Skip link** (`.skip-link`): fixed off-screen at `top: -100px`, 44px tall, stamp fill, and it
-  slides into the top-left corner (`top: 14px`) over `140ms ease` on focus.
+  slides into the top-left corner (`top: 14px`) over `140ms ease` on focus. It is the first
+  focusable element in the document and a sibling of `.desk`, **outside** the sheet: from `720px`
+  the sheet carries a `transform`, which would make a `fixed` descendant resolve against the sheet
+  and miss the corner.
 
 ### The month's band
 Three `.sub-line` cells on one ruled band: each a label stacked over its value, a 1px hairline
@@ -672,12 +726,19 @@ documented role: ≈3.0:1 on paper). Its header line (`.fact-top`, closed by a 1
 the correlative `Nº` (`.fact-no`, mono micro, `aria-hidden` because the record speaks for itself),
 the date (`.fact-date`, mono) and the amount (`.fact-amt`, pushed right by `margin-left: auto` — the
 largest figure on the ticket, ink with its `+`/`-`). The body stacks `.fact-who` (the kind `.tag` +
-the category), `.fact-what` (the wallet), `.fact-note`, and — for a bolívar entry — the ballpoint
-`.pen` detail (the original Bs amount and its rate) in Ballpoint Blue. Below the 1px dashed
-`--color-rule` divider — the same dashed separator the document's lists use — sit the `.fact-acts`:
-the alfiler and the `.linkb` actions ("editar" / "borrar"), each naming what it acts on through
-`aria-label`. The facturita just written takes one `.flash` — an inset 2px stamp ring that inks in
-once and fades.
+the category), `.fact-what` (the wallet) and `.fact-note` — both at `0.82rem` (≈`13.1px`), raised
+from `0.76rem` so the ticket's smallest reading copy clears the `13px` floor the world already sets
+for its printed charts — and, for a bolívar entry, the ballpoint `.pen` detail (the original Bs
+amount and its rate) in Ballpoint Blue. When the movement carries **detail lines**, a
+`ul.fact-items` opens right there — between the body and the actions, above a 1px dashed
+`--color-rule` rule — with one `li.fact-item` per line: its description (`.fact-item-desc`, Ink Dim)
+left and its price (`.fact-item-amt`, mono, tabular, `nowrap`) pushed right, both in the movement's
+**entry currency** — a bolívar movement's lines read in bolívares (`formatBss`) while the header's
+`.fact-amt` stays the USD total. The breakdown never repeats the total: that stays in the header's
+`.fact-amt`. Below the 1px dashed `--color-rule` divider — the same dashed separator the document's
+lists use — sit the `.fact-acts`: the alfiler and the `.linkb` actions ("editar" / "borrar"), each
+naming what it acts on through `aria-label`. The facturita just written takes one `.flash` — an
+inset 2px stamp ring that inks in once and fades.
 
 ### The pinned strip (Fijadas)
 `.pinned` crosses the sheet above the board, headed by its own `.sect` ("Fijadas (n)") and the note
@@ -705,16 +766,45 @@ while a mutation is in flight; and one window is never nested inside another. Th
 Inside the movement window, a Copy Paper strip carries "Prueba de tira": the USD equivalent of a
 VES entry, and then what the typed movement would do to the month. Every line is derived only
 from the values already typed plus the summary/budgets the client already holds, and it is
-labelled "Estimado, todavía sin guardar" — never presented as the stored figure. The product's
-rule is intact: the API owns every stored number.
+labelled "Estimado, todavía sin guardar" — never presented as the stored figure. When the movement
+carries detail lines, the strip also shows their sum ("Total de líneas · <monto>") in the movement's
+**entry currency** — and, for a VES entry, the USD equivalent that rate implies — under that same
+estimate rule, because the backend, not the client, derives the stored total from the lines. The
+product's rule is intact: the API owns every stored number.
+
+### The detail lines
+Inside the movement window, under the amount/rate fields and before the "Prueba de tira", sits an
+optional, dynamic list of product/service lines: a `<fieldset class="lines">` with one `.line` row
+per line — a description field (`.line .desc`), a price field (`.line .amt`, parsed with `toCents`)
+and its own `.line .rm` "Quitar" — plus a `.line-tools` row holding the "Agregar línea" control and
+its hint (up to 100 lines). The list is empty by default, so the window behaves exactly as before on
+the manual amount; with **at least one line** the manual amount field is hidden and the money is the
+lines' sum, but the currency `.seg` stays live: both `USD` and `VES` remain selectable and nothing
+forces USD. The lines' amounts are **in the movement's entry currency**, and the price field's
+visible label says which — "Precio (Bs)" / "Precio ($)" — while its accessible name stays "Precio de
+la línea N". A VES movement needs its rate, with or without lines, and the lines' sum then appears on
+the strip as an estimate only, with the USD equivalent that rate implies beside it. Each line
+validates inline (its field carries `aria-invalid` and `aria-describedby` to its own `p.error-msg`)
+and every control names its row in its `aria-label` ("Descripción de la línea 2", "Precio de la línea
+2", "Quitar línea 2"). A movement that already carries lines opens the window focused on its first
+line. The stored total is the backend's: it derives `entry_amount_cents` as the lines' sum and, for
+VES, converts it **once** (`round_half_up(Σ × 1e6 / rate_micros)`) — the lines carry no per-line USD
+figure.
 
 ### The margin column and the wallets
 The 25/15/50/10 plan is a numbered margin column: one `<li>` per jar with its step number in mono,
 its name, its share in mono, and a `.wbar` (8px, 1px Rule border on Copy Paper, ink fill, amber at
 `warn`, stamp fill at `over`) under the ruled span. The jar the step is on carries
 `aria-current="step"` and is enclosed between two 2px ink rules — the way a line is marked in a
-document, never a strip down one side — with its step number in full ink. The status line carries
-its `tag` and three mono figures (objetivo / gastado / restante), then per-category reassignment
+document, never a strip down one side — with its step number in full ink. The status `.tag` sits on
+its own line, and below it a `div.jar-figs` carries the three figures — one `div.jar-fig` per cell,
+its `.lbl` (`0.66rem`/900/`0.14em`, uppercase, Ink Dim) above its `.mono` figure below, the cells
+divided by 1px `--color-rule` left borders and given `grid-column: 1 / -1` so the group sits under
+the bar (the same label-above-figure pattern as the month's band). From `560px` up it is the
+three-column grid (`repeat(3, minmax(0, 1fr))`); below `560px` it collapses to one column and each
+cell becomes a row — label left, figure right, a hairline between — because at `390px` a three-column
+grid gives each figure ~`87px` while a long amount needs `105–112px` and spilled into its neighbour.
+The `role="progressbar"` and its `aria-valuetext` are untouched. Then the per-category reassignment
 selects in their own fields. Wallets are `.acc`/`.a` blocks closed by 2px ink rules, with the
 balance as the largest mono figure, a debt block marked by a stamp and an ink progress bar, and
 its actions as `.linkb`s.
@@ -754,16 +844,31 @@ success/error notice is deliberately not a live region, so nothing is announced 
   to Copy Paper.
 - **Do** cut a facturita's bottom edge with the authored `--tear` mask and give each ticket **one**
   `filter: drop-shadow` — a filter, not a `box-shadow`, because the mask clips it — since the tear
-  is legible by that shadow alone, the paper resting on the sheet and not on the board (The Two
+  is legible by that shadow alone, the paper resting on the sheet and not on the board (The Three
   Pinned Breaks).
 - **Do** put every interruption, form and destructive confirmation in the one window primitive
   with focus moved in, trapped and restored, Escape working, body scroll locked, and the panel
   positioned against the viewport so opening it never scrolls the document.
 - **Do** let every figure show its provenance: the correlative `Nº`, the date, the wallet and the
   note stay on the ticket beside the amount.
+- **Do** show a movement's detail lines on its facturita as a ruled breakdown — a `ul.fact-items`
+  between the body and the actions, one `li` per line with the description left and its mono price
+  right, opened by a 1px dashed `--color-rule` rule — in the movement's entry currency (bolívares for
+  a VES movement, `formatBss`) and keep the total only in the header's `.fact-amt`, in USD; the
+  backend derives the stored total from those lines — their sum, converted **once** for VES — and the
+  client only ever shows an estimate.
+- **Do** give each jar's three figures their own labelled cells (`.jar-figs`: Objetivo / Gastado /
+  Restante, label above a mono figure, a 1px `--color-rule` hairline between cells) with the status
+  `.tag` on its own line above, and let them collapse to three ruled rows below `560px`, where three
+  columns no longer fit a long amount.
+- **Do** read the sheet as pinned: its own engraved ink thumbtack (`.sheet-pin`, `SheetPin.tsx`)
+  anchored so its entry line lands on the sheet's top edge — the same drawing redrawn at `26×19.5px`
+  on a `719px` phone, where the board edge is only `18px` — and a `-0.3deg` tilt only from `720px` up
+  with its warm contact shadow retuned; below `720px` the action plate floats fixed and the sheet
+  stays straight (The Three Pinned Breaks).
 - **Do** label a client-side estimate as an estimate ("Estimado, todavía sin guardar") and never
   as the stored figure.
-- **Do** verify contrast as a number against the real ground (ink 0.66 → 5.7:1, ink 0.6 → 4.7:1,
+- **Do** verify contrast as a number against the real ground (ink 0.78 → 8.8:1, ink 0.66 → 5.7:1,
   control 0.46 → 3.0:1, stamp on paper 6.1:1, paper on stamp fill 5.7:1), and size the controls for
   touch — fields and the plate 46px, page and icon buttons 42px, the alfiler and the ticket actions
   34px, and a 44px floor on a coarse pointer — with one visible 2px focus ring.
@@ -774,7 +879,7 @@ success/error notice is deliberately not a live region, so nothing is announced 
 - **Don't** introduce a fourth hue or a coloured fill that is not the stamp plate. The only other
   full fill in the system is print ink (`.pbtn.primary`), which is not a colour — and the alfiler
   is not a colour at all.
-- **Don't** round a corner beyond the two pinned breaks: the sheet, the facturita, the month's band
+- **Don't** round a corner beyond the three pinned breaks: the sheet, the facturita, the month's band
   and the lists stay `border-radius: 0`, and the only curves are the `.perf` punch holes and the
   month's `46px` arrow circles.
 - **Don't** wrap a facturita in a card: it is a printed rectangle with a 1px Control Line border on

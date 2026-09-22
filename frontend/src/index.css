@@ -25,8 +25,8 @@
   --color-desk-hi: #dcbe92;      /* la veta clara de esa madera */
   --color-ink: #11161b;          /* tinta de imprenta: texto principal */
   --color-ink-deep: #05080a;     /* la tinta cuando se presiona */
-  --color-dim: rgba(17, 22, 27, 0.66);
-  --color-dim-2: rgba(17, 22, 27, 0.6);
+  --color-dim: rgba(17, 22, 27, 0.78);   /* secundario: tinta, no gris (8,8:1 sobre papel) */
+  --color-dim-2: rgba(17, 22, 27, 0.66); /* terciario: un paso más claro (5,7:1) */
   --color-rule: rgba(17, 22, 27, 0.16);
   --color-rule-strong: rgba(17, 22, 27, 0.34);
   --color-control: rgba(17, 22, 27, 0.46);    /* borde de controles, >=3:1 */
@@ -229,6 +229,11 @@
  * ================================================================== */
 .desk {
   min-height: 100vh;
+  /* La hoja girada (≥720px) puede desbordar unos px: se recorta en horizontal.
+   * `clip` no crea un contenedor de scroll, así que el `fixed` de la placa de
+   * acción (que sólo existe por debajo de 720px, sin giro) sigue resolviendo
+   * contra el viewport. */
+  overflow-x: clip;
 }
 
 .sheet {
@@ -259,6 +264,57 @@
     padding: 34px 40px 46px;
     width: min(1400px, 100% - 120px);
     margin: 30px auto;
+  }
+}
+
+/* La hoja clavada al tablero: el alfiler dibujado (una marca de tinta, nunca un
+ * cuarto color) montado sobre el borde superior, con la cabeza apoyada en el
+ * tablero y la punta entrando en el papel. Es decoración: el alfiler de cada
+ * facturita es otro, el glifo en línea del botón. */
+.sheet-pin {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  /* El dibujo trae la punta a 26 de los 30 del viewBox: -87% apoya esa línea
+   * sobre el borde superior de la hoja, con la cabeza clavada sobre el tablero y
+   * la entrada sobre el papel. */
+  transform: translate(-50%, -87%);
+  z-index: 2;
+  display: inline-flex;
+  color: var(--color-ink);
+  pointer-events: none;
+}
+
+/* La tinta de la penumbra y de la cúpula sale del token, no del SVG. */
+.sheet-pin stop {
+  stop-color: var(--color-ink);
+}
+
+/* La luz del alfiler: el papel que no se imprimió sobre la cúpula. */
+.sheet-pin-gleam {
+  fill: var(--color-paper);
+}
+
+/* En el celular el canto de tablero mide 18px: con el alfiler de escritorio la
+ * cabeza no entra sobre la madera (se salía por arriba de la pantalla), así que
+ * ahí se dibuja más chico y sigue entrando entera. */
+@media (max-width: 719px) {
+  .sheet-pin svg {
+    width: 26px;
+    height: 19.5px;
+  }
+}
+
+/* El leve giro va SOLO en escritorio. Por debajo de 720px la placa de acción es
+ * `position: fixed` y un `transform` en la hoja la haría resolver contra la
+ * hoja, rompiendo el botón flotante. La sombra cálida de contacto se reajusta
+ * para leer la hoja apoyada y pinchada, no flotando. */
+@media (min-width: 720px) {
+  .sheet {
+    transform: rotate(-0.3deg);
+    box-shadow:
+      0 1px 0 rgba(58, 36, 10, 0.16),
+      0 13px 28px -17px rgba(58, 36, 10, 0.6);
   }
 }
 
@@ -417,6 +473,73 @@
 @media (min-width: 720px) {
   .jar-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Las tres cifras de un frasco, separadas en su propia grilla bajo la barra:
+ * cada celda lleva su etiqueta arriba y su figura mono abajo, divididas por
+ * rayas de tinta. El estado del frasco queda fuera, en su propio renglón. */
+.jar-figs {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.jar-fig {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 5px 6px;
+  border-left: 1px solid var(--color-rule);
+}
+
+.jar-fig:first-child {
+  border-left: 0;
+  padding-left: 0;
+}
+
+.jar-fig:last-child {
+  padding-right: 0;
+}
+
+.jar-fig .lbl {
+  font-size: 0.66rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+  white-space: nowrap;
+}
+
+.jar-fig .mono {
+  font-size: 0.78rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+/* Below 560px the three figures stop being three columns and become three ruled
+ * rows: label on the left, figure on the right, a hairline between them — the
+ * compact label/figure pair the sheet already uses. In a ~87px cell a long
+ * figure (~105px, `white-space: nowrap`) spilled over its neighbour. From 560px
+ * up they stay the three-column grid. */
+@media (max-width: 559.98px) {
+  .jar-figs {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .jar-fig {
+    flex-direction: row;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 5px 0;
+    border-left: 0;
+    border-top: 1px solid var(--color-rule);
+  }
+
+  .jar-fig:first-child {
+    border-top: 0;
   }
 }
 
@@ -897,6 +1020,15 @@ input[type="file"]::file-selector-button {
   border-right: 0;
 }
 
+/* Un segmento deshabilitado (p. ej. un modo de import mientras la importación
+ * está en vuelo) se lee como tal: letra Ink Dim 2 sobre Copy Paper. La regla del
+ * segmento elegido viene después, así que el elegido conserva su tinta. */
+.seg button:disabled {
+  background: var(--color-paper-2);
+  color: var(--color-dim-2);
+  cursor: not-allowed;
+}
+
 .seg button[aria-pressed="true"],
 .seg button[aria-checked="true"] {
   background: var(--color-ink);
@@ -914,6 +1046,55 @@ input[type="file"]::file-selector-button {
   text-transform: uppercase;
   color: var(--color-dim);
   white-space: nowrap;
+}
+
+/* Las líneas de detalle del formulario: una lista opcional de renglones
+ * descripción + precio, cada uno con su propio quitar. */
+.lines {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.lines > legend {
+  padding: 0;
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-dim);
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 8px 10px;
+}
+
+.line .desc {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.line .amt {
+  flex: 1 1 140px;
+  min-width: 0;
+}
+
+/* El quitar se alinea con el casillero, no con su etiqueta. */
+.line .rm {
+  margin-top: 1.3rem;
+}
+
+.line-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 12px;
 }
 
 /* ================================================================== *
@@ -1138,7 +1319,7 @@ input[type="file"]::file-selector-button {
 }
 
 .fact-no {
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -1147,7 +1328,7 @@ input[type="file"]::file-selector-button {
 
 /* La fecha viaja con la factura: también cuando el alfiler la saca de su día. */
 .fact-date {
-  font-size: 0.68rem;
+  font-size: 0.76rem;
   font-weight: 700;
   letter-spacing: 0.04em;
   color: var(--color-dim);
@@ -1173,9 +1354,39 @@ input[type="file"]::file-selector-button {
 .fact-what,
 .fact-note {
   margin: 3px 0 0;
-  font-size: 0.76rem;
+  font-size: 0.82rem;
   color: var(--color-dim);
   overflow-wrap: anywhere;
+}
+
+/* El desglose de las líneas de detalle, separado por una raya de tinta: cada
+ * renglón lleva la descripción a la izquierda y su precio en mono a la derecha.
+ * El total vive arriba, en la cabeza de la facturita. */
+.fact-items {
+  margin: 8px 0 0;
+  padding: 7px 0 0;
+  border-top: 1px dashed var(--color-rule);
+  list-style: none;
+}
+
+.fact-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.fact-item-desc {
+  min-width: 0;
+  font-size: 0.82rem;
+  color: var(--color-dim);
+  overflow-wrap: anywhere;
+}
+
+.fact-item-amt {
+  font-size: 0.82rem;
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .fact-acts {
@@ -1775,12 +1986,14 @@ input[type="file"]::file-selector-button {
     border: 0;
     margin: 0;
     max-width: none;
+    transform: none;
   }
   .monthnav,
   .pager,
   .filters,
   .fact-acts,
   .skip-link,
+  .sheet-pin,
   .plate,
   .action-stamp {
     display: none;

@@ -11,6 +11,7 @@ import type {
   MonthlyStat,
   Movement,
   MovementInput,
+  MovementItem,
   PlanResponse,
   StatsByCategory,
   StatsSummary,
@@ -327,13 +328,100 @@ function plan(db: FakeDb, month: string): PlanResponse {
   return { month, income_cents: income, jars };
 }
 
-/** Build a movement, deriving the canonical USD cents from the entry fields. */
-function buildMovement(db: FakeDb, id: number, body: Partial<MovementInput>, createdAt: string): Movement {
-  const entryCurrency: EntryCurrency = body.entry_currency ?? 'USD';
-  const entryAmountCents = body.entry_amount_cents ?? 0;
-  const rateMicros = entryCurrency === 'VES' ? body.rate_micros ?? null : null;
+/* ------------------------------------------------------------------ *
+ * Detail lines (optional invoice items), mirroring domain.validate_items
+ * and domain.resolve_movement_amount.
+ * ------------------------------------------------------------------ */
+const MAX_MOVEMENT_ITEMS = 100;
+const MAX_ITEM_DESC_LEN = 120;
+const MAX_CENTS = 2_147_483_647;
+
+/** A validation failure the routes turn into a 422, like the domain error. */
+class FakeDomainError extends Error {}
+
+/**
+ * Normalize and validate the optional detail lines. Returns `[]` for a missing
+ * or empty list; throws {@link FakeDomainError} with the API's Spanish message
+ * otherwise.
+ */
+function validateItems(raw: unknown): MovementItem[] {
+  if (raw === undefined || raw === null) return [];
+  if (!Array.isArray(raw)) throw new FakeDomainError('Las líneas del movimiento deben ser una lista.');
+  if (raw.length > MAX_MOVEMENT_ITEMS) {
+    throw new FakeDomainError(`Máximo ${MAX_MOVEMENT_ITEMS} líneas por movimiento.`);
+  }
+  return raw.map((entry) => {
+    const line = (entry ?? {}) as { description?: unknown; amount_cents?: unknown };
+    const description = typeof line.description === 'string' ? line.description.trim() : '';
+    if (description.length === 0 || description.length > MAX_ITEM_DESC_LEN) {
+      throw new FakeDomainError(
+        `Cada línea necesita una descripción de hasta ${MAX_ITEM_DESC_LEN} caracteres.`,
+      );
+    }
+    const amount = line.amount_cents;
+    if (typeof amount !== 'number' || !Number.isInteger(amount) || amount < 1 || amount > MAX_CENTS) {
+      throw new FakeDomainError('El precio de una línea debe ser mayor a cero.');
+    }
+    return { description, amount_cents: amount };
+  });
+}
+
+/** Round half up (matches the domain's rule for a positive quotient). */
+function roundHalfUp(value: number): number {
+  return Math.floor(value + 0.5);
+}
+
+/**
+ * Resolve the canonical amount triplet. With lines the movement may be in USD or
+ * VES: a line's `amount_cents` is in the entry currency, `entry_amount_cents` is
+ * their sum, and a VES entry converts that sum once with its rate. Without lines
+ * the canonical amount comes from the entry fields as before.
+ */
+function resolveMovementAmount(
+  entryCurrency: EntryCurrency,
+  entryAmountCents: number,
+  rateMicros: number | null,
+  items: MovementItem[],
+): { amountCents: number; entryAmountCents: number; currency: EntryCurrency; rateMicros: number | null } {
+  if (items.length > 0) {
+    if (entryCurrency !== 'USD' && entryCurrency !== 'VES') {
+      throw new FakeDomainError('La moneda debe ser USD o VES.');
+    }
+    const total = items.reduce((acc, item) => acc + item.amount_cents, 0);
+    if (entryCurrency === 'VES') {
+      const rate = rateMicros;
+      if (rate === null || !Number.isFinite(rate) || rate <= 0) {
+        throw new FakeDomainError('Un movimiento en bolívares necesita una tasa válida.');
+      }
+      return {
+        amountCents: roundHalfUp((total * 1_000_000) / rate),
+        entryAmountCents: total,
+        currency: 'VES',
+        rateMicros: rate,
+      };
+    }
+    return { amountCents: total, entryAmountCents: total, currency: 'USD', rateMicros: null };
+  }
+  const rate = entryCurrency === 'VES' ? rateMicros : null;
   const amountCents =
-    entryCurrency === 'VES' && rateMicros ? Math.round((entryAmountCents * 1_000_000) / rateMicros) : entryAmountCents;
+    entryCurrency === 'VES' && rate ? Math.round((entryAmountCents * 1_000_000) / rate) : entryAmountCents;
+  return { amountCents, entryAmountCents, currency: entryCurrency, rateMicros: rate };
+}
+
+/** Build a movement, deriving the canonical USD cents from the entry fields or lines. */
+function buildMovement(
+  db: FakeDb,
+  id: number,
+  body: Partial<MovementInput>,
+  createdAt: string,
+  items: MovementItem[] = [],
+): Movement {
+  const resolved = resolveMovementAmount(
+    body.entry_currency ?? 'USD',
+    body.entry_amount_cents ?? 0,
+    body.rate_micros ?? null,
+    items,
+  );
   // A debt payment always lands in the system "deudas" category as an expense.
   const isDebtPayment = body.is_debt_payment === true;
   const accountId = body.account_id ?? db.accounts[0]?.id ?? 0;
@@ -345,12 +433,13 @@ function buildMovement(db: FakeDb, id: number, body: Partial<MovementInput>, cre
     account_id: accountId,
     account_name: accountName,
     is_debt_payment: isDebtPayment,
-    amount_cents: amountCents,
-    entry_currency: entryCurrency,
-    entry_amount_cents: entryAmountCents,
-    rate_micros: rateMicros,
+    amount_cents: resolved.amountCents,
+    entry_currency: resolved.currency,
+    entry_amount_cents: resolved.entryAmountCents,
+    rate_micros: resolved.rateMicros,
     date: body.date ?? '',
     note: body.note ?? '',
+    items,
     created_at: createdAt,
   };
 }
@@ -456,13 +545,20 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
 
     if (path === '/api/movements' && method === 'POST') {
       const body = JSON.parse(String(init?.body ?? '{}')) as Partial<MovementInput>;
-      if (body.is_debt_payment === true) {
-        const target = db.accounts.find((account) => account.id === body.account_id);
-        if (!target || target.opening_balance_cents >= 0) {
-          return json({ detail: 'La cartera no tiene deuda.' }, 422);
+      let created: Movement;
+      try {
+        const items = validateItems(body.items);
+        if (body.is_debt_payment === true) {
+          if (items.length > 0) throw new FakeDomainError('Un pago de deuda no lleva líneas de detalle.');
+          const target = db.accounts.find((account) => account.id === body.account_id);
+          if (!target || target.opening_balance_cents >= 0) {
+            throw new FakeDomainError('La cartera no tiene deuda.');
+          }
         }
+        created = buildMovement(db, db.nextId++, body, new Date().toISOString(), items);
+      } catch (error) {
+        return json({ detail: (error as Error).message }, 422);
       }
-      const created = buildMovement(db, db.nextId++, body, new Date().toISOString());
       db.movements.push(created);
       return json(created, 201);
     }
@@ -479,8 +575,21 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
         if (index < 0) return json({ detail: 'El movimiento no existe.' }, 404);
         const patch = JSON.parse(String(init?.body ?? '{}')) as Partial<MovementInput>;
         const current = db.movements[index];
-        db.movements[index] = buildMovement(db, current.id, { ...current, ...patch }, current.created_at);
-        return json(db.movements[index]);
+        let updated: Movement;
+        try {
+          // An explicit "items" replaces the whole list (an empty one clears it);
+          // omitting the key keeps the stored lines.
+          const items = 'items' in patch ? validateItems(patch.items) : current.items;
+          const isDebtPayment = patch.is_debt_payment ?? current.is_debt_payment;
+          if (isDebtPayment && items.length > 0) {
+            throw new FakeDomainError('Un pago de deuda no lleva líneas de detalle.');
+          }
+          updated = buildMovement(db, current.id, { ...current, ...patch }, current.created_at, items);
+        } catch (error) {
+          return json({ detail: (error as Error).message }, 422);
+        }
+        db.movements[index] = updated;
+        return json(updated);
       }
     }
 
@@ -542,9 +651,10 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
           rate_micros: movement.rate_micros,
           date: movement.date,
           note: movement.note,
+          items: movement.items,
         }));
       return json({
-        version: 3,
+        version: 4,
         exported_at: new Date().toISOString(),
         accounts: db.accounts.map((account) => ({
           name: account.name,
@@ -592,30 +702,38 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
 
       const defaultAccount = (): StoredAccount => ensureAccount(db.accounts[0]?.name ?? 'Cartera USD', 0);
 
-      const imported: Movement[] = incoming.map((entry) => {
-        // v3 maps the movement to a named wallet; v1/v2 fall back to the default.
-        let accountId: number | undefined;
-        if (entry.account_id !== undefined && accountsPayload) {
-          const named = accountsPayload[entry.account_id - 1];
-          if (named) accountId = ensureAccount(String(named.name), Number(named.opening_balance_cents ?? 0)).id;
-        }
-        return buildMovement(
-          db,
-          db.nextId++,
-          {
-            type: entry.type,
-            category_id: entry.category_id,
-            account_id: accountId ?? defaultAccount().id,
-            is_debt_payment: entry.is_debt_payment === true,
-            entry_currency: entry.entry_currency ?? 'USD',
-            entry_amount_cents: entry.entry_amount_cents ?? entry.amount_cents ?? 0,
-            rate_micros: entry.rate_micros ?? null,
-            date: entry.date,
-            note: entry.note,
-          },
-          new Date().toISOString(),
-        );
-      });
+      let imported: Movement[];
+      try {
+        imported = incoming.map((entry) => {
+          // v4 carries the detail lines; v1-v3 payloads have none.
+          const items = validateItems(entry.items);
+          // v3 maps the movement to a named wallet; v1/v2 fall back to the default.
+          let accountId: number | undefined;
+          if (entry.account_id !== undefined && accountsPayload) {
+            const named = accountsPayload[entry.account_id - 1];
+            if (named) accountId = ensureAccount(String(named.name), Number(named.opening_balance_cents ?? 0)).id;
+          }
+          return buildMovement(
+            db,
+            db.nextId++,
+            {
+              type: entry.type,
+              category_id: entry.category_id,
+              account_id: accountId ?? defaultAccount().id,
+              is_debt_payment: entry.is_debt_payment === true,
+              entry_currency: entry.entry_currency ?? 'USD',
+              entry_amount_cents: entry.entry_amount_cents ?? entry.amount_cents ?? 0,
+              rate_micros: entry.rate_micros ?? null,
+              date: entry.date,
+              note: entry.note,
+            },
+            new Date().toISOString(),
+            items,
+          );
+        });
+      } catch (error) {
+        return json({ detail: (error as Error).message }, 422);
+      }
       if (mode === 'replace') {
         db.movements = imported;
         db.budgets = { ...budgetsPayload };

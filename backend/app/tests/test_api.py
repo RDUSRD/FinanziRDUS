@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.db import get_db
-from app.domain import account_balance, shift_month, total_debt_cents
+from app.domain import MAX_CENTS, account_balance, shift_month, total_debt_cents
 from app.main import create_app
 from app.models import Account, Budget, Movement, MovementItem
 from app.seed import (
@@ -1879,20 +1879,53 @@ def test_list_movements_returns_items(client: TestClient) -> None:
     assert listed[without["id"]]["items"] == []
 
 
-def test_items_only_apply_to_usd_movements(client: TestClient) -> None:
+def test_create_ves_movement_with_items_converts_the_sum(client: TestClient) -> None:
+    created = _create(
+        client,
+        entry_currency="VES",
+        entry_amount_cents=999_999,  # ignored: the sum of the lines wins
+        rate_micros=40_000_000,
+        items=[
+            {"description": "Leche", "amount_cents": 300_000},
+            {"description": "Pan", "amount_cents": 100_000},
+        ],
+    )
+    # 400.000 Bs céntimos at 40 Bs/USD -> $100,00, converted once from the sum.
+    assert created["amount_cents"] == 10_000
+    assert created["entry_currency"] == "VES"
+    assert created["entry_amount_cents"] == 400_000
+    assert created["rate_micros"] == 40_000_000
+    assert created["items"] == [
+        {"description": "Leche", "amount_cents": 300_000},
+        {"description": "Pan", "amount_cents": 100_000},
+    ]
+
+
+def test_create_ves_movement_with_items_requires_a_rate(client: TestClient) -> None:
     response = client.post(
         "/api/movements",
         json=_movement_payload(
             entry_currency="VES",
             entry_amount_cents=400_000,
-            rate_micros=40_000_000,
-            items=[{"description": "Leche", "amount_cents": 350}],
+            items=[{"description": "Leche", "amount_cents": 300}],
         ),
     )
     assert response.status_code == 422
-    assert response.json()["detail"] == (
-        "Las líneas de detalle solo aplican a movimientos en dólares (USD)."
+    assert response.json()["detail"] == "La tasa es obligatoria para los montos en bolívares."
+
+
+def test_create_movement_items_sum_overflow_is_rejected(client: TestClient) -> None:
+    response = client.post(
+        "/api/movements",
+        json=_movement_payload(
+            items=[
+                {"description": "A", "amount_cents": MAX_CENTS},
+                {"description": "B", "amount_cents": MAX_CENTS},
+            ],
+        ),
     )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "La suma de las líneas supera el máximo permitido."
 
 
 def test_create_movement_too_many_items(client: TestClient) -> None:
@@ -1976,6 +2009,55 @@ def test_update_movement_clears_items(client: TestClient, db_session: Session) -
     assert _count_items(db_session, movement_id) == 0
 
 
+def test_update_movement_to_ves_with_items_converts_the_sum(client: TestClient) -> None:
+    created = _create(client)  # USD, 4_500_000 cents
+    movement_id = created["id"]
+
+    patched = client.patch(
+        f"/api/movements/{movement_id}",
+        json={
+            "entry_currency": "VES",
+            "rate_micros": 40_000_000,
+            "items": [
+                {"description": "Leche", "amount_cents": 300_000},
+                {"description": "Pan", "amount_cents": 100_000},
+            ],
+        },
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["amount_cents"] == 10_000
+    assert body["entry_currency"] == "VES"
+    assert body["entry_amount_cents"] == 400_000
+    assert body["rate_micros"] == 40_000_000
+    assert body["items"] == [
+        {"description": "Leche", "amount_cents": 300_000},
+        {"description": "Pan", "amount_cents": 100_000},
+    ]
+
+
+def test_update_ves_movement_with_items_keeps_the_stored_rate(client: TestClient) -> None:
+    created = _create(
+        client,
+        entry_currency="VES",
+        entry_amount_cents=400_000,
+        rate_micros=40_000_000,
+    )
+    movement_id = created["id"]
+
+    # Replacing the lines only (no currency/rate) reuses the stored rate.
+    patched = client.patch(
+        f"/api/movements/{movement_id}",
+        json={"items": [{"description": "Solo", "amount_cents": 800_000}]},
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["amount_cents"] == 20_000
+    assert body["entry_currency"] == "VES"
+    assert body["entry_amount_cents"] == 800_000
+    assert body["rate_micros"] == 40_000_000
+
+
 def test_delete_movement_removes_items(client: TestClient, db_session: Session) -> None:
     created = _create(client, items=[{"description": "A", "amount_cents": 500}])
     movement_id = created["id"]
@@ -2007,6 +2089,35 @@ def test_export_v4_includes_items_and_round_trips(client: TestClient) -> None:
     assert len(stored) == 1
     assert stored[0]["amount_cents"] == 550
     assert stored[0]["items"] == export["movements"][0]["items"]
+
+
+def test_export_import_round_trips_ves_items(client: TestClient) -> None:
+    _create(
+        client,
+        entry_currency="VES",
+        entry_amount_cents=999_999,
+        rate_micros=40_000_000,
+        items=[
+            {"description": "Leche", "amount_cents": 300_000},
+            {"description": "Pan", "amount_cents": 100_000},
+        ],
+    )
+    export = client.get("/api/data/export").json()
+    exported = export["movements"][0]
+    assert exported["entry_currency"] == "VES"
+    assert exported["entry_amount_cents"] == 400_000
+    assert exported["rate_micros"] == 40_000_000
+
+    result = client.post("/api/data/import", params={"mode": "replace"}, json=export).json()
+    assert result["movements_imported"] == 1
+
+    stored = client.get("/api/movements").json()
+    assert len(stored) == 1
+    assert stored[0]["amount_cents"] == 10_000
+    assert stored[0]["entry_currency"] == "VES"
+    assert stored[0]["entry_amount_cents"] == 400_000
+    assert stored[0]["rate_micros"] == 40_000_000
+    assert stored[0]["items"] == exported["items"]
 
 
 def test_import_items_derive_amount_from_lines(client: TestClient) -> None:

@@ -148,7 +148,7 @@ describe('App', () => {
         movements: unknown[];
         budgets: Record<string, number>;
       };
-      expect(payload.version).toBe(3);
+      expect(payload.version).toBe(4);
       expect(payload.accounts).toEqual([{ name: 'Cartera USD', opening_balance_cents: 0 }]);
       expect(payload.movements).toHaveLength(5);
       expect(payload.movements[0]).toMatchObject({
@@ -161,6 +161,7 @@ describe('App', () => {
         entry_amount_cents: expect.any(Number),
         date: expect.any(String),
         note: expect.any(String),
+        items: expect.any(Array),
       });
       expect(payload.budgets).toEqual({ supermercado: 5_000_000, transporte: 5_000_000 });
       expect(downloadedName).toBe(`financirdus-${todayStr()}.json`);
@@ -188,6 +189,7 @@ describe('App', () => {
           rate_micros: 40_000_000,
           date: day(MONTH, 3),
           note: 'En Bs',
+          items: [],
           created_at: `${day(MONTH, 3)}T10:00:00-03:00`,
         },
       ],

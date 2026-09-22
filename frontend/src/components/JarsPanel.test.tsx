@@ -85,9 +85,14 @@ describe('JarsPanel', () => {
     expect(within(region).getByText('25%')).toBeInTheDocument();
     expect(within(region).getByText('50%')).toBeInTheDocument();
 
-    expect(within(region).getByText('Objetivo $ 500.000')).toBeInTheDocument();
-    expect(within(region).getByText('Gastado $ 550.000')).toBeInTheDocument();
-    expect(within(region).getByText('Restante -$ 50.000')).toBeInTheDocument();
+    // The three figures sit in their own labelled grid per jar.
+    const essential = within(region).getByText('Esencial', { selector: 'span.nm' }).closest('li') as HTMLElement;
+    expect(within(essential).getByText('Objetivo')).toBeInTheDocument();
+    expect(within(essential).getByText('$ 500.000')).toBeInTheDocument();
+    expect(within(essential).getByText('Gastado')).toBeInTheDocument();
+    expect(within(essential).getByText('$ 550.000')).toBeInTheDocument();
+    expect(within(essential).getByText('Restante')).toBeInTheDocument();
+    expect(within(essential).getByText('-$ 50.000')).toBeInTheDocument();
 
     expect(within(region).getByText('cerca del objetivo')).toBeInTheDocument();
     expect(within(region).getByText('excedido')).toBeInTheDocument();

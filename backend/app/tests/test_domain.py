@@ -547,14 +547,54 @@ class TestResolveMovementAmount:
         items = [{"description": "A", "amount_cents": 300}]
         assert resolve_movement_amount("USD", 9_999, 40_000_000, items) == (300, 300, "USD", None)
 
-    def test_lines_on_ves_are_rejected(self) -> None:
+    def test_lines_on_ves_convert_the_sum_once(self) -> None:
+        items = [
+            {"description": "Leche", "amount_cents": 300_000},
+            {"description": "Pan", "amount_cents": 100_000},
+        ]
+        # 400.000 Bs céntimos at 40 Bs/USD -> $100,00; the entry amount is the sum.
+        assert resolve_movement_amount("VES", None, 40_000_000, items) == (
+            10_000,
+            400_000,
+            "VES",
+            40_000_000,
+        )
+
+    def test_lines_convert_the_sum_not_line_by_line(self) -> None:
+        items = [
+            {"description": "A", "amount_cents": 1},
+            {"description": "B", "amount_cents": 1},
+        ]
+        # Each line alone rounds to $0 (0.33); converting the sum once yields $1.
+        assert resolve_movement_amount("VES", None, 3_000_000, items) == (
+            1,
+            2,
+            "VES",
+            3_000_000,
+        )
+
+    def test_lines_on_ves_require_a_rate(self) -> None:
         with pytest.raises(DomainError) as exc_info:
             resolve_movement_amount(
-                "VES", 400_000, 40_000_000, [{"description": "A", "amount_cents": 300}]
+                "VES", None, None, [{"description": "A", "amount_cents": 300}]
             )
-        assert str(exc_info.value) == (
-            "Las líneas de detalle solo aplican a movimientos en dólares (USD)."
-        )
+        assert str(exc_info.value) == "La tasa es obligatoria para los montos en bolívares."
+
+    def test_lines_on_an_unknown_currency_are_rejected(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            resolve_movement_amount(
+                "ARS", None, None, [{"description": "A", "amount_cents": 300}]
+            )
+        assert str(exc_info.value) == "La moneda debe ser 'USD' o 'VES'."
+
+    def test_lines_sum_overflow_is_rejected(self) -> None:
+        items = [
+            {"description": "A", "amount_cents": MAX_CENTS},
+            {"description": "B", "amount_cents": MAX_CENTS},
+        ]
+        with pytest.raises(DomainError) as exc_info:
+            resolve_movement_amount("USD", None, None, items)
+        assert str(exc_info.value) == "La suma de las líneas supera el máximo permitido."
 
     def test_without_lines_uses_the_entry_route(self) -> None:
         assert resolve_movement_amount("USD", 12_345, None, []) == (12_345, 12_345, "USD", None)

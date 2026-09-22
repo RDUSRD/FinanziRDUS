@@ -86,8 +86,11 @@ Sin `month` → devuelve todos. Orden: `date DESC`, luego `created_at DESC`.
 
 Un movimiento cargado en Bs conserva la entrada: `{"id":2,"type":"gasto","category_id":"supermercado","account_id":1,"account_name":"Cartera USD","is_debt_payment":false,"amount_cents":10000,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,"items":[],...}`.
 
-**Líneas de detalle (opcional).** Un movimiento puede llevar **líneas de productos/servicios**, cada una con su precio en USD (`amount_cents`). **Cuando hay líneas, el total del movimiento es la suma de las líneas**: el backend deriva `amount_cents` de ellas y deja `entry_currency="USD"`, `entry_amount_cents = amount_cents` y `rate_micros=null`. Sin líneas, el total se carga a mano como siempre. El array `items` viaja siempre (vacío si el movimiento no tiene líneas), en orden de presentación, y **solo aplica a movimientos en USD** (con `VES` → `422`).
+**Líneas de detalle (opcional).** Un movimiento puede llevar **líneas de productos/servicios**, cada una con su precio **en la moneda de entrada del movimiento** (`entry_currency`): dólares si el movimiento es USD, bolívares si es VES. **Cuando hay líneas, el total del movimiento es la suma de las líneas**: el backend deriva de ellas `entry_amount_cents` (en la moneda de entrada) y calcula `amount_cents` (USD) — con `USD` es esa misma suma y `rate_micros=null`; con `VES` convierte **una sola vez** la suma con la tasa (`round_half_up(Σ × 1e6 / rate_micros)`), así que no hay redondeo por línea. Las líneas **no** guardan un equivalente en dólares propio: el detalle se muestra en la moneda de entrada y el total en USD es el del movimiento. Sin líneas, el total se carga a mano como siempre. El array `items` viaja siempre (vacío si el movimiento no tiene líneas), en orden de presentación.
 `200` → `[{"id":3,"type":"gasto","category_id":"supermercado","amount_cents":500,"entry_currency":"USD","rate_micros":null,"items":[{"description":"Leche","amount_cents":350},{"description":"Pan","amount_cents":150}],...}]`
+
+Un movimiento con líneas cargado en bolívares conserva la entrada, y sus líneas están en Bs: Bs 4.000,00 al cambio de 40 Bs/USD son $ 100,00 →
+`{"id":4,"type":"gasto","category_id":"supermercado","account_id":1,"amount_cents":10000,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,"items":[{"description":"Harina","amount_cents":300000},{"description":"Arroz","amount_cents":100000}],...}`
 
 ### `POST /api/movements`
 Body (entrada en USD):
@@ -98,16 +101,19 @@ Body (pago de deuda; el backend fuerza `type="gasto"` y `category_id="deudas"`, 
 `{"type":"gasto","account_id":2,"is_debt_payment":true,"entry_currency":"USD","entry_amount_cents":20000,"date":"2026-09-18","note":"Pago Binance"}`
 Body (con líneas de detalle: el total se deriva de las líneas y **no** se manda `entry_amount_cents`):
 `{"type":"gasto","category_id":"supermercado","account_id":1,"entry_currency":"USD","date":"2026-09-04","note":"Compra","items":[{"description":"Leche","amount_cents":350},{"description":"Pan","amount_cents":150}]}`
+Body (con líneas **en bolívares**: las líneas van en Bs y la tasa convierte la suma una sola vez):
+`{"type":"gasto","category_id":"supermercado","account_id":1,"entry_currency":"VES","rate_micros":40000000,"date":"2026-09-04","note":"Mercado","items":[{"description":"Harina","amount_cents":300000},{"description":"Arroz","amount_cents":100000}]}`
 Reglas: `account_id` **obligatorio** y existente; `entry_currency` ∈ `USD|VES`; `entry_amount_cents > 0`
 y ≤ `2147483647` (**requerido salvo** que se manden líneas); `rate_micros` **requerido si**
 `entry_currency="VES"` (y `null`/ausente en USD); `category_id` **obligatorio salvo**
 `is_debt_payment=true` (el pago debe ir a una cartera con saldo inicial negativo, si no `422`);
 `type` coherente con el de la categoría; `date` válida en el calendario real (año entre `0001` y
 `9999`); `note` ≤ 140 caracteres. `items` es **opcional** (hasta 100 líneas; cada una con
-`description` de 1..120 y `amount_cents` de 1..2147483647): **si hay líneas**, `entry_currency` debe
-ser `USD`, `entry_amount_cents` es opcional (el backend lo deriva) y `amount_cents` es la suma de las
-líneas; un pago de deuda no admite líneas (`422`). El backend calcula el `amount_cents` (USD) y
-exige que caiga en `1..2147483647`.
+`description` de 1..120 y `amount_cents` de 1..2147483647): **si hay líneas**, `entry_currency` puede
+ser `USD` o `VES`, `entry_amount_cents` es opcional (el backend lo deriva como la suma de las
+líneas, en la moneda de entrada) y `amount_cents` sale de esa suma — igual a ella en USD, o
+convertida **una sola vez** con la tasa en VES; un pago de deuda no admite líneas (`422`). El
+backend calcula el `amount_cents` (USD) y exige que caiga en `1..2147483647`.
 Un pago de deuda **suma** al saldo de su cartera (acerca la deuda a 0) pero **cuenta como gasto
 del mes** (aparece en KPIs, donut y presupuestos no —`deudas` es system—).
 `201` → el movimiento creado (mismo shape que el listado).

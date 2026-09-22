@@ -372,7 +372,7 @@ def validate_items(raw_items: object) -> list[dict]:
 
 
 def items_total_cents(items: Iterable[Mapping[str, Any]]) -> int:
-    """Sum of the detail lines in USD cents.
+    """Sum of the detail lines in the movement's entry currency.
 
     Raises :class:`DomainError` when the total exceeds ``MAX_CENTS`` (it would
     overflow the money columns and crash the INSERT with a 500).
@@ -392,21 +392,28 @@ def resolve_movement_amount(
     """Resolve the effective amount triplet of a movement.
 
     Returns ``(amount_cents, entry_amount_cents, entry_currency, rate_micros)``.
-    With lines the movement is forced to ``USD`` and its total is the sum of the
-    lines; without lines the canonical amount is computed from the entry triplet
-    as usual and the amount is mandatory.
+
+    With lines the entry amount is the sum of the lines, expressed in the entry
+    currency (dollars for ``USD``, bolívares for ``VES``); any entry amount the
+    caller may have sent alongside the lines is ignored. ``USD`` keeps that sum
+    as the canonical amount and carries no rate; ``VES`` requires a rate and
+    converts the sum to USD cents *once* with :func:`compute_amount_cents`, so
+    the total matches the sum and no per-line rounding drift can appear.
+
+    Without lines the canonical amount is computed from the entry triplet as
+    usual and the amount is mandatory.
     """
+    currency = validate_entry_currency(entry_currency)
     if items:
-        if entry_currency != "USD":
-            raise DomainError(
-                "Las líneas de detalle solo aplican a movimientos en dólares (USD)."
-            )
-        total = items_total_cents(items)
-        return total, total, "USD", None
+        entry_amount = items_total_cents(items)
+        if currency == "USD":
+            return entry_amount, entry_amount, "USD", None
+        amount = compute_amount_cents("VES", entry_amount, rate_micros)
+        return amount, entry_amount, "VES", rate_micros  # type: ignore[return-value]
     if entry_amount_cents is None:
         raise DomainError("El monto es obligatorio.")
-    amount = compute_amount_cents(entry_currency, entry_amount_cents, rate_micros)
-    return amount, entry_amount_cents, entry_currency, rate_micros  # type: ignore[return-value]
+    amount = compute_amount_cents(currency, entry_amount_cents, rate_micros)
+    return amount, entry_amount_cents, currency, rate_micros  # type: ignore[return-value]
 
 
 # --------------------------------------------------------------------------- #

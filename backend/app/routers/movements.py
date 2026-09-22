@@ -282,16 +282,12 @@ def update_movement(
             ]
         if new_is_debt_payment and items:
             raise DomainError("Un pago de deuda no lleva líneas de detalle.")
-        if items:
-            # Lines force a USD movement whose total is the sum of the lines,
-            # ignoring any entry fields the caller sent for those.
-            amount_cents, entry_amount, currency, rate = resolve_movement_amount(
-                "USD", None, None, items
-            )
-        else:
-            amount_cents, entry_amount, currency, rate = resolve_movement_amount(
-                new_currency, new_entry_amount, new_rate, []
-            )
+        # Lines (optional) are expressed in the movement's entry currency: the
+        # resolver derives the total from their sum (converted once for VES) and
+        # ignores the entry amount; without lines the entry triplet is used.
+        amount_cents, entry_amount, currency, rate = resolve_movement_amount(
+            new_currency, new_entry_amount, new_rate, items
+        )
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 

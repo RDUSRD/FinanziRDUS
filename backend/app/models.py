@@ -187,8 +187,10 @@ class Movement(Base):
 class MovementItem(Base):
     """An optional detail line (product/service + price) of a movement.
 
-    When a movement has lines its ``amount_cents`` is derived from their sum
-    (canonical USD cents); a movement without lines keeps its entered amount.
+    ``amount_cents`` is expressed in the movement's entry currency (USD cents for
+    a dollar movement, Bs céntimos for a bolívar one). When a movement has lines
+    its canonical USD ``amount_cents`` is derived from their sum — converted once
+    from the rate for VES; a movement without lines keeps its entered amount.
     """
 
     __tablename__ = "movement_items"

@@ -12,6 +12,7 @@ import { MovementWindow } from './components/MovementWindow';
 import { ErrorState, LoadingState } from './components/States';
 import { Notice } from './components/Notice';
 import { ConfirmWindow } from './components/Window';
+import { SheetPin } from './components/SheetPin';
 import { useAnnounce } from './components/LiveRegion';
 import { api, readableError } from './api/client';
 import {
@@ -350,11 +351,19 @@ export function App() {
 
   return (
     <>
+      {/* The skip link is the first focusable element in the document and lives
+       * outside the sheet: from 720px the sheet carries a transform, which would
+       * make a fixed descendant resolve against the sheet instead of the viewport
+       * and miss the top-left corner. */}
+      <a className="skip-link" href="#main">
+        Saltar al contenido
+      </a>
+
       <div className="desk">
         <div className="sheet">
-          <a className="skip-link" href="#main">
-            Saltar al contenido
-          </a>
+          <span className="sheet-pin">
+            <SheetPin />
+          </span>
 
           <AppHeader
             monthLabel={monthFullLabel(month)}

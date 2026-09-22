@@ -75,11 +75,23 @@ function JarRow({ jar, index, jars, labelOf, disabled, active, onAssign }: JarRo
       {/* The rest of the margin entry drops below the ruled span of the bar. */}
       <div className="jar-meta">
         <p className="hint">
-          <span className="tag">{statusLabel(status)}</span>{' '}
-          <span className="mono">Objetivo {formatMoney(targetCents, 'USD')}</span>{' '}
-          <span className="mono">Gastado {formatMoney(spentCents, 'USD')}</span>{' '}
-          <span className="mono">Restante {formatMoney(remainingCents, 'USD')}</span>
+          <span className="tag">{statusLabel(status)}</span>
         </p>
+
+        <div className="jar-figs">
+          <div className="jar-fig">
+            <span className="lbl">Objetivo</span>
+            <span className="mono">{formatMoney(targetCents, 'USD')}</span>
+          </div>
+          <div className="jar-fig">
+            <span className="lbl">Gastado</span>
+            <span className="mono">{formatMoney(spentCents, 'USD')}</span>
+          </div>
+          <div className="jar-fig">
+            <span className="lbl">Restante</span>
+            <span className="mono">{formatMoney(remainingCents, 'USD')}</span>
+          </div>
+        </div>
 
         {categoryIds.map((categoryId) => {
           const selectId = `jar-of-${categoryId}`;

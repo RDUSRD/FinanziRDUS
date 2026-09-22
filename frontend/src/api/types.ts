@@ -61,6 +61,12 @@ export interface AccountUpdateInput {
 /** Movement/stats filter: "all" (consolidated) or a specific wallet id. */
 export type AccountFilter = number | 'all';
 
+/** One product/service line of a movement's detail, in USD cents. */
+export interface MovementItem {
+  description: string;
+  amount_cents: number;
+}
+
 export interface Movement {
   id: number;
   type: MovementType;
@@ -80,6 +86,8 @@ export interface Movement {
   rate_micros: number | null;
   date: string;
   note: string;
+  /** Detail lines; empty when the movement has none. Their sum is `amount_cents`. */
+  items: MovementItem[];
   created_at: string;
 }
 
@@ -97,6 +105,11 @@ export interface MovementInput {
   rate_micros: number | null;
   date: string;
   note?: string;
+  /**
+   * Detail lines. When sent they replace the whole list (`[]` clears it) and the
+   * backend derives the USD total as their sum; only for USD movements.
+   */
+  items?: MovementItem[];
 }
 
 export type MovementPatch = Partial<MovementInput>;
@@ -213,6 +226,8 @@ export interface ExportMovement {
   is_debt_payment?: boolean;
   date: string;
   note: string;
+  /** Detail lines (v4 exports); absent in v1-v3 payloads. */
+  items?: MovementItem[];
 }
 
 export interface ExportPayload {

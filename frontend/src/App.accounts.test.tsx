@@ -35,6 +35,7 @@ function movement(
     rate_micros: null,
     date,
     note: '',
+    items: [],
     created_at: `${date}T10:00:00-03:00`,
   };
 }

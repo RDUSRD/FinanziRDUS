@@ -6,6 +6,7 @@ import type {
   EntryCurrency,
   Movement,
   MovementInput,
+  MovementItem,
   MovementType,
   StatsSummary,
 } from '../api/types';
@@ -49,6 +50,8 @@ interface FieldErrors {
   accountId?: string;
   date?: string;
   note?: string;
+  /** Line-list level error (over the 100-line cap). */
+  items?: string;
 }
 
 /** Cents -> editable text ("45000", "1234,56"). */
@@ -72,6 +75,19 @@ function rateToMicros(raw: string): number {
 function defaultDateForMonth(monthKey: string): string {
   return monthKey === currentMonthKey() ? todayStr() : `${monthKey}-01`;
 }
+
+/** Detail lines: the API caps them at 100, each with a short description. */
+const MAX_LINES = 100;
+const MAX_ITEM_DESC_LEN = 120;
+
+/** A detail line being drafted: the price stays raw text, never a float. */
+interface LineDraft {
+  id: number;
+  description: string;
+  amount: string;
+}
+
+type LineErrors = Record<number, { description?: string; amount?: string }>;
 
 /**
  * Lines for the draft "prueba de tira": what the typed movement would do to the
@@ -148,16 +164,23 @@ export function MovementWindow({
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [lines, setLines] = useState<LineDraft[]>([]);
+  const [lineErrors, setLineErrors] = useState<LineErrors>({});
 
+  const nextLineId = useRef(1);
   const amountRef = useRef<HTMLInputElement>(null);
   const rateRef = useRef<HTMLInputElement>(null);
   const categoryRef = useRef<HTMLSelectElement>(null);
   const accountRef = useRef<HTMLSelectElement>(null);
   const dateRef = useRef<HTMLInputElement>(null);
   const noteRef = useRef<HTMLInputElement>(null);
+  const firstLineRef = useRef<HTMLInputElement>(null);
 
   const isEditing = editing !== null;
   const isVes = currency === 'VES';
+  const hasLines = lines.length > 0;
+  // A line summary hides the amount field, so the window opens on the lines.
+  const editingHasLines = editing !== null && editing.items.length > 0;
 
   // System categories ("Deudas") are never picked by hand: they come from a debt payment.
   const options = useMemo(
@@ -177,6 +200,13 @@ export function MovementWindow({
       setAccountId(editing.account_id);
       setDate(editing.date);
       setNote(editing.note);
+      setLines(
+        editing.items.map((item) => ({
+          id: nextLineId.current++,
+          description: item.description,
+          amount: centsToInput(item.amount_cents),
+        })),
+      );
     } else {
       setType('gasto');
       setCurrency('USD');
@@ -186,8 +216,10 @@ export function MovementWindow({
       setAccountId(defaultAccountId ?? accounts[0]?.id ?? null);
       setDate(defaultDateForMonth(month));
       setNote('');
+      setLines([]);
     }
     setErrors({});
+    setLineErrors({});
     setFormError('');
     // Seed the fields when the window opens; the coherence effects below keep
     // the wallet/date/category valid afterwards.
@@ -218,6 +250,21 @@ export function MovementWindow({
     }
   }, [options, categoryId]);
 
+  // Editing a movement that already carries lines hides the amount field, so the
+  // window would otherwise fall back to the close button. Arm the focus on open
+  // and land on the first line's description once the seeded lines have rendered.
+  const lineFocusArmed = useRef(false);
+  useEffect(() => {
+    lineFocusArmed.current = open && editingHasLines;
+  }, [open, editingHasLines]);
+  useEffect(() => {
+    if (!lineFocusArmed.current) return;
+    const node = firstLineRef.current;
+    if (!node) return;
+    lineFocusArmed.current = false;
+    node.focus();
+  }, [lines]);
+
   // Live USD equivalent of a VES entry ("= $100 (a Bs 40/USD)").
   const preview = useMemo(() => {
     if (!isVes) return null;
@@ -240,6 +287,27 @@ export function MovementWindow({
     ? `= ${formatMoney(preview.usdCents, 'USD')} (a Bs ${preview.rateText}/USD)`
     : 'El equivalente en dólares se calcula con la tasa.';
 
+  // The typed lines' total in the entry currency (USD cents, or Bs céntimos for a
+  // VES entry): the estimate shown on the strip (the API recomputes the real total
+  // when it stores the movement).
+  const linesTotal = useMemo(() => {
+    let total = 0;
+    for (const line of lines) {
+      const cents = toCents(line.amount);
+      if (Number.isFinite(cents) && cents > 0) total += cents;
+    }
+    return total;
+  }, [lines]);
+
+  // The USD equivalent the rate implies for the typed lines: a client-side estimate
+  // only (the API converts the sum once, half-up, when it stores the VES movement).
+  const linesEquivalent = useMemo(() => {
+    if (!isVes || linesTotal <= 0) return null;
+    const micros = rateToMicros(rate);
+    if (!Number.isFinite(micros)) return null;
+    return { usdCents: Math.round((linesTotal * 1_000_000) / micros), rateText: formatRate(micros) };
+  }, [isVes, linesTotal, rate]);
+
   /** Switch currency, prefilling the last used VES rate when still empty. */
   function selectCurrency(next: EntryCurrency) {
     setCurrency(next);
@@ -248,10 +316,52 @@ export function MovementWindow({
     }
   }
 
-  function validate(): { errors: FieldErrors; value: MovementInput | null } {
+  function addLine() {
+    setLines((current) =>
+      current.length >= MAX_LINES
+        ? current
+        : [...current, { id: nextLineId.current++, description: '', amount: '' }],
+    );
+  }
+
+  function removeLine(id: number) {
+    setLines((current) => current.filter((line) => line.id !== id));
+    setLineErrors((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+  }
+
+  function updateLine(id: number, patch: Partial<Pick<LineDraft, 'description' | 'amount'>>) {
+    setLines((current) => current.map((line) => (line.id === id ? { ...line, ...patch } : line)));
+  }
+
+  function validate(): { errors: FieldErrors; lineErrors: LineErrors; value: MovementInput | null } {
     const next: FieldErrors = {};
+    const nextLineErrors: LineErrors = {};
     const cents = toCents(amount);
-    if (Number.isNaN(cents)) {
+    const withLines = lines.length > 0;
+
+    if (withLines) {
+      if (lines.length > MAX_LINES) {
+        next.items = `Máximo ${MAX_LINES} líneas por movimiento.`;
+      }
+      for (const line of lines) {
+        const lineFieldErrors: { description?: string; amount?: string } = {};
+        const description = line.description.trim();
+        if (description.length === 0 || description.length > MAX_ITEM_DESC_LEN) {
+          lineFieldErrors.description = `Cada línea necesita una descripción de hasta ${MAX_ITEM_DESC_LEN} caracteres.`;
+        }
+        const lineCents = toCents(line.amount);
+        if (!Number.isFinite(lineCents) || lineCents <= 0) {
+          lineFieldErrors.amount = 'El precio de una línea debe ser mayor a cero.';
+        }
+        if (lineFieldErrors.description || lineFieldErrors.amount) {
+          nextLineErrors[line.id] = lineFieldErrors;
+        }
+      }
+    } else if (Number.isNaN(cents)) {
       next.amount = 'Ingresá un monto válido (por ejemplo 1.234,56).';
     } else if (cents <= 0) {
       next.amount = 'El monto debe ser mayor a cero.';
@@ -284,27 +394,56 @@ export function MovementWindow({
       next.note = 'La nota no puede superar los 140 caracteres.';
     }
 
-    if (Object.keys(next).length > 0) return { errors: next, value: null };
+    if (Object.keys(next).length > 0 || Object.keys(nextLineErrors).length > 0) {
+      return { errors: next, lineErrors: nextLineErrors, value: null };
+    }
+
+    const items: MovementItem[] = withLines
+      ? lines.map((line) => ({
+          description: line.description.trim(),
+          amount_cents: toCents(line.amount),
+        }))
+      : [];
+    // Lines are in the entry currency: their sum is the entry amount, and the API
+    // converts it once with the rate when the movement is in bolívares.
+    const totalCents = items.reduce((acc, item) => acc + item.amount_cents, 0);
+    const rateValue = isVes ? rateMicros : null;
 
     return {
       errors: next,
+      lineErrors: nextLineErrors,
       value: {
         type,
         category_id: categoryId,
         account_id: accountId as number,
         entry_currency: currency,
-        entry_amount_cents: cents,
-        rate_micros: isVes ? rateMicros : null,
+        entry_amount_cents: withLines ? totalCents : cents,
+        rate_micros: rateValue,
         date,
         note: trimmedNote,
+        items,
       },
     };
   }
 
-  function focusFirstError(fieldErrors: FieldErrors) {
-    if (fieldErrors.amount) amountRef.current?.focus();
-    else if (fieldErrors.rate) rateRef.current?.focus();
-    else if (fieldErrors.categoryId) categoryRef.current?.focus();
+  function focusFirstError(fieldErrors: FieldErrors, lineFieldErrors: LineErrors) {
+    if (fieldErrors.amount) {
+      amountRef.current?.focus();
+      return;
+    }
+    if (fieldErrors.rate) {
+      rateRef.current?.focus();
+      return;
+    }
+    const firstBadLine = lines.find((line) => lineFieldErrors[line.id]);
+    if (firstBadLine) {
+      const id = lineFieldErrors[firstBadLine.id]?.description
+        ? `mv-item-desc-${firstBadLine.id}`
+        : `mv-item-amt-${firstBadLine.id}`;
+      document.getElementById(id)?.focus();
+      return;
+    }
+    if (fieldErrors.categoryId) categoryRef.current?.focus();
     else if (fieldErrors.accountId) accountRef.current?.focus();
     else if (fieldErrors.date) dateRef.current?.focus();
     else if (fieldErrors.note) noteRef.current?.focus();
@@ -319,10 +458,11 @@ export function MovementWindow({
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = validate();
+    setErrors(result.errors);
+    setLineErrors(result.lineErrors);
     if (!result.value) {
-      setErrors(result.errors);
       showFormError('Revisá los campos marcados.');
-      focusFirstError(result.errors);
+      focusFirstError(result.errors, result.lineErrors);
       return;
     }
 
@@ -344,7 +484,7 @@ export function MovementWindow({
       title={isEditing ? 'Editar movimiento' : 'Nuevo movimiento'}
       onClose={onClose}
       busy={submitting}
-      initialFocusRef={amountRef}
+      initialFocusRef={editingHasLines ? undefined : amountRef}
       footer={
         <>
           <button
@@ -407,24 +547,26 @@ export function MovementWindow({
           </div>
         </div>
 
-        <div className="field">
-          <label htmlFor="mv-amount">{isVes ? 'Monto en bolívares' : 'Monto en dólares'}</label>
-          <input
-            ref={amountRef}
-            id="mv-amount"
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            placeholder={isVes ? '4.000,00' : '1.234,56'}
-            value={amount}
-            onChange={(event) => setAmount(event.target.value)}
-            aria-invalid={errors.amount ? true : undefined}
-            aria-describedby="err-amount"
-          />
-          <p className="error-msg" id="err-amount">
-            {errors.amount ? `Error: ${errors.amount}` : ''}
-          </p>
-        </div>
+        {!hasLines && (
+          <div className="field">
+            <label htmlFor="mv-amount">{isVes ? 'Monto en bolívares' : 'Monto en dólares'}</label>
+            <input
+              ref={amountRef}
+              id="mv-amount"
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              placeholder={isVes ? '4.000,00' : '1.234,56'}
+              value={amount}
+              onChange={(event) => setAmount(event.target.value)}
+              aria-invalid={errors.amount ? true : undefined}
+              aria-describedby="err-amount"
+            />
+            <p className="error-msg" id="err-amount">
+              {errors.amount ? `Error: ${errors.amount}` : ''}
+            </p>
+          </div>
+        )}
 
         {isVes && (
           <div className="field">
@@ -446,6 +588,76 @@ export function MovementWindow({
             </p>
           </div>
         )}
+
+        <fieldset className="lines">
+          <legend>Líneas de detalle (opcional)</legend>
+          {lines.map((line, index) => {
+            const position = index + 1;
+            const lineFieldErrors = lineErrors[line.id] ?? {};
+            return (
+              <div className="line" key={line.id}>
+                <div className="field desc">
+                  <label htmlFor={`mv-item-desc-${line.id}`}>Descripción</label>
+                  <input
+                    id={`mv-item-desc-${line.id}`}
+                    ref={index === 0 ? firstLineRef : undefined}
+                    type="text"
+                    autoComplete="off"
+                    placeholder="Producto o servicio"
+                    value={line.description}
+                    onChange={(event) => updateLine(line.id, { description: event.target.value })}
+                    aria-label={`Descripción de la línea ${position}`}
+                    aria-invalid={lineFieldErrors.description ? true : undefined}
+                    aria-describedby={`err-item-desc-${line.id}`}
+                  />
+                  <p className="error-msg" id={`err-item-desc-${line.id}`}>
+                    {lineFieldErrors.description ? `Error: ${lineFieldErrors.description}` : ''}
+                  </p>
+                </div>
+                <div className="field amt">
+                  <label htmlFor={`mv-item-amt-${line.id}`}>
+                    {isVes ? 'Precio (Bs)' : 'Precio ($)'}
+                  </label>
+                  <input
+                    id={`mv-item-amt-${line.id}`}
+                    type="text"
+                    inputMode="decimal"
+                    autoComplete="off"
+                    placeholder={isVes ? 'Bs 4.000,00' : '$ 1.234,56'}
+                    value={line.amount}
+                    onChange={(event) => updateLine(line.id, { amount: event.target.value })}
+                    aria-label={`Precio de la línea ${position}`}
+                    aria-invalid={lineFieldErrors.amount ? true : undefined}
+                    aria-describedby={`err-item-amt-${line.id}`}
+                  />
+                  <p className="error-msg" id={`err-item-amt-${line.id}`}>
+                    {lineFieldErrors.amount ? `Error: ${lineFieldErrors.amount}` : ''}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="linkb rm"
+                  onClick={() => removeLine(line.id)}
+                  aria-label={`Quitar línea ${position}`}
+                >
+                  Quitar
+                </button>
+              </div>
+            );
+          })}
+          <div className="line-tools">
+            <button type="button" className="linkb" onClick={addLine} disabled={lines.length >= MAX_LINES}>
+              Agregar línea
+            </button>
+            <p className="hint">
+              Hasta {MAX_LINES} líneas. El total es la suma de las líneas, en la moneda del
+              movimiento.
+            </p>
+          </div>
+          <p className="error-msg" id="err-items">
+            {errors.items ? `Error: ${errors.items}` : ''}
+          </p>
+        </fieldset>
 
         <div className="two">
           <div className="field">
@@ -533,7 +745,20 @@ export function MovementWindow({
 
         <div className="strip">
           <p>Prueba de tira</p>
-          {isVes ? <p className="rate">{vesEquivalence}</p> : null}
+          {isVes && !hasLines ? <p className="rate">{vesEquivalence}</p> : null}
+          {hasLines ? (
+            <p>
+              Total de líneas <span className="mono">{formatMoney(linesTotal, currency)}</span>
+              {linesEquivalent ? (
+                <>
+                  {' — = '}
+                  <span className="mono">{formatMoney(linesEquivalent.usdCents, 'USD')}</span>
+                  {` (a Bs ${linesEquivalent.rateText}/USD)`}
+                </>
+              ) : null}
+              {' — '}estimado, todavía sin guardar.
+            </p>
+          ) : null}
           {draft.length > 0 ? (
             <>
               <p>Estimado, todavía sin guardar.</p>

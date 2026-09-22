@@ -23,6 +23,12 @@ ya expone el nuevo campo `items` (ver §1.0).
 
 ## §1. Líneas de productos/servicios en las facturas
 
+> **Actualizado después de este handoff:** la restricción de §1.0 que hacía las líneas solo-USD se
+> levantó a pedido del dueño. Con líneas, un movimiento puede estar **en USD o en VES**: los
+> `amount_cents` de las líneas están en la **moneda de entrada**, `entry_amount_cents` se deriva como
+> la suma de las líneas, y en VES el backend convierte esa suma **una sola vez** con la tasa (la
+> misma función de siempre). El contrato vigente está en [`api.md`](api.md).
+
 ### §1.0. Contrato que expone el backend (ya implementado)
 
 - `Movement` gana `items: [{ description: string; amount_cents: number }]` (siempre presente; `[]` si no hay líneas). `amount_cents` sigue siendo el **total en centavos USD**.

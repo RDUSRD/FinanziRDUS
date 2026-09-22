@@ -126,6 +126,19 @@ function Factura({
         {entryDetail ? <p className="pen">{entryDetail}</p> : null}
       </div>
 
+      {movement.items.length > 0 ? (
+        <ul className="fact-items">
+          {movement.items.map((item, index) => (
+            <li className="fact-item" key={index}>
+              <span className="fact-item-desc">{item.description}</span>
+              <span className="fact-item-amt mono">
+                {isVes ? formatBss(item.amount_cents) : formatMoney(item.amount_cents, 'USD')}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+
       <div className="fact-acts">
         <button
           type="button"
@@ -231,6 +244,7 @@ export function Board({
           (movement.amount_cents / 100).toFixed(2),
           movement.entry_currency === 'VES' ? formatBss(movement.entry_amount_cents) : '',
           movement.entry_currency === 'VES' ? formatRate(movement.rate_micros) : '',
+          ...movement.items.map((item) => item.description),
         ].join(' ');
         return normalizeText(haystack).includes(query);
       });

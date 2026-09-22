@@ -19,7 +19,7 @@ from ..domain import (
     VALID_TYPES,
     DomainError,
     compute_amount_cents,
-    items_total_cents,
+    resolve_movement_amount,
     valid_date_str,
     validate_account_name,
     validate_entry_currency,
@@ -247,8 +247,9 @@ def _validate_payload(
         else:
             category_id = item.get("category_id")
 
-        # Optional detail lines. When present they define the movement total and
-        # force the USD entry mode (payloads v1-v3 carry no items -> []).
+        # Optional detail lines. When present they define the movement total, in
+        # the movement's entry currency (USD or VES); payloads v1-v3 carry no
+        # items -> [].
         raw_items = item.get("items")
         try:
             items = validate_items(raw_items)
@@ -259,10 +260,20 @@ def _validate_payload(
             ) from exc
 
         if items:
-            amount = items_total_cents(items)
-            currency = "USD"
-            entry_amount = amount
-            rate_micros = None
+            # The entry amount is the sum of the lines, in the entry currency;
+            # VES converts that sum to USD once from the rate.
+            try:
+                amount, entry_amount, currency, rate_micros = resolve_movement_amount(
+                    item.get("entry_currency", "USD"),
+                    None,
+                    item.get("rate_micros"),
+                    items,
+                )
+            except DomainError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"El movimiento {position} tiene una entrada inválida: {exc}",
+                ) from exc
         else:
             # Entry triplet. Version 1 payloads carry only ``amount_cents``: it
             # is used as the entry amount with currency 'USD' and no rate.
