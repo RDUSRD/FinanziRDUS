@@ -528,6 +528,14 @@ every facturita carries **one** `filter: drop-shadow` following its torn edge. "
 everywhere" is now "square corners belong to the paper": the sheet, the facturita, the month's band
 and the lists stay square, and the `7px` perforation punch holes are no longer the only curve.
 
+**The Pinned-Sheet Break.** A third user-directed break, added on request: the sheet reads as a
+paper **pinned to the board** — a visible thumbtack (the drawn `PinIcon`, an ink mark, never a
+fourth colour) sits over its top edge, and on desktop (`>= 720px`) the whole sheet carries a very
+slight tilt with its warm contact shadow re-tuned so it reads as lying pinned, not floating. The
+tilt is **desktop-only on purpose**: below `720px` the action plate is `position: fixed`, and a
+`transform` on `.sheet` would make that `fixed` resolve against the sheet and break the floating
+button. The board stays drawn (never photographed) and the sheet stays the only container.
+
 ## Components
 
 ### Buttons

@@ -79,6 +79,23 @@ debe coincidir con `categories.type` de su `category_id`. Un **pago de deuda**
 cartera con saldo inicial negativo; al calcular el saldo **suma** (acerca la deuda a 0), aunque
 en el flujo del mes cuente como gasto.
 
+### `movement_items`
+Líneas de detalle **opcionales** de un movimiento: productos/servicios con su precio. Son las que
+dan forma de factura al registro. Si un movimiento tiene líneas, su `amount_cents` es la **suma**
+de ellas (lo deriva el backend); sin líneas, el total se carga a mano.
+
+| columna | tipo | notas |
+|---|---|---|
+| `id` | `Integer` PK autoincrement | |
+| `movement_id` | `Integer` NOT NULL | FK → `movements.id` **ON DELETE CASCADE** |
+| `description` | `Text` NOT NULL | 1..120 caracteres (validado en API) |
+| `amount_cents` | `Integer` NOT NULL | precio en **centavos de USD**, CHECK `> 0` |
+| `sort_order` | `Integer` NOT NULL default 0 | orden de presentación |
+
+Índice: `(movement_id)`. Las líneas viajan **dentro** de cada movimiento en la API y en el export
+(no tienen endpoints propios) y **solo se permiten en movimientos `USD`**: un movimiento en Bs con
+líneas es `422`.
+
 ### `budgets`
 Un tope mensual por categoría de **gasto** (es global, no por mes: es el tope que se
 compara contra el gasto del mes que se esté mirando).
@@ -125,6 +142,8 @@ comidas-afuera, ocio, ropa.
   (con una cartera por defecto `Cartera USD`), agrega `movements.account_id` (con backfill de los
   movimientos existentes a la cartera por defecto) y `movements.is_debt_payment` + CHECK e índice.
   `downgrade` las revierte.
+- `0004_movement_items`: crea `movement_items` (FK `ON DELETE CASCADE` a `movements`, CHECK
+  `amount_cents > 0` e índice por `movement_id`). Tabla nueva, sin backfill. `downgrade` la elimina.
 
 - No editar una migración ya aplicada; los cambios de esquema van en una migración nueva.
 - `alembic upgrade head` corre automáticamente al arrancar el contenedor `api`.

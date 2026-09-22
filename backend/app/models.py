@@ -184,6 +184,31 @@ class Movement(Base):
     )
 
 
+class MovementItem(Base):
+    """An optional detail line (product/service + price) of a movement.
+
+    When a movement has lines its ``amount_cents`` is derived from their sum
+    (canonical USD cents); a movement without lines keeps its entered amount.
+    """
+
+    __tablename__ = "movement_items"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    movement_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("movements.id", ondelete="CASCADE"), nullable=False
+    )
+    description: Mapped[str] = mapped_column(Text, nullable=False)
+    amount_cents: Mapped[int] = mapped_column(Integer, nullable=False)
+    sort_order: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default=text("0")
+    )
+
+    __table_args__ = (
+        CheckConstraint("amount_cents > 0", name="ck_movement_items_amount_positive"),
+        Index("ix_movement_items_movement_id", "movement_id"),
+    )
+
+
 class Budget(Base):
     __tablename__ = "budgets"
 

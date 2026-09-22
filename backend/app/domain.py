@@ -325,6 +325,91 @@ def compute_amount_cents(
 
 
 # --------------------------------------------------------------------------- #
+# Movement detail lines (optional invoice items)
+# --------------------------------------------------------------------------- #
+# Upper bound for the number of lines per movement and for the description of a
+# single line (validated here exactly like the ``note <= 140`` rule).
+MAX_MOVEMENT_ITEMS = 100
+MAX_ITEM_DESC_LEN = 120
+
+
+def validate_items(raw_items: object) -> list[dict]:
+    """Normalize and validate the optional detail lines of a movement.
+
+    Returns ``[]`` when ``raw_items`` is ``None`` or empty. Each line must be a
+    mapping with a ``description`` (1..``MAX_ITEM_DESC_LEN`` chars after a
+    ``strip``) and an ``amount_cents`` integer in ``1..MAX_CENTS``. Lines keep
+    their incoming order.
+    """
+    if raw_items is None:
+        return []
+    if not isinstance(raw_items, Sequence) or isinstance(raw_items, (str, bytes)):
+        raise DomainError("Las líneas del movimiento deben ser una lista.")
+    if len(raw_items) > MAX_MOVEMENT_ITEMS:
+        raise DomainError(f"Máximo {MAX_MOVEMENT_ITEMS} líneas por movimiento.")
+
+    items: list[dict] = []
+    for raw in raw_items:
+        if not isinstance(raw, Mapping):
+            raw = {}
+        raw_description = raw.get("description")
+        description = "" if raw_description is None else str(raw_description).strip()
+        if not description or len(description) > MAX_ITEM_DESC_LEN:
+            raise DomainError(
+                "Cada línea necesita una descripción de hasta "
+                f"{MAX_ITEM_DESC_LEN} caracteres."
+            )
+        amount_cents = raw.get("amount_cents")
+        if (
+            isinstance(amount_cents, bool)
+            or not isinstance(amount_cents, int)
+            or amount_cents < 1
+            or amount_cents > MAX_CENTS
+        ):
+            raise DomainError("El precio de una línea debe ser mayor a cero.")
+        items.append({"description": description, "amount_cents": amount_cents})
+    return items
+
+
+def items_total_cents(items: Iterable[Mapping[str, Any]]) -> int:
+    """Sum of the detail lines in USD cents.
+
+    Raises :class:`DomainError` when the total exceeds ``MAX_CENTS`` (it would
+    overflow the money columns and crash the INSERT with a 500).
+    """
+    total = sum(int(item["amount_cents"]) for item in items)
+    if total > MAX_CENTS:
+        raise DomainError("La suma de las líneas supera el máximo permitido.")
+    return total
+
+
+def resolve_movement_amount(
+    entry_currency: object,
+    entry_amount_cents: object,
+    rate_micros: object,
+    items: Sequence[Mapping[str, Any]],
+) -> tuple[int, int, str, int | None]:
+    """Resolve the effective amount triplet of a movement.
+
+    Returns ``(amount_cents, entry_amount_cents, entry_currency, rate_micros)``.
+    With lines the movement is forced to ``USD`` and its total is the sum of the
+    lines; without lines the canonical amount is computed from the entry triplet
+    as usual and the amount is mandatory.
+    """
+    if items:
+        if entry_currency != "USD":
+            raise DomainError(
+                "Las líneas de detalle solo aplican a movimientos en dólares (USD)."
+            )
+        total = items_total_cents(items)
+        return total, total, "USD", None
+    if entry_amount_cents is None:
+        raise DomainError("El monto es obligatorio.")
+    amount = compute_amount_cents(entry_currency, entry_amount_cents, rate_micros)
+    return amount, entry_amount_cents, entry_currency, rate_micros  # type: ignore[return-value]
+
+
+# --------------------------------------------------------------------------- #
 # Money jars (25/15/50/10 plan)
 # --------------------------------------------------------------------------- #
 def jar_targets(

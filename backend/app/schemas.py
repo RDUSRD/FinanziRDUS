@@ -29,6 +29,16 @@ class CategoryOut(BaseModel):
     is_system: bool
 
 
+class MovementItemIn(BaseModel):
+    description: str
+    amount_cents: int
+
+
+class MovementItemOut(BaseModel):
+    description: str
+    amount_cents: int
+
+
 class MovementOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,6 +54,7 @@ class MovementOut(BaseModel):
     rate_micros: int | None
     date: date
     note: str
+    items: list[MovementItemOut] = []
     created_at: datetime
 
     @field_serializer("created_at")
@@ -57,10 +68,11 @@ class MovementCreate(BaseModel):
     account_id: int
     is_debt_payment: bool = False
     entry_currency: str = "USD"
-    entry_amount_cents: int
+    entry_amount_cents: int | None = None
     rate_micros: int | None = None
     date: str
     note: str = ""
+    items: list[MovementItemIn] | None = None
 
 
 class MovementUpdate(BaseModel):
@@ -73,6 +85,7 @@ class MovementUpdate(BaseModel):
     rate_micros: int | None = None
     date: str | None = None
     note: str | None = None
+    items: list[MovementItemIn] | None = None
 
 
 class AccountOut(BaseModel):

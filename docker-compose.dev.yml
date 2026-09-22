@@ -1,0 +1,56 @@
+# Modo desarrollo: el código se monta desde el host y cada servicio recarga solo.
+# No se construye ninguna imagen para el frontend (Vite en caliente) y la API corre con
+# --reload, así que un cambio en el código NO necesita `docker build`.
+#
+#   make dev
+#   (o: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d)
+#
+# Esto es un adicional, no un reemplazo: `make up` sigue siendo la ruta "de verdad" — la
+# misma app construida y servida por nginx en :8080, que es contra la que corre
+# `make test-integration`. Por eso este archivo NO se llama `docker-compose.override.yml`:
+# si compose lo mezclara solo, `make up` y `make test-integration` dejarían de probar nginx.
+# Los dos modos usan el mismo puerto (8080), así que la URL del navegador no cambia.
+
+services:
+  api:
+    volumes:
+      - ./backend:/app
+    # El entrypoint de la imagen termina en un `uvicorn` sin recarga. Como `db` ya está
+    # sana cuando este servicio arranca (depends_on + healthcheck), acá se repiten sólo
+    # los dos pasos que hacen falta — migrar y sembrar (el seed es idempotente) — y se
+    # levanta Uvicorn mirando el código montado.
+    command:
+      - sh
+      - -c
+      - >-
+        alembic upgrade head
+        && python -m app.seed
+        && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  web:
+    # Fuera la imagen de nginx: en desarrollo el SPA lo sirve Vite.
+    build: !reset null
+    image: node:22-alpine
+    working_dir: /app
+    environment:
+      # Vite proxea /api. Dentro de la red de compose la API es `api`, no `localhost`.
+      VITE_API_TARGET: http://api:8000
+    volumes:
+      - ./frontend:/app
+      # Los módulos se instalan dentro del contenedor (Linux) y viven en un volumen: no
+      # pisan los del host y no se reinstalan en cada arranque.
+      - frontend_node_modules:/app/node_modules
+    command:
+      - sh
+      - -c
+      - >-
+        npm install -g pnpm@11.10.0 >/dev/null
+        && pnpm install --frozen-lockfile
+        && exec pnpm exec vite --host 0.0.0.0 --port 5173
+    ports: !override
+      # Mismo puerto que `make up` (el navegador no cambia de URL); adentro Vite escucha
+      # en 5173 y su HMR viaja por este mismo puerto.
+      - "${WEB_BIND:-0.0.0.0}:${WEB_PORT:-8080}:5173"
+
+volumes:
+  frontend_node_modules:

@@ -149,7 +149,10 @@ st, _, raw = req("GET", f"{API}/movements?month={m}")
 movs = j(raw) or []
 check("movements 200", st == 200, st)
 check("movements del mes (~23 del seed)", len(movs) >= 20, len(movs))
-check("movement shape", all(keys_of(x) == {"id","type","category_id","account_id","account_name","is_debt_payment","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","created_at"} for x in movs))
+check("movement shape", all(keys_of(x) == {"id","type","category_id","account_id","account_name","is_debt_payment","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","created_at","items"} for x in movs))
+check("movement items: lista de {description, amount_cents}",
+      all(isinstance(x["items"], list) and all(set(i) == {"description","amount_cents"} for i in x["items"]) for x in movs))
+check("seed con al menos una factura con líneas", any(x["items"] for x in movs), [len(x["items"]) for x in movs])
 check("todos con cartera", all(x["account_id"] and x["account_name"] for x in movs))
 check("todos del mes pedido", all(x["date"].startswith(m) for x in movs))
 check("entry_currency válido", all(x["entry_currency"] in ("USD","VES") for x in movs))
@@ -251,7 +254,7 @@ new = {"type":"gasto","category_id":"ocio","account_id":default_acc,"entry_curre
 st, _, raw = req("POST", f"{API}/movements", new)
 created = j(raw)
 check("POST 201", st == 201, (st, raw[:200]))
-check("POST shape", keys_of(created) == {"id","type","category_id","account_id","account_name","is_debt_payment","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","created_at"})
+check("POST shape", keys_of(created) == {"id","type","category_id","account_id","account_name","is_debt_payment","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","created_at","items"})
 check("POST USD: amount_cents = entry_amount_cents y sin tasa",
       created["amount_cents"] == 123456 and created["entry_currency"] == "USD" and created["rate_micros"] is None, created)
 check("POST guarda la cartera", created["account_id"] == default_acc and created["account_name"], created)
@@ -290,6 +293,29 @@ check("POST VES calcula USD (Bs 4.000 @ 40 => $100)",
       and vcreated["entry_amount_cents"] == 400000 and vcreated["rate_micros"] == 40000000, vcreated)
 req("DELETE", f"{API}/movements/{vcreated['id']}")
 
+# líneas de detalle: con líneas, el total se deriva de la suma de las líneas
+items_new = {"type":"gasto","category_id":"supermercado","account_id":default_acc,"entry_currency":"USD","date":f"{m}-09","note":"con lineas","items":[{"description":"Leche","amount_cents":350},{"description":"Pan","amount_cents":150}]}
+st, _, raw = req("POST", f"{API}/movements", items_new)
+iline = j(raw)
+check("POST con líneas 201", st == 201, (st, raw[:200]))
+check("POST con líneas deriva el total (y normaliza a USD sin tasa)",
+      iline["amount_cents"] == 500 and iline["entry_currency"] == "USD" and iline["entry_amount_cents"] == 500 and iline["rate_micros"] is None, iline)
+check("POST con líneas devuelve items en orden",
+      iline["items"] == [{"description":"Leche","amount_cents":350},{"description":"Pan","amount_cents":150}], iline["items"])
+check("POST con líneas impacta el KPI", j(req("GET", f"{API}/stats/summary?month={m}")[2])["expenses_cents"] == exp + 123456 + 500)
+st, _, raw = req("PATCH", f"{API}/movements/{iline['id']}", {"items":[{"description":"Cafe","amount_cents":900}]})
+check("PATCH reemplaza líneas y recalcula el total", st == 200 and j(raw)["amount_cents"] == 900 and j(raw)["items"] == [{"description":"Cafe","amount_cents":900}], raw[:200])
+st, _, raw = req("PATCH", f"{API}/movements/{iline['id']}", {"items":[]})
+check("PATCH limpia líneas y conserva el último total como monto manual", st == 200 and j(raw)["items"] == [] and j(raw)["amount_cents"] == 900, raw[:200])
+st, _, raw = req("POST", f"{API}/movements", {**items_new, "entry_currency":"VES", "rate_micros":40000000})
+check("POST VES con líneas => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("POST", f"{API}/movements", {**items_new, "items":[{"description":"x","amount_cents":0}]})
+check("POST línea con precio 0 => 422", st == 422, (st, raw[:160]))
+st, _, raw = req("POST", f"{API}/movements", {**items_new, "items":[{"description":"   ","amount_cents":10}]})
+check("POST línea sin descripción => 422", st == 422, (st, raw[:160]))
+req("DELETE", f"{API}/movements/{iline['id']}")
+check("borrar la factura con líneas no deja residuo en el KPI", j(req("GET", f"{API}/stats/summary?month={m}")[2])["expenses_cents"] == exp + 123456)
+
 st, _, raw = req("PATCH", f"{API}/movements/{mid}", {"entry_amount_cents": 999900})
 check("PATCH 200 y aplica", st == 200 and j(raw)["amount_cents"] == 999900, (st, raw[:160]))
 check("PATCH preserva lo no enviado", j(raw)["category_id"] == "ocio" and j(raw)["note"] == "prueba smoke")
@@ -324,12 +350,14 @@ st, hdr, raw = req("GET", f"{API}/data/export")
 exp_data = j(raw)
 check("export 200", st == 200, st)
 check("export shape", keys_of(exp_data) == {"version","exported_at","accounts","movements","budgets","jar_categories"}, keys_of(exp_data))
-check("export version 3", exp_data["version"] == 3, exp_data["version"])
+check("export version 4", exp_data["version"] == 4, exp_data["version"])
 check("export content-disposition", "attachment" in hdr.get("content-disposition","") and "financirdus-" in hdr.get("content-disposition",""), hdr.get("content-disposition"))
 check("export trae todos los movimientos", len(exp_data["movements"]) == len(req("GET", f"{API}/movements")[2] and j(req("GET", f"{API}/movements")[2])), len(exp_data["movements"]))
 check("export budgets es dict de gasto", all(k in gasto_ids and isinstance(v, int) and v > 0 for k, v in exp_data["budgets"].items()), exp_data["budgets"])
 check("export accounts shape", all(set(a) == {"name","opening_balance_cents"} for a in exp_data["accounts"]), exp_data["accounts"])
-check("export movement shape", all(set(x) == {"type","category_id","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","account_id","account_name","is_debt_payment"} for x in exp_data["movements"]))
+check("export movement shape", all(set(x) == {"type","category_id","amount_cents","entry_currency","entry_amount_cents","rate_micros","date","note","account_id","account_name","is_debt_payment","items"} for x in exp_data["movements"]))
+check("export movement items shape", all(isinstance(x["items"], list) and all(set(i) == {"description","amount_cents"} for i in x["items"]) for x in exp_data["movements"]))
+check("export conserva las líneas del seed", any(x["items"] for x in exp_data["movements"]))
 check("export jar_categories mapea categorías de gasto a frascos",
       all(k in gasto_ids and v in {"crecimiento","estabilidad","esencial","recompensas"} for k, v in exp_data["jar_categories"].items()), exp_data["jar_categories"])
 

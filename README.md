@@ -79,6 +79,9 @@ make clean         # bajar y borrar el volumen de datos
 - **Carteras y deudas**: creás carteras USD con nombre y cada movimiento se asigna a una. Una
   cartera con **saldo inicial negativo** es una deuda; registrás pagos y el panel muestra cuánto
   falta y el porcentaje pagado. El selector de cartera filtra los movimientos y sus gráficos.
+- **Líneas de detalle en las facturas** (opcional): cada movimiento se puede desglosar en
+  productos/servicios con su precio; cuando hay líneas, el total es la suma y la facturita se
+  muestra como una factura real (con desglose). Solo aplican a movimientos en USD.
 - **Export e import JSON**: descargás todo tu historial y lo volvés a subir, fusionando o
   reemplazando (el import es transaccional: si algo falla, no se toca nada).
 - **Categorías**: 10 de gasto (supermercado, comidas afuera, transporte, alquiler y servicios,

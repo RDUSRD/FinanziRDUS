@@ -15,7 +15,7 @@ from app.config import Settings, get_settings
 from app.db import get_db
 from app.domain import account_balance, shift_month, total_debt_cents
 from app.main import create_app
-from app.models import Account, Budget, Movement
+from app.models import Account, Budget, Movement, MovementItem
 from app.seed import (
     ACCOUNT_SEED,
     BUDGETS_USD,
@@ -547,7 +547,7 @@ def test_export_shape(client: TestClient) -> None:
     assert disposition.endswith('.json"')
 
     body = response.json()
-    assert body["version"] == 3
+    assert body["version"] == 4
     assert "exported_at" in body
     assert isinstance(body["movements"], list)
     assert body["accounts"] == [{"name": "Cartera USD", "opening_balance_cents": 0}]
@@ -851,7 +851,7 @@ def test_export_import_round_trip_preserves_ves(client: TestClient) -> None:
         rate_micros=40_000_000,
     )
     export = client.get("/api/data/export").json()
-    assert export["version"] == 3
+    assert export["version"] == 4
 
     result = client.post("/api/data/import", params={"mode": "replace"}, json=export).json()
     assert result["movements_imported"] == 1
@@ -1747,7 +1747,7 @@ def test_export_import_v3_round_trip_with_accounts(client: TestClient) -> None:
     _create(client, account_id=binance["id"], is_debt_payment=True, entry_amount_cents=20_000)
 
     export = client.get("/api/data/export").json()
-    assert export["version"] == 3
+    assert export["version"] == 4
     names = {account["name"] for account in export["accounts"]}
     assert names == {"Cartera USD", "Binance"}
     debt_movement = next(m for m in export["movements"] if m["is_debt_payment"])
@@ -1828,3 +1828,296 @@ def test_import_dedupe_signature_includes_account(client: TestClient) -> None:
     result = client.post("/api/data/import", params={"mode": "merge"}, json=payload).json()
     assert result["movements_imported"] == 2
     assert len(client.get("/api/movements").json()) == 2
+
+
+# --------------------------------------------------------------------------- #
+# Movement detail lines (optional invoice items)
+# --------------------------------------------------------------------------- #
+def _count_items(db_session: Session, movement_id: int) -> int:
+    return db_session.scalar(
+        select(func.count())
+        .select_from(MovementItem)
+        .where(MovementItem.movement_id == movement_id)
+    )
+
+
+def test_create_movement_with_items_derives_amount(client: TestClient) -> None:
+    created = _create(
+        client,
+        items=[
+            {"description": "Leche", "amount_cents": 350},
+            {"description": "Pan", "amount_cents": 200},
+        ],
+    )
+    # The total is the sum of the lines, in USD, ignoring the sent entry amount.
+    assert created["amount_cents"] == 550
+    assert created["entry_currency"] == "USD"
+    assert created["entry_amount_cents"] == 550
+    assert created["rate_micros"] is None
+    assert created["items"] == [
+        {"description": "Leche", "amount_cents": 350},
+        {"description": "Pan", "amount_cents": 200},
+    ]
+
+
+def test_list_movements_returns_items(client: TestClient) -> None:
+    with_items = _create(
+        client,
+        category_id="supermercado",
+        items=[
+            {"description": "Leche", "amount_cents": 350},
+            {"description": "Pan", "amount_cents": 200},
+        ],
+    )
+    without = _create(client, category_id="ocio", entry_amount_cents=5_000)
+
+    listed = {movement["id"]: movement for movement in client.get("/api/movements").json()}
+    assert listed[with_items["id"]]["items"] == [
+        {"description": "Leche", "amount_cents": 350},
+        {"description": "Pan", "amount_cents": 200},
+    ]
+    assert listed[without["id"]]["items"] == []
+
+
+def test_items_only_apply_to_usd_movements(client: TestClient) -> None:
+    response = client.post(
+        "/api/movements",
+        json=_movement_payload(
+            entry_currency="VES",
+            entry_amount_cents=400_000,
+            rate_micros=40_000_000,
+            items=[{"description": "Leche", "amount_cents": 350}],
+        ),
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == (
+        "Las líneas de detalle solo aplican a movimientos en dólares (USD)."
+    )
+
+
+def test_create_movement_too_many_items(client: TestClient) -> None:
+    items = [{"description": "x", "amount_cents": 1}] * 101
+    response = client.post("/api/movements", json=_movement_payload(items=items))
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Máximo 100 líneas por movimiento."
+
+
+def test_create_movement_invalid_items(client: TestClient) -> None:
+    bad_description = client.post(
+        "/api/movements",
+        json=_movement_payload(items=[{"description": "   ", "amount_cents": 100}]),
+    )
+    assert bad_description.status_code == 422
+    assert bad_description.json()["detail"] == (
+        "Cada línea necesita una descripción de hasta 120 caracteres."
+    )
+
+    bad_amount = client.post(
+        "/api/movements",
+        json=_movement_payload(items=[{"description": "Línea", "amount_cents": 0}]),
+    )
+    assert bad_amount.status_code == 422
+    assert bad_amount.json()["detail"] == "El precio de una línea debe ser mayor a cero."
+
+
+def test_debt_payment_with_items_is_rejected(client: TestClient) -> None:
+    binance = _new_account(client, "Binance", -50_000)
+    response = client.post(
+        "/api/movements",
+        json=_movement_payload(
+            account_id=binance["id"],
+            is_debt_payment=True,
+            items=[{"description": "Cuota", "amount_cents": 500}],
+        ),
+    )
+    assert response.status_code == 422
+    assert response.json()["detail"] == "Un pago de deuda no lleva líneas de detalle."
+
+
+def test_update_movement_replaces_items_and_recalculates(client: TestClient) -> None:
+    created = _create(
+        client,
+        items=[
+            {"description": "Leche", "amount_cents": 350},
+            {"description": "Pan", "amount_cents": 200},
+        ],
+    )
+    movement_id = created["id"]
+    assert created["amount_cents"] == 550
+
+    patched = client.patch(
+        f"/api/movements/{movement_id}",
+        json={"items": [{"description": "Solo", "amount_cents": 700}]},
+    )
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["amount_cents"] == 700
+    assert body["entry_currency"] == "USD"
+    assert body["entry_amount_cents"] == 700
+    assert body["rate_micros"] is None
+    assert body["items"] == [{"description": "Solo", "amount_cents": 700}]
+
+    listed = client.get("/api/movements").json()
+    assert listed[0]["items"] == [{"description": "Solo", "amount_cents": 700}]
+
+
+def test_update_movement_clears_items(client: TestClient, db_session: Session) -> None:
+    created = _create(client, items=[{"description": "A", "amount_cents": 500}])
+    movement_id = created["id"]
+    assert _count_items(db_session, movement_id) == 1
+
+    patched = client.patch(f"/api/movements/{movement_id}", json={"items": []})
+    assert patched.status_code == 200, patched.text
+    body = patched.json()
+    assert body["items"] == []
+    # Without lines the stored USD entry amount is kept (no VES rate involved).
+    assert body["amount_cents"] == 500
+    assert body["entry_currency"] == "USD"
+    assert _count_items(db_session, movement_id) == 0
+
+
+def test_delete_movement_removes_items(client: TestClient, db_session: Session) -> None:
+    created = _create(client, items=[{"description": "A", "amount_cents": 500}])
+    movement_id = created["id"]
+    assert _count_items(db_session, movement_id) == 1
+
+    assert client.delete(f"/api/movements/{movement_id}").status_code == 204
+    assert _count_items(db_session, movement_id) == 0
+
+
+def test_export_v4_includes_items_and_round_trips(client: TestClient) -> None:
+    _create(
+        client,
+        items=[
+            {"description": "Leche", "amount_cents": 350},
+            {"description": "Pan", "amount_cents": 200},
+        ],
+    )
+    export = client.get("/api/data/export").json()
+    assert export["version"] == 4
+    assert export["movements"][0]["items"] == [
+        {"description": "Leche", "amount_cents": 350},
+        {"description": "Pan", "amount_cents": 200},
+    ]
+
+    result = client.post("/api/data/import", params={"mode": "replace"}, json=export).json()
+    assert result["movements_imported"] == 1
+
+    stored = client.get("/api/movements").json()
+    assert len(stored) == 1
+    assert stored[0]["amount_cents"] == 550
+    assert stored[0]["items"] == export["movements"][0]["items"]
+
+
+def test_import_items_derive_amount_from_lines(client: TestClient) -> None:
+    result = client.post(
+        "/api/data/import",
+        params={"mode": "merge"},
+        json={
+            "version": 4,
+            "movements": [
+                {"type": "gasto", "category_id": "supermercado", "amount_cents": 999_999,
+                 "date": f"{CURRENT_MONTH}-01", "note": "",
+                 "items": [
+                     {"description": "A", "amount_cents": 300},
+                     {"description": "B", "amount_cents": 200},
+                 ]},
+            ],
+            "budgets": {},
+        },
+    ).json()
+    assert result["movements_imported"] == 1
+
+    stored = client.get("/api/movements").json()[0]
+    assert stored["amount_cents"] == 500
+    assert stored["entry_amount_cents"] == 500
+    assert stored["entry_currency"] == "USD"
+    assert stored["items"] == [
+        {"description": "A", "amount_cents": 300},
+        {"description": "B", "amount_cents": 200},
+    ]
+
+
+def test_import_rejects_invalid_items(client: TestClient) -> None:
+    created = _create(client)
+    before = client.get("/api/movements").json()
+
+    response = client.post(
+        "/api/data/import",
+        params={"mode": "merge"},
+        json={
+            "version": 4,
+            "movements": [
+                {"type": "gasto", "category_id": "ocio", "amount_cents": 500,
+                 "date": f"{CURRENT_MONTH}-01", "note": "",
+                 "items": [{"description": "  ", "amount_cents": 100}]},
+            ],
+            "budgets": {},
+        },
+    )
+    assert response.status_code == 422
+    assert "líneas inválidas" in response.json()["detail"]
+    # The failed import did not touch the data.
+    after = client.get("/api/movements").json()
+    assert after == before
+    assert after[0]["id"] == created["id"]
+
+
+def test_import_items_merge_is_idempotent(client: TestClient) -> None:
+    _create(client, items=[{"description": "A", "amount_cents": 500}])
+    export = client.get("/api/data/export").json()
+
+    first = client.post("/api/data/import", params={"mode": "merge"}, json=export).json()
+    assert first["movements_imported"] == 0
+    assert first["movements_skipped"] == 1
+
+    stored = client.get("/api/movements").json()
+    assert len(stored) == 1
+    assert stored[0]["items"] == [{"description": "A", "amount_cents": 500}]
+
+
+# --------------------------------------------------------------------------- #
+# Seed detail lines
+# --------------------------------------------------------------------------- #
+def test_seed_creates_coherent_movement_items(db_session: Session) -> None:
+    _seed(db_session, force=False, month_key="2026-01")
+
+    grouped = dict(
+        db_session.execute(
+            select(MovementItem.movement_id, func.sum(MovementItem.amount_cents)).group_by(
+                MovementItem.movement_id
+            )
+        ).all()
+    )
+    assert grouped  # at least one sample movement carries lines
+    for movement_id, total_cents in grouped.items():
+        amount = db_session.scalar(
+            select(Movement.amount_cents).where(Movement.id == movement_id)
+        )
+        assert total_cents == amount
+
+
+def test_seed_force_wipes_stale_movement_items(db_session: Session) -> None:
+    movement = Movement(
+        type="gasto",
+        category_id="ocio",
+        amount_cents=100,
+        account_id=ACCOUNT_ID,
+        entry_currency="USD",
+        entry_amount_cents=100,
+        date=date(2026, 1, 5),
+        note="custom",
+    )
+    db_session.add(movement)
+    db_session.commit()
+    db_session.add(MovementItem(movement_id=movement.id, description="stale", amount_cents=100))
+    db_session.commit()
+
+    _seed(db_session, force=True, month_key="2026-01")
+
+    stale = db_session.scalar(
+        select(func.count())
+        .select_from(MovementItem)
+        .where(MovementItem.description == "stale")
+    )
+    assert stale == 0

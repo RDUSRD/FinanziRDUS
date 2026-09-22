@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import date
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from ..db import get_db
@@ -13,40 +13,20 @@ from ..domain import (
     DEBT_CATEGORY_ID,
     VALID_TYPES,
     DomainError,
-    compute_amount_cents,
-    validate_amount,
+    resolve_movement_amount,
     validate_category_match,
     validate_date,
     validate_debt_payment,
-    validate_entry_currency,
     validate_is_debt_payment,
+    validate_items,
     validate_note,
     validate_type,
 )
-from ..models import Account, Category, Movement
+from ..models import Account, Category, Movement, MovementItem
 from ..schemas import MovementCreate, MovementOut, MovementUpdate
 from . import account_id_param, month_bounds
 
 router = APIRouter(prefix="/api/movements", tags=["movements"])
-
-
-def _canonical_entry(
-    entry_currency: object,
-    entry_amount_cents: object,
-    rate_micros: object,
-) -> tuple[str, int, int | None, int]:
-    """Validate an entry triplet.
-
-    Returns ``(currency, entry_amount_cents, rate_micros, amount_cents)`` where
-    ``amount_cents`` is the canonical USD cents. Raises :class:`DomainError`.
-    """
-    currency = validate_entry_currency(entry_currency)
-    entry_amount = validate_amount(entry_amount_cents)
-    amount_cents = compute_amount_cents(currency, entry_amount, rate_micros)
-    # ``compute_amount_cents`` guarantees the rate is a valid int for VES and
-    # ``None`` for USD, so the stored value is always consistent.
-    rate = int(rate_micros) if currency == "VES" else None  # type: ignore[arg-type]
-    return currency, entry_amount, rate, amount_cents
 
 
 def _resolve_target(
@@ -86,8 +66,12 @@ def _resolve_target(
     return account, type_value, category_id
 
 
-def _serialize_movement(movement: Movement, account_name: str) -> dict:
-    """Build a ``MovementOut`` payload, injecting the resolved account name."""
+def _serialize_movement(
+    movement: Movement,
+    account_name: str,
+    items: list[dict] | None = None,
+) -> dict:
+    """Build a ``MovementOut`` payload, injecting the account name and lines."""
     return {
         "id": movement.id,
         "type": movement.type,
@@ -101,8 +85,33 @@ def _serialize_movement(movement: Movement, account_name: str) -> dict:
         "rate_micros": movement.rate_micros,
         "date": movement.date,
         "note": movement.note,
+        "items": items or [],
         "created_at": movement.created_at,
     }
+
+
+def _movement_items(db: Session, movement_id: int) -> list[MovementItem]:
+    """Detail lines of one movement, in stored order."""
+    stmt = (
+        select(MovementItem)
+        .where(MovementItem.movement_id == movement_id)
+        .order_by(MovementItem.sort_order, MovementItem.id)
+    )
+    return list(db.execute(stmt).scalars().all())
+
+
+def _replace_movement_items(db: Session, movement_id: int, items: list[dict]) -> None:
+    """Replace the stored lines of a movement with ``items`` (delete + insert)."""
+    db.execute(delete(MovementItem).where(MovementItem.movement_id == movement_id))
+    for index, item in enumerate(items):
+        db.add(
+            MovementItem(
+                movement_id=movement_id,
+                description=item["description"],
+                amount_cents=item["amount_cents"],
+                sort_order=index,
+            )
+        )
 
 
 def _account_name(db: Session, account_id: int) -> str:
@@ -117,18 +126,19 @@ def _validate_and_build(
     account_id: int,
     is_debt_payment: bool,
     entry_currency: str,
-    entry_amount_cents: int,
+    entry_amount_cents: int | None,
     rate_micros: int | None,
     date_str: str,
     note: str,
+    items: list[dict],
 ) -> Movement:
     try:
         validate_type(type_value)
         validate_is_debt_payment(is_debt_payment)
         validate_date(date_str)
         clean_note = validate_note(note)
-        currency, entry_amount, rate, amount_cents = _canonical_entry(
-            entry_currency, entry_amount_cents, rate_micros
+        amount_cents, entry_amount, currency, rate = resolve_movement_amount(
+            entry_currency, entry_amount_cents, rate_micros, items
         )
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -176,14 +186,40 @@ def list_movements(
 
     movements = list(db.execute(stmt).scalars().all())
     names = {account.id: account.name for account in db.execute(select(Account)).scalars().all()}
+    # Fetch the detail lines of every returned movement in a single query and
+    # group them by movement id (avoids an N+1).
+    movement_ids = [movement.id for movement in movements]
+    items_by_movement: dict[int, list[dict]] = {}
+    if movement_ids:
+        item_stmt = (
+            select(MovementItem)
+            .where(MovementItem.movement_id.in_(movement_ids))
+            .order_by(MovementItem.movement_id, MovementItem.sort_order, MovementItem.id)
+        )
+        for item in db.execute(item_stmt).scalars().all():
+            items_by_movement.setdefault(item.movement_id, []).append(
+                {"description": item.description, "amount_cents": item.amount_cents}
+            )
     return [
-        _serialize_movement(movement, names.get(movement.account_id, ""))
+        _serialize_movement(
+            movement,
+            names.get(movement.account_id, ""),
+            items_by_movement.get(movement.id, []),
+        )
         for movement in movements
     ]
 
 
 @router.post("", response_model=MovementOut, status_code=201)
 def create_movement(payload: MovementCreate, db: Session = Depends(get_db)) -> dict:
+    data = payload.model_dump()
+    try:
+        items = validate_items(data.get("items"))
+        if payload.is_debt_payment and items:
+            raise DomainError("Un pago de deuda no lleva líneas de detalle.")
+    except DomainError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+
     movement = _validate_and_build(
         db,
         payload.type,
@@ -195,11 +231,14 @@ def create_movement(payload: MovementCreate, db: Session = Depends(get_db)) -> d
         payload.rate_micros,
         payload.date,
         payload.note,
+        items,
     )
     db.add(movement)
+    db.flush()
+    _replace_movement_items(db, movement.id, items)
     db.commit()
     db.refresh(movement)
-    return _serialize_movement(movement, _account_name(db, movement.account_id))
+    return _serialize_movement(movement, _account_name(db, movement.account_id), items)
 
 
 @router.patch("/{movement_id}", response_model=MovementOut)
@@ -232,9 +271,27 @@ def update_movement(
         validate_is_debt_payment(new_is_debt_payment)
         validate_date(new_date)
         clean_note = validate_note(new_note)
-        currency, entry_amount, rate, amount_cents = _canonical_entry(
-            new_currency, new_entry_amount, new_rate
-        )
+        # PATCH semantics for the lines: an explicit "items" replaces them (an
+        # empty list clears them); omitting the key keeps the stored ones.
+        if "items" in data:
+            items = validate_items(data["items"])
+        else:
+            items = [
+                {"description": item.description, "amount_cents": item.amount_cents}
+                for item in _movement_items(db, movement.id)
+            ]
+        if new_is_debt_payment and items:
+            raise DomainError("Un pago de deuda no lleva líneas de detalle.")
+        if items:
+            # Lines force a USD movement whose total is the sum of the lines,
+            # ignoring any entry fields the caller sent for those.
+            amount_cents, entry_amount, currency, rate = resolve_movement_amount(
+                "USD", None, None, items
+            )
+        else:
+            amount_cents, entry_amount, currency, rate = resolve_movement_amount(
+                new_currency, new_entry_amount, new_rate, []
+            )
     except DomainError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
 
@@ -252,9 +309,11 @@ def update_movement(
     movement.rate_micros = rate
     movement.date = date.fromisoformat(new_date)
     movement.note = clean_note
+    if "items" in data:
+        _replace_movement_items(db, movement.id, items)
     db.commit()
     db.refresh(movement)
-    return _serialize_movement(movement, _account_name(db, movement.account_id))
+    return _serialize_movement(movement, _account_name(db, movement.account_id), items)
 
 
 @router.delete("/{movement_id}", status_code=204)
@@ -262,6 +321,9 @@ def delete_movement(movement_id: int, db: Session = Depends(get_db)) -> Response
     movement = db.get(Movement, movement_id)
     if movement is None:
         raise HTTPException(status_code=404, detail="El movimiento no existe.")
+    # Delete the lines explicitly so the behavior does not depend on the
+    # dialect's foreign-key cascade support.
+    db.execute(delete(MovementItem).where(MovementItem.movement_id == movement_id))
     db.delete(movement)
     db.commit()
     return Response(status_code=204)

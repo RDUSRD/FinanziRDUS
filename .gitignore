@@ -28,3 +28,4 @@ Thumbs.db
 .impeccable/questions/
 
 frontend/.pnpm-store
+.railway/*.mine.ts

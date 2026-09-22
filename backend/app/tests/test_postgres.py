@@ -147,7 +147,7 @@ def test_migrations_seed_categories_and_api_flow(migrated_app: TestClient) -> No
     assert migrated_app.delete(f"/api/movements/{ves.json()['id']}").status_code == 204
 
     export = migrated_app.get("/api/data/export").json()
-    assert export["version"] == 3
+    assert export["version"] == 4
     assert export["jar_categories"]["supermercado"] == "esencial"
     assert export["accounts"] == [{"name": "Cartera USD", "opening_balance_cents": 0}]
     assert export["movements"][0]["account_name"] == "Cartera USD"

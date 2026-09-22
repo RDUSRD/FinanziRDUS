@@ -19,18 +19,20 @@ from ..domain import (
     VALID_TYPES,
     DomainError,
     compute_amount_cents,
+    items_total_cents,
     valid_date_str,
     validate_account_name,
     validate_entry_currency,
+    validate_items,
     validate_opening_balance,
 )
-from ..models import Account, Budget, Category, Jar, JarCategory, Movement
+from ..models import Account, Budget, Category, Jar, JarCategory, Movement, MovementItem
 from ..schemas import ImportResultOut
 
 router = APIRouter(prefix="/api/data", tags=["data"])
 
-DATA_VERSION = 3
-ACCEPTED_DATA_VERSIONS = (1, 2, DATA_VERSION)
+DATA_VERSION = 4
+ACCEPTED_DATA_VERSIONS = (1, 2, 3, DATA_VERSION)
 
 # Account imported against when the payload does not carry accounts (v1/v2).
 DEFAULT_ACCOUNT_NAME = "Cartera USD"
@@ -73,6 +75,14 @@ def export_data(db: Session = Depends(get_db)) -> JSONResponse:
     movements = (
         db.execute(select(Movement).order_by(Movement.date, Movement.id)).scalars().all()
     )
+    items_by_movement: dict[int, list[dict]] = {}
+    item_stmt = select(MovementItem).order_by(
+        MovementItem.movement_id, MovementItem.sort_order, MovementItem.id
+    )
+    for item in db.execute(item_stmt).scalars().all():
+        items_by_movement.setdefault(item.movement_id, []).append(
+            {"description": item.description, "amount_cents": item.amount_cents}
+        )
     budgets = {
         budget.category_id: budget.cap_cents
         for budget in db.execute(select(Budget)).scalars().all()
@@ -102,6 +112,7 @@ def export_data(db: Session = Depends(get_db)) -> JSONResponse:
                 "account_id": movement.account_id,
                 "account_name": name_by_id.get(movement.account_id, DEFAULT_ACCOUNT_NAME),
                 "is_debt_payment": movement.is_debt_payment,
+                "items": items_by_movement.get(movement.id, []),
             }
             for movement in movements
         ],
@@ -236,29 +247,50 @@ def _validate_payload(
         else:
             category_id = item.get("category_id")
 
-        # Entry triplet. Version 1 payloads carry only ``amount_cents``: it is
-        # used as the entry amount with currency 'USD' and no rate.
-        entry_currency = item.get("entry_currency", "USD")
-        entry_amount = item.get("entry_amount_cents", item.get("amount_cents"))
-        if isinstance(entry_amount, bool) or not isinstance(entry_amount, int) or entry_amount <= 0:
-            raise HTTPException(
-                status_code=422,
-                detail=f"El movimiento {position} tiene un monto inválido.",
-            )
-        if entry_amount > MAX_CENTS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"El movimiento {position} tiene un monto demasiado grande.",
-            )
-        rate_micros = item.get("rate_micros")
+        # Optional detail lines. When present they define the movement total and
+        # force the USD entry mode (payloads v1-v3 carry no items -> []).
+        raw_items = item.get("items")
         try:
-            currency = validate_entry_currency(entry_currency)
-            amount = compute_amount_cents(currency, entry_amount, rate_micros)
+            items = validate_items(raw_items)
         except DomainError as exc:
             raise HTTPException(
                 status_code=422,
-                detail=f"El movimiento {position} tiene una entrada inválida: {exc}",
+                detail=f"El movimiento {position} tiene líneas inválidas: {exc}",
             ) from exc
+
+        if items:
+            amount = items_total_cents(items)
+            currency = "USD"
+            entry_amount = amount
+            rate_micros = None
+        else:
+            # Entry triplet. Version 1 payloads carry only ``amount_cents``: it
+            # is used as the entry amount with currency 'USD' and no rate.
+            entry_currency = item.get("entry_currency", "USD")
+            entry_amount = item.get("entry_amount_cents", item.get("amount_cents"))
+            if (
+                isinstance(entry_amount, bool)
+                or not isinstance(entry_amount, int)
+                or entry_amount <= 0
+            ):
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"El movimiento {position} tiene un monto inválido.",
+                )
+            if entry_amount > MAX_CENTS:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"El movimiento {position} tiene un monto demasiado grande.",
+                )
+            rate_micros = item.get("rate_micros")
+            try:
+                currency = validate_entry_currency(entry_currency)
+                amount = compute_amount_cents(currency, entry_amount, rate_micros)
+            except DomainError as exc:
+                raise HTTPException(
+                    status_code=422,
+                    detail=f"El movimiento {position} tiene una entrada inválida: {exc}",
+                ) from exc
 
         date_str = item.get("date")
         if not valid_date_str(date_str):
@@ -306,6 +338,7 @@ def _validate_payload(
                 "note": note,
                 "account_name": account_name,
                 "is_debt_payment": is_debt_payment,
+                "items": items,
             }
         )
 
@@ -423,20 +456,30 @@ def _movement_signature(movement: dict) -> tuple:
 
 
 def _add_movement(db: Session, movement: dict, account_id: int) -> None:
-    db.add(
-        Movement(
-            type=movement["type"],
-            category_id=movement["category_id"],
-            amount_cents=movement["amount_cents"],
-            entry_currency=movement["entry_currency"],
-            entry_amount_cents=movement["entry_amount_cents"],
-            rate_micros=movement["rate_micros"],
-            date=date.fromisoformat(movement["date"]),
-            note=movement["note"],
-            account_id=account_id,
-            is_debt_payment=movement["is_debt_payment"],
-        )
+    row = Movement(
+        type=movement["type"],
+        category_id=movement["category_id"],
+        amount_cents=movement["amount_cents"],
+        entry_currency=movement["entry_currency"],
+        entry_amount_cents=movement["entry_amount_cents"],
+        rate_micros=movement["rate_micros"],
+        date=date.fromisoformat(movement["date"]),
+        note=movement["note"],
+        account_id=account_id,
+        is_debt_payment=movement["is_debt_payment"],
     )
+    db.add(row)
+    # Flush to obtain the generated id before attaching the detail lines.
+    db.flush()
+    for index, item in enumerate(movement["items"]):
+        db.add(
+            MovementItem(
+                movement_id=row.id,
+                description=item["description"],
+                amount_cents=item["amount_cents"],
+                sort_order=index,
+            )
+        )
 
 
 def _apply_merge(
@@ -489,6 +532,9 @@ def _apply_replace(
     budgets: dict[str, int],
     jar_categories: dict[str, str],
 ) -> tuple[int, int, int]:
+    # Delete the detail lines first (they cascade from movements, but doing it
+    # explicitly keeps the replace dialect-independent).
+    db.execute(delete(MovementItem))
     db.execute(delete(Movement))
     db.execute(delete(Budget))
 

@@ -9,6 +9,8 @@ import pytest
 from app.domain import (
     DEBT_CATEGORY_ID,
     MAX_CENTS,
+    MAX_ITEM_DESC_LEN,
+    MAX_MOVEMENT_ITEMS,
     MAX_NAME_LEN,
     DomainError,
     account_balance,
@@ -18,10 +20,12 @@ from app.domain import (
     category_shares,
     comparison,
     compute_amount_cents,
+    items_total_cents,
     jar_targets,
     month_key_of,
     monthly_totals,
     parse_month,
+    resolve_movement_amount,
     shift_month,
     total_debt_cents,
     usd_to_ves_cents,
@@ -30,6 +34,7 @@ from app.domain import (
     validate_debt_payment,
     validate_entry_currency,
     validate_is_debt_payment,
+    validate_items,
     validate_opening_balance,
     validate_rate_micros,
     ves_to_usd_cents,
@@ -469,3 +474,98 @@ class TestAccountValidation:
 
     def test_debt_category_constant(self) -> None:
         assert DEBT_CATEGORY_ID == "deudas"
+
+
+class TestValidateItems:
+    def test_none_and_empty_return_empty_list(self) -> None:
+        assert validate_items(None) == []
+        assert validate_items([]) == []
+
+    def test_trims_descriptions_and_keeps_order(self) -> None:
+        result = validate_items(
+            [
+                {"description": "  Leche  ", "amount_cents": 350},
+                {"description": "Pan", "amount_cents": 200},
+            ]
+        )
+        assert result == [
+            {"description": "Leche", "amount_cents": 350},
+            {"description": "Pan", "amount_cents": 200},
+        ]
+
+    @pytest.mark.parametrize("description", ["", "   ", None, "x" * (MAX_ITEM_DESC_LEN + 1)])
+    def test_invalid_description(self, description: object) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            validate_items([{"description": description, "amount_cents": 100}])
+        assert str(exc_info.value) == (
+            "Cada línea necesita una descripción de hasta 120 caracteres."
+        )
+
+    def test_description_at_limit_is_accepted(self) -> None:
+        items = validate_items([{"description": "x" * MAX_ITEM_DESC_LEN, "amount_cents": 1}])
+        assert len(items[0]["description"]) == MAX_ITEM_DESC_LEN
+
+    @pytest.mark.parametrize("amount", [0, -1, True, "100", None, MAX_CENTS + 1])
+    def test_invalid_amount(self, amount: object) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            validate_items([{"description": "Línea", "amount_cents": amount}])
+        assert str(exc_info.value) == "El precio de una línea debe ser mayor a cero."
+
+    def test_too_many_items(self) -> None:
+        raw = [{"description": "x", "amount_cents": 1}] * (MAX_MOVEMENT_ITEMS + 1)
+        with pytest.raises(DomainError) as exc_info:
+            validate_items(raw)
+        assert str(exc_info.value) == "Máximo 100 líneas por movimiento."
+
+    def test_exactly_max_items_is_accepted(self) -> None:
+        raw = [{"description": "x", "amount_cents": 1}] * MAX_MOVEMENT_ITEMS
+        assert len(validate_items(raw)) == MAX_MOVEMENT_ITEMS
+
+
+class TestItemsTotalCents:
+    def test_sums_the_lines(self) -> None:
+        assert items_total_cents([{"amount_cents": 100}, {"amount_cents": 250}]) == 350
+
+    def test_empty_is_zero(self) -> None:
+        assert items_total_cents([]) == 0
+
+    def test_overflow_is_rejected(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            items_total_cents([{"amount_cents": MAX_CENTS}, {"amount_cents": MAX_CENTS}])
+        assert str(exc_info.value) == "La suma de las líneas supera el máximo permitido."
+
+
+class TestResolveMovementAmount:
+    def test_lines_derive_the_usd_total(self) -> None:
+        items = [
+            {"description": "A", "amount_cents": 300},
+            {"description": "B", "amount_cents": 200},
+        ]
+        assert resolve_movement_amount("USD", None, None, items) == (500, 500, "USD", None)
+
+    def test_lines_ignore_the_entry_fields(self) -> None:
+        items = [{"description": "A", "amount_cents": 300}]
+        assert resolve_movement_amount("USD", 9_999, 40_000_000, items) == (300, 300, "USD", None)
+
+    def test_lines_on_ves_are_rejected(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            resolve_movement_amount(
+                "VES", 400_000, 40_000_000, [{"description": "A", "amount_cents": 300}]
+            )
+        assert str(exc_info.value) == (
+            "Las líneas de detalle solo aplican a movimientos en dólares (USD)."
+        )
+
+    def test_without_lines_uses_the_entry_route(self) -> None:
+        assert resolve_movement_amount("USD", 12_345, None, []) == (12_345, 12_345, "USD", None)
+        assert resolve_movement_amount("VES", 400_000, 40_000_000, []) == (
+            10_000,
+            400_000,
+            "VES",
+            40_000_000,
+        )
+
+    def test_without_lines_and_without_amount_is_an_error(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            resolve_movement_amount("USD", None, None, [])
+        assert str(exc_info.value) == "El monto es obligatorio."

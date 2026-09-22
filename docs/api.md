@@ -82,9 +82,12 @@ ninguna).
 Query: `month` (`YYYY-MM`, opcional), `category` (id, opcional), `type` (`gasto|ingreso`, opcional),
 `account` (id numérico o `all`, opcional, default `all`).
 Sin `month` → devuelve todos. Orden: `date DESC`, luego `created_at DESC`.
-`200` → `[{"id":1,"type":"gasto","category_id":"ocio","account_id":1,"account_name":"Cartera USD","is_debt_payment":false,"amount_cents":4500000,"entry_currency":"USD","entry_amount_cents":4500000,"rate_micros":null,"date":"2026-09-04","note":"","created_at":"2026-09-04T12:00:00-03:00"}]`
+`200` → `[{"id":1,"type":"gasto","category_id":"ocio","account_id":1,"account_name":"Cartera USD","is_debt_payment":false,"amount_cents":4500000,"entry_currency":"USD","entry_amount_cents":4500000,"rate_micros":null,"date":"2026-09-04","note":"","created_at":"2026-09-04T12:00:00-03:00","items":[]}]`
 
-Un movimiento cargado en Bs conserva la entrada: `{"id":2,"type":"gasto","category_id":"supermercado","account_id":1,"account_name":"Cartera USD","is_debt_payment":false,"amount_cents":10000,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,...}`.
+Un movimiento cargado en Bs conserva la entrada: `{"id":2,"type":"gasto","category_id":"supermercado","account_id":1,"account_name":"Cartera USD","is_debt_payment":false,"amount_cents":10000,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,"items":[],...}`.
+
+**Líneas de detalle (opcional).** Un movimiento puede llevar **líneas de productos/servicios**, cada una con su precio en USD (`amount_cents`). **Cuando hay líneas, el total del movimiento es la suma de las líneas**: el backend deriva `amount_cents` de ellas y deja `entry_currency="USD"`, `entry_amount_cents = amount_cents` y `rate_micros=null`. Sin líneas, el total se carga a mano como siempre. El array `items` viaja siempre (vacío si el movimiento no tiene líneas), en orden de presentación, y **solo aplica a movimientos en USD** (con `VES` → `422`).
+`200` → `[{"id":3,"type":"gasto","category_id":"supermercado","amount_cents":500,"entry_currency":"USD","rate_micros":null,"items":[{"description":"Leche","amount_cents":350},{"description":"Pan","amount_cents":150}],...}]`
 
 ### `POST /api/movements`
 Body (entrada en USD):
@@ -93,12 +96,18 @@ Body (entrada en bolívares: Bs 4.000,00 al cambio de 40 Bs/USD):
 `{"type":"gasto","category_id":"supermercado","account_id":1,"entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,"date":"2026-09-04","note":"Cine"}`
 Body (pago de deuda; el backend fuerza `type="gasto"` y `category_id="deudas"`, no se manda `category_id`):
 `{"type":"gasto","account_id":2,"is_debt_payment":true,"entry_currency":"USD","entry_amount_cents":20000,"date":"2026-09-18","note":"Pago Binance"}`
+Body (con líneas de detalle: el total se deriva de las líneas y **no** se manda `entry_amount_cents`):
+`{"type":"gasto","category_id":"supermercado","account_id":1,"entry_currency":"USD","date":"2026-09-04","note":"Compra","items":[{"description":"Leche","amount_cents":350},{"description":"Pan","amount_cents":150}]}`
 Reglas: `account_id` **obligatorio** y existente; `entry_currency` ∈ `USD|VES`; `entry_amount_cents > 0`
-y ≤ `2147483647`; `rate_micros` **requerido si** `entry_currency="VES"` (y `null`/ausente en USD);
-`category_id` **obligatorio salvo** `is_debt_payment=true` (el pago debe ir a una cartera con saldo
-inicial negativo, si no `422`); `type` coherente con el de la categoría; `date` válida en el
-calendario real (año entre `0001` y `9999`); `note` ≤ 140 caracteres. El backend calcula el
-`amount_cents` (USD) y exige que caiga en `1..2147483647`.
+y ≤ `2147483647` (**requerido salvo** que se manden líneas); `rate_micros` **requerido si**
+`entry_currency="VES"` (y `null`/ausente en USD); `category_id` **obligatorio salvo**
+`is_debt_payment=true` (el pago debe ir a una cartera con saldo inicial negativo, si no `422`);
+`type` coherente con el de la categoría; `date` válida en el calendario real (año entre `0001` y
+`9999`); `note` ≤ 140 caracteres. `items` es **opcional** (hasta 100 líneas; cada una con
+`description` de 1..120 y `amount_cents` de 1..2147483647): **si hay líneas**, `entry_currency` debe
+ser `USD`, `entry_amount_cents` es opcional (el backend lo deriva) y `amount_cents` es la suma de las
+líneas; un pago de deuda no admite líneas (`422`). El backend calcula el `amount_cents` (USD) y
+exige que caiga en `1..2147483647`.
 Un pago de deuda **suma** al saldo de su cartera (acerca la deuda a 0) pero **cuenta como gasto
 del mes** (aparece en KPIs, donut y presupuestos no —`deudas` es system—).
 `201` → el movimiento creado (mismo shape que el listado).
@@ -106,9 +115,11 @@ del mes** (aparece en KPIs, donut y presupuestos no —`deudas` es system—).
 
 ### `PATCH /api/movements/{id}`
 Body: cualquiera de los campos anteriores (todos opcionales, se aplica sólo lo enviado),
-incluyendo `account_id` e `is_debt_payment`. Mismas validaciones que el POST. Si se pasa
+incluyendo `account_id`, `is_debt_payment` e `items`. Mismas validaciones que el POST. Si se pasa
 a `entry_currency="USD"` sin mandar `rate_micros`, la tasa guardada se limpia; mandar una tasa
-con USD es `422`.
+con USD es `422`. `items` **reemplaza** la lista completa de líneas: mandar `items: []` las limpia
+(y el total vuelve a derivarse de `entry_amount_cents`); mandar líneas recalcula el `amount_cents`
+como su suma.
 `200` → el movimiento actualizado. `404` si no existe.
 
 ### `DELETE /api/movements/{id}`
@@ -188,22 +199,25 @@ Reasigna una categoría de **gasto** a un frasco (una categoría vive en un solo
 ### `GET /api/data/export`
 `200` con `Content-Disposition: attachment; filename="financirdus-YYYY-MM-DD.json"`.
 ```json
-{"version":3,"exported_at":"2026-09-16T12:00:00-03:00",
+{"version":4,"exported_at":"2026-09-16T12:00:00-03:00",
  "accounts":[{"name":"Cartera USD","opening_balance_cents":0},
              {"name":"Binance","opening_balance_cents":-60000}],
  "movements":[{"type":"gasto","category_id":"supermercado","amount_cents":10000,
                "entry_currency":"VES","entry_amount_cents":400000,"rate_micros":40000000,
                "date":"2026-09-04","note":"","account_id":1,"account_name":"Cartera USD",
-               "is_debt_payment":false}],
+               "is_debt_payment":false,"items":[]}],
  "budgets":{"supermercado":12000000},
  "jar_categories":{"ahorro":"crecimiento"}}
 ```
 `accounts` son las carteras (nombre + saldo inicial). Cada movimiento incluye su cartera
-(`account_id`/`account_name`) y `is_debt_payment`. `budgets` es un dict `category_id → cap_cents`.
+(`account_id`/`account_name`), `is_debt_payment` y sus `items` (array; `[]` si no tiene líneas).
+`budgets` es un dict `category_id → cap_cents`.
 
 ### `POST /api/data/import`
 Query: `mode` ∈ `merge|replace` (default `merge`).
-Body: el shape del export. **Se aceptan `version` 1, 2 y 3**:
+Body: el shape del export. **Se aceptan `version` 1, 2, 3 y 4**:
+- **v4**: como v3, y además cada movimiento puede traer `items` (líneas de detalle). Los payloads
+  v1–v3 no traen `items` y se importan como `[]`.
 - **v3**: trae `accounts` y, en cada movimiento, `account_name`/`account_id` e `is_debt_payment`.
   Las carteras se crean por **nombre** (las que falten).
 - **v1/v2**: sin `accounts`; todos los movimientos caen en la cartera por defecto `Cartera USD`
@@ -239,6 +253,9 @@ desproporcionadas con límites explícitos y errores claros:
 | `opening_balance_cents` (POST/PATCH/import) | `-2147483647 .. 2147483647` | `422` |
 | `account` (query) en `/api/movements` y `/api/stats/*` | id numérico o `all` | `422` `{"detail":"La cartera debe ser un id numérico o 'all'."}` |
 | `entry_amount_cents` en movimientos (POST/PATCH) | `1 .. 2147483647` | `422` "El monto es demasiado grande." |
+| `items` de un movimiento (POST/PATCH/import) | ≤ 100 líneas | `422` "Máximo 100 líneas por movimiento." |
+| `items[].description` (POST/PATCH/import) | `1 .. 120` caracteres | `422` "Cada línea necesita una descripción de hasta 120 caracteres." |
+| `items[].amount_cents` (POST/PATCH/import) | `1 .. 2147483647` | `422` "El precio de una línea debe ser mayor a cero." |
 | `rate_micros` en movimientos VES (POST/PATCH) | `1 .. 1000000000000000` | `422` |
 | `cap_cents` en presupuestos (PUT/import) | `1 .. 2147483647` | `422` "El tope es demasiado grande." |
 | `months` en `GET /api/stats/monthly` | `1 .. 24` | `422` (validación de query) |

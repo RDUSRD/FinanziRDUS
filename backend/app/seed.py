@@ -19,7 +19,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import SessionLocal
 from .domain import compute_amount_cents, shift_month
-from .models import Account, Budget, Movement
+from .models import Account, Budget, Movement, MovementItem
 
 # Sample wallets: one asset wallet plus two debts (negative opening balances).
 # The main wallet gets a positive opening balance so that the sample net (about
@@ -65,6 +65,21 @@ CURRENT_MONTH_MOVEMENTS: list[tuple[int, str, int, str, str]] = [
     (1, "ingreso", 1200, "sueldo", "Sueldo del mes"),
     (12, "ingreso", 180, "freelance", "Proyecto web"),
 ]
+
+# Detail lines for a couple of current-month sample movements (keyed by note) so
+# the UI shows a real breakdown. Each set sums to the movement's own amount (the
+# supermarket purchase and the streaming subscription).
+CURRENT_MONTH_ITEM_LINES: dict[str, list[dict[str, object]]] = {
+    "Compra semanal": [
+        {"description": "Lácteos", "amount_cents": 2_300},
+        {"description": "Pan y cereales", "amount_cents": 1_500},
+        {"description": "Frutas y verduras", "amount_cents": 2_000},
+        {"description": "Limpieza", "amount_cents": 2_200},
+    ],
+    "Streaming": [
+        {"description": "Suscripción mensual", "amount_cents": 1_200},
+    ],
+}
 
 # Current-month movements entered in bolívares: 4.000,00 Bs at 40 Bs/USD = $100.
 # (day, ves_cents, rate_micros, category_id, note)
@@ -119,9 +134,10 @@ def _usd_movement(
     note: str,
     account_id: int | None = None,
     is_debt_payment: bool = False,
+    items: list[dict[str, object]] | None = None,
 ) -> Movement:
     cents = dollars * 100
-    return Movement(
+    movement = Movement(
         type=type_value,
         category_id=category_id,
         amount_cents=cents,
@@ -133,6 +149,10 @@ def _usd_movement(
         account_id=account_id,
         is_debt_payment=is_debt_payment,
     )
+    # Detail lines are persisted by ``_seed`` once the movement has an id; they
+    # are kept on a transient attribute (never a mapped column, no relationship).
+    movement._seed_items = list(items or [])
+    return movement
 
 
 def build_movements(
@@ -144,6 +164,7 @@ def build_movements(
     ``account_ids`` maps account name -> id (as resolved by :func:`_seed`); the
     sample movements belong to the default wallet and the debt payment to the
     debt wallet. When omitted, movements are built without an assigned account.
+    A couple of current-month movements carry optional detail lines.
     """
     account_ids = account_ids or {}
     default_id = account_ids.get(DEFAULT_ACCOUNT_NAME)
@@ -153,7 +174,13 @@ def build_movements(
     for day, type_value, dollars, category_id, note in CURRENT_MONTH_MOVEMENTS:
         movements.append(
             _usd_movement(
-                type_value, category_id, dollars, _to_date(month_key, day), note, default_id
+                type_value,
+                category_id,
+                dollars,
+                _to_date(month_key, day),
+                note,
+                default_id,
+                items=CURRENT_MONTH_ITEM_LINES.get(note),
             )
         )
     for day, ves_cents, rate_micros, category_id, note in VES_CURRENT_MONTH_MOVEMENTS:
@@ -215,6 +242,21 @@ def _resolve_accounts(db: Session) -> dict[str, int]:
     return account_ids
 
 
+def _seed_movement_items(db: Session, movements: list[Movement]) -> None:
+    """Persist the transient detail lines attached to the sample movements."""
+    for movement in movements:
+        specs = getattr(movement, "_seed_items", [])
+        for index, spec in enumerate(specs):
+            db.add(
+                MovementItem(
+                    movement_id=movement.id,
+                    description=spec["description"],
+                    amount_cents=spec["amount_cents"],
+                    sort_order=index,
+                )
+            )
+
+
 def _seed(db: Session, force: bool, month_key: str) -> dict:
     existing_movements = db.scalar(select(func.count()).select_from(Movement)) or 0
     existing_budgets = db.scalar(select(func.count()).select_from(Budget)) or 0
@@ -222,8 +264,9 @@ def _seed(db: Session, force: bool, month_key: str) -> dict:
         return {"seeded": False, "reason": "already_has_data", "movements": existing_movements}
 
     if force:
-        # Delete in FK order: movements (FK -> accounts) first, then budgets and
-        # the wallets.
+        # Delete in FK order: detail lines -> movements (FK -> accounts) -> budgets
+        # -> the wallets.
+        db.execute(delete(MovementItem))
         db.execute(delete(Movement))
         db.execute(delete(Budget))
         db.execute(delete(Account))
@@ -232,6 +275,8 @@ def _seed(db: Session, force: bool, month_key: str) -> dict:
     account_ids = _resolve_accounts(db)
     movements = build_movements(month_key, account_ids)
     db.add_all(movements)
+    db.flush()
+    _seed_movement_items(db, movements)
 
     for category_id, dollars in BUDGETS_USD.items():
         cap_cents = dollars * 100

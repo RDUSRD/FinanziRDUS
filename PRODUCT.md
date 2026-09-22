@@ -47,6 +47,8 @@ no un producto de mercado.
 
 - Alta, edición y borrado de movimientos (gasto o ingreso) con monto, categoría, fecha, nota y
   cartera; monto en USD o en Bs con tasa.
+- Líneas de detalle **opcionales** (productos/servicios con su precio) en cada movimiento; con
+  líneas, el total es la suma y el registro se presenta como una factura con desglose (solo USD).
 - Tres KPIs: ingresos del mes, gastos del mes y cuánto queda (rojo si es negativo).
 - Comparación del gasto del mes contra el promedio de los 6 meses **anteriores**.
 - Donut de gastos por categoría (SVG propio) y barras de los últimos 6 meses (SVG propio, sin
@@ -58,7 +60,9 @@ no un producto de mercado.
 - Filtro por cartera y por categoría; navegación por mes.
 - Categorías vienen de la API (10 de gasto, 4 de ingreso), nunca hardcodeadas.
 - Restricciones fijas: un solo usuario sin login, PostgreSQL, React + TypeScript + Tailwind.
-  El backend no se toca en un rediseño de UI; el contrato de la API está congelado.
+  El backend no se toca en un rediseño de UI; el contrato de la API está congelado. (Las **líneas
+  de detalle** en las facturas son una extensión deliberada posterior, aprobada por el dueño, no
+  parte de un rediseño de UI: ver `docs/handoff-facturas-visual.md`.)
 - Toda la funcionalidad existente y las reglas de negocio deben sobrevivir intactas al
   rediseño. El look actual **no** es una referencia vinculante: se reemplaza.
 
