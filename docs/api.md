@@ -73,10 +73,13 @@ hash, expira por inactividad (`SESSION_TTL_MINUTES`, 30 días) con un tope duro
 (`curl -c cookies.txt` / `-b cookies.txt`) y se usa. Es la misma sesión que aparece en el panel,
 así que se puede cerrar a distancia desde ahí.
 
-**CSRF y CORS.** Las mutaciones (`POST`/`PUT`/`PATCH`/`DELETE`) que lleguen con
-`Sec-Fetch-Site: cross-site` o con un `Origin` ajeno responden `403`
-`{"detail":"Origen no permitido."}`. Las peticiones sin cabeceras de origen (curl, scripts de
-servidor) se aceptan: no pueden arrastrar la cookie de nadie.
+**CSRF y CORS.** Las mutaciones (`POST`/`PUT`/`PATCH`/`DELETE`) que el navegador marque con
+`Sec-Fetch-Site: cross-site` responden `403` `{"detail":"Origen no permitido."}`. Esa cabecera
+la pone el navegador y el script de la página no puede falsificarla ni quitarla, así que es la
+señal que manda (y sobrevive a los proxies que reescriben `Host`, como el `changeOrigin` del
+proxy de Vite). Sólo cuando el cliente **no** manda esa cabecera —navegadores viejos, o curl y
+scripts de servidor, que no pueden arrastrar la cookie de nadie— se compara el `Origin` contra
+`CORS_ORIGINS` y contra el host del request.
 
 ## Endpoints
 

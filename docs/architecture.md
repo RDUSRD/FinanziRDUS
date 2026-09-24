@@ -99,8 +99,10 @@ navegador ──cualquier /api/*───────► security.require_sessio
 
 - **El token es opaco y la base guarda sólo su hash** (HMAC-SHA256 con `SECRET_KEY`): una fuga de
   `sessions` no entrega sesiones usables. CSRF se cubre con `SameSite=Lax` más un middleware ASGI
-  que mira `Origin` y `Sec-Fetch-Site` en los métodos mutantes (y no toca el cuerpo, para no
-  interferir con el import, que limita su propio tamaño mientras lo lee).
+  que en los métodos mutantes se apoya en `Sec-Fetch-Site` (lo pone el navegador y no se puede
+  falsificar; además sobrevive a los proxies que reescriben `Host`, como `changeOrigin` en el
+  proxy de Vite) y sólo cae al `Origin` contra `CORS_ORIGINS`/host si esa cabecera no viene. No
+  toca el cuerpo, para no interferir con el import, que limita su propio tamaño mientras lo lee.
 - **Protección sin tocar cada handler**: los routers se incluyen en `create_app()` con
   `dependencies=[Depends(require_session)]`. Los endpoints que además necesitan la sesión
   (me / logout / panel) la piden explícitamente y reciben sesión + usuario.

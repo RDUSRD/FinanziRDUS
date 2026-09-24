@@ -307,10 +307,15 @@ def _origin_allowed(origin: str, request: Request) -> bool:
 class CsrfProtectionMiddleware:
     """Refuse cross-site mutating ``/api/`` requests (defence over ``SameSite=Lax``).
 
-    A same-origin fetch is tagged ``Sec-Fetch-Site: same-origin``; a cross-site one
-    is tagged ``cross-site`` and carries a foreign ``Origin``. Requests without
-    browser origin headers (curl, the integration smoke test, server-to-server)
-    are allowed: they cannot carry a victim's cookie from a browser.
+    The browser sets ``Sec-Fetch-Site`` on every request and page script cannot
+    forge or remove it, so it is the authoritative signal: ``cross-site`` is
+    refused, ``same-origin``/``same-site``/``none`` are allowed. It also survives
+    proxies that rewrite ``Host`` (Vite's ``changeOrigin``, for instance), where
+    comparing the browser's ``Origin`` against the request host cannot work.
+
+    Only when that header is absent (older browsers, or a non-browser client that
+    cannot carry a victim's cookie anyway) does it fall back to the ``Origin``
+    allowlist: a configured CORS origin, or this host.
 
     Written as a plain ASGI middleware on purpose: it only looks at headers, so it
     hands ``receive``/``send`` straight through and never touches the request body
@@ -332,9 +337,13 @@ class CsrfProtectionMiddleware:
         headers = Headers(scope=scope)
         fetch_site = headers.get("sec-fetch-site")
         origin = headers.get("origin")
-        refused = fetch_site == "cross-site" or (
-            origin is not None and not _origin_allowed(origin, Request(scope, receive))
-        )
+        if fetch_site is not None:
+            refused = fetch_site == "cross-site"
+        else:
+            refused = origin is not None and not _origin_allowed(
+                origin, Request(scope, receive)
+            )
+
         if refused:
             await JSONResponse(status_code=403, content={"detail": _CSRF_DETAIL})(
                 scope, receive, send

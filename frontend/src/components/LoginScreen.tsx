@@ -149,10 +149,6 @@ export function LoginScreen() {
                 {submitting ? 'Entrando…' : 'Entrar'}
               </button>
             </div>
-
-            <p className="hint">
-              La app es de un solo usuario: se entra con la credencial que configuraste.
-            </p>
           </form>
         </main>
       </div>

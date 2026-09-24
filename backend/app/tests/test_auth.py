@@ -438,6 +438,31 @@ class TestCsrf:
 
         assert response.status_code == 204
 
+    def test_a_same_origin_fetch_survives_a_proxy_that_rewrites_host(
+        self, client: TestClient
+    ) -> None:
+        # Vite's dev proxy rewrites Host to its target (`changeOrigin`), so the
+        # browser's Origin can never match the request host: `Sec-Fetch-Site` has
+        # to be the authoritative signal. This is exactly what broke `make dev`.
+        response = client.post(
+            "/api/auth/logout",
+            headers={
+                "Origin": "http://localhost:8080",
+                "Sec-Fetch-Site": "same-origin",
+                "Host": "api:8000",
+            },
+        )
+
+        assert response.status_code == 204
+
+    def test_cross_site_wins_over_a_matching_origin(self, client: TestClient) -> None:
+        response = client.post(
+            "/api/auth/logout",
+            headers={"Sec-Fetch-Site": "cross-site", "Origin": "http://testserver"},
+        )
+
+        assert response.status_code == 403
+
     def test_reads_are_never_blocked(self, client: TestClient) -> None:
         assert (
             client.get("/api/categories", headers={"Origin": "http://evil.example"}).status_code
