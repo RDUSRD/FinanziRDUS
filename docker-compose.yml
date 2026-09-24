@@ -28,13 +28,24 @@ services:
       SEED_ON_START: ${SEED_ON_START:-true}
       DOCS_ENABLED: ${DOCS_ENABLED:-true}
       LOG_LEVEL: ${LOG_LEVEL:-info}
+      # Autenticación. Con APP_ENV=production la API no arranca si SECRET_KEY
+      # queda vacía o en el valor por defecto: definila en tu .env.
+      SECRET_KEY: ${SECRET_KEY:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
+      SESSION_TTL_MINUTES: ${SESSION_TTL_MINUTES:-43200}
+      SESSION_ABSOLUTE_TTL_MINUTES: ${SESSION_ABSOLUTE_TTL_MINUTES:-86400}
+      LOGIN_MAX_ATTEMPTS: ${LOGIN_MAX_ATTEMPTS:-5}
+      LOGIN_LOCKOUT_MINUTES: ${LOGIN_LOCKOUT_MINUTES:-15}
     depends_on:
       db:
         condition: service_healthy
     ports:
       # La API queda accesible SOLO desde la máquina host (http://localhost:8000/api/docs).
       # El navegador entra por `web`, que proxea /api en el mismo origen.
-      # Para exponerla a la LAN, poné API_BIND=0.0.0.0 en tu .env (leé el README: no hay login).
+      # Para exponerla a la LAN, poné API_BIND=0.0.0.0 en tu .env. Todos sus
+      # endpoints (salvo /api/health y el login) piden la cookie de sesión.
       - "${API_BIND:-127.0.0.1}:${API_PORT:-8000}:8000"
     restart: unless-stopped
 

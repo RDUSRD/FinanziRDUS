@@ -7,6 +7,7 @@ from datetime import date
 from fastapi import HTTPException
 
 from ..domain import parse_month, shift_month
+from ..models import AdminSession
 
 
 def month_bounds(month_key: str) -> tuple[date, date]:
@@ -57,3 +58,20 @@ def account_id_param(account: str | None) -> int | None:
             status_code=422,
             detail="La cartera debe ser un id numérico o 'all'.",
         ) from exc
+
+
+def session_out(session: AdminSession, current_id: int | None) -> dict:
+    """Serialize one session for the admin panel.
+
+    ``is_current`` cannot come from the model: it depends on which session the
+    current request was made with.
+    """
+    return {
+        "id": session.id,
+        "created_at": session.created_at,
+        "last_seen_at": session.last_seen_at,
+        "expires_at": session.expires_at,
+        "ip": session.ip,
+        "user_agent": session.user_agent,
+        "is_current": session.id == current_id,
+    }

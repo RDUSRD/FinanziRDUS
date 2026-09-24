@@ -7,9 +7,9 @@ en bolívares indicando la tasa, y el backend guarda el equivalente en USD. Los 
 pertenecen a **carteras** con nombre (`accounts`) y una cartera con saldo inicial negativo
 representa una **deuda** (pagar la deuda es la prioridad cuando existe).
 
-**Decisiones fijadas:** un solo usuario (sin login, pensado para uso local o LAN),
-PostgreSQL como base de datos, frontend React + TypeScript + Tailwind.
-Ninguna de estas tres cosas se cambia sin actualizar este documento.
+**Decisiones fijadas:** un solo usuario **con credencial propia** (login único, sin registro ni
+multirol; pensado para uso local o LAN), PostgreSQL como base de datos, frontend React +
+TypeScript + Tailwind. Ninguna de estas cosas se cambia sin actualizar este documento.
 
 ## Layout del repositorio
 
@@ -28,14 +28,16 @@ FinanciRDUS/
 │   ├── alembic/versions/
 │   ├── scripts/entrypoint.sh
 │   └── app/
-│       ├── main.py             # create_app(), CORS, routers, /api/health
+│       ├── main.py             # create_app(), CORS, CSRF, routers, /api/health
 │       ├── config.py           # Settings (pydantic-settings) leídas del entorno
 │       ├── db.py               # engine, SessionLocal, get_db
 │       ├── models.py           # SQLAlchemy 2.x (DeclarativeBase, Mapped)
 │       ├── schemas.py          # Pydantic v2 request/response
 │       ├── domain.py           # lógica pura (sin DB): meses, promedios, umbrales, shares
+│       ├── security.py         # scrypt, tokens de sesión, cookie, CSRF, require_session
 │       ├── seed.py             # datos de ejemplo + entrypoint `python -m app.seed`
-│       ├── routers/{accounts,movements,budgets,stats,plan,data}.py
+│       ├── auth_seed.py        # credencial del admin + entrypoint `python -m app.auth_seed`
+│       ├── routers/{auth,admin,accounts,movements,budgets,stats,plan,data}.py
 │       └── tests/              # pytest
 └── frontend/                   # Vite + React + TS + Tailwind (dueño: agente frontend)
     ├── Dockerfile              # build multi-stage + nginx
@@ -44,7 +46,8 @@ FinanciRDUS/
     ├── pnpm-workspace.yaml     # cooldown de releases nuevas (minimumReleaseAge: 1440 = 24 h)
     ├── src/
     │   ├── api/                # client.ts, types.ts, queries.ts (TanStack Query)
-    │   ├── lib/                # money.ts, month.ts, chart.ts (puras, con tests)
+    │   ├── auth/               # AuthContext (sesión) + AuthGate (login | cambio forzado | app)
+    │   ├── lib/                # money.ts, month.ts, chart.ts, credentials.ts (con tests)
     │   ├── components/
     │   └── App.tsx, main.tsx, index.css
     └── src/**/*.test.ts        # vitest
@@ -55,25 +58,58 @@ FinanciRDUS/
 | Servicio | Imagen | Puerto host | Rol |
 |---|---|---|---|
 | `db`   | `postgres:16-alpine` | no publicado | Datos, volumen `pgdata` |
-| `api`  | build `backend/`     | `127.0.0.1:8000` (configurable con `API_BIND`) | FastAPI + Uvicorn; migra y siembra al arrancar |
+| `api`  | build `backend/`     | `127.0.0.1:8000` (configurable con `API_BIND`) | FastAPI + Uvicorn; migra, crea la credencial del admin si falta y siembra al arrancar |
 | `web`  | build `frontend/`    | `0.0.0.0:8080` (configurable con `WEB_BIND`) | nginx sin privilegios: sirve el SPA y proxea `/api` → `api:8000` |
 
-**Postura de exposición:** la app no tiene autenticación (decisión explícita: uso personal).
-Por eso la API se publica sólo en `127.0.0.1` y el único puerto realmente expuesto a la LAN es
-el del frontend, que da acceso completo a los datos. **No la pongas en una IP pública tal como
-está**: si algún día querés hacerlo, hace falta TLS + un secreto por header (y limitar el
-tamaño de los imports). El README lo aclara también.
+**Postura de exposición:** la app pide credencial (un solo usuario), así que la API puede
+publicarse sólo en `127.0.0.1` y dejar el único puerto realmente expuesto a la LAN en el
+frontend, que proxea `/api` en el mismo origen y donde vive el login. **Para llevarla a una IP
+pública hace falta TLS**: sin HTTPS la cookie tiene que ir sin `Secure` (si no el navegador no la
+manda) y viajaría en claro.
 
 - `api` espera a `db` con `depends_on: condition: service_healthy` (healthcheck `pg_isready`).
 - `web` espera a `api` con healthcheck propio sobre `/api/health`.
 - Bindings del host: `API_BIND` (API, default `127.0.0.1`) y `WEB_BIND` (frontend, default
   `0.0.0.0`). El frontend se expone a la LAN a propósito porque proxea `/api` en el mismo origen.
-- Al arrancar, `api` corre `alembic upgrade head`. El seed lo decide `app.seed` leyendo
-  `SEED_ON_START` (única fuente de verdad) y es idempotente: siembra sólo cuando **no hay
-  movimientos ni presupuestos**, así nunca pisa datos del usuario.
+- Al arrancar, `api` corre `alembic upgrade head`, después `python -m app.auth_seed` (crea la
+  credencial del admin si no existe; **nunca** pisa una existente) y por último `python -m
+  app.seed`. El seed lo decide `app.seed` leyendo `SEED_ON_START` (única fuente de verdad) y es
+  idempotente: siembra sólo cuando **no hay movimientos ni presupuestos**, así nunca pisa datos
+  del usuario.
 - El SPA habla con `/api` en el **mismo origen** a través de nginx: sin CORS en producción.
   CORS queda habilitado y configurable (`CORS_ORIGINS`) para el desarrollo con Vite.
 - `docker compose up --build` es el único comando necesario para tener todo andando.
+
+## Autenticación
+
+Un solo usuario. La cookie de sesión es la única puerta: todo el ledger está detrás de ella y
+sólo quedan abiertos `/api/health` y los endpoints de `/api/auth`.
+
+```
+navegador ──POST /api/auth/login──► routers/auth.py
+                                    ├─ scrypt contra admin_users.password_hash (y un hash señuelo
+                                    │  cuando el usuario no existe: mismo costo, no filtra cuál sí)
+                                    ├─ login_attempts: cuenta fallos recientes y bloquea (429)
+                                    └─ crea una fila en `sessions` y devuelve el token en la cookie
+navegador ──cualquier /api/*───────► security.require_session (dependencia)
+                                    ├─ hash_token(cookie) == sessions.token_hash (HMAC + SECRET_KEY)
+                                    ├─ revoked_at IS NULL, expires_at y tope absoluto > now
+                                    └─ desliza la expiración (a lo sumo una escritura por minuto)
+```
+
+- **El token es opaco y la base guarda sólo su hash** (HMAC-SHA256 con `SECRET_KEY`): una fuga de
+  `sessions` no entrega sesiones usables. CSRF se cubre con `SameSite=Lax` más un middleware ASGI
+  que mira `Origin` y `Sec-Fetch-Site` en los métodos mutantes (y no toca el cuerpo, para no
+  interferir con el import, que limita su propio tamaño mientras lo lee).
+- **Protección sin tocar cada handler**: los routers se incluyen en `create_app()` con
+  `dependencies=[Depends(require_session)]`. Los endpoints que además necesitan la sesión
+  (me / logout / panel) la piden explícitamente y reciben sesión + usuario.
+- **Panel (`/api/admin/sessions`)**: lista las sesiones vivas (dispositivo, IP, último uso,
+  vencimiento) y cierra una o todas. Cerrar la sesión actual borra la cookie; cerrarla desde otro
+  dispositivo deja a ese navegador en `401`.
+- **Frontend**: `AuthProvider` pregunta `GET /api/auth/me` al montar y `AuthGate` decide entre
+  login, cambio de contraseña forzado y app. Cualquier `401`, en cualquier request, saca al
+  usuario de la app y limpia la caché de React Query (`setUnauthorizedHandler` en `client.ts`).
 
 ## Variables de entorno
 
@@ -81,13 +117,20 @@ tamaño de los imports). El README lo aclara también.
 `APP_ENV` (development|production), `APP_TZ` (default `America/Caracas`),
 `CORS_ORIGINS` (coma-separado), `SEED_ON_START` (true|false), `DOCS_ENABLED` (true|false,
 default `true`), `LOG_LEVEL`.
+Autenticación: `SECRET_KEY` (pepper del hash de los tokens de sesión), `ADMIN_USERNAME` /
+`ADMIN_PASSWORD` (credencial de arranque, sólo para crear el admin la primera vez),
+`SESSION_COOKIE_SECURE` (true|false, default `false`), `SESSION_TTL_MINUTES` (default `43200`),
+`SESSION_ABSOLUTE_TTL_MINUTES` (default `86400`), `LOGIN_MAX_ATTEMPTS` (default `5`),
+`LOGIN_LOCKOUT_MINUTES` (default `15`).
 Valores por defecto funcionales en `.env.example`; nunca hardcodear secretos en el código.
 
 **Validación al arrancar (fail-closed):** `Settings` valida la configuración al construirla, así
 que un valor inválido **impide el arranque** en vez de hacer fallar cada request con `500`. Una
 `APP_TZ` que no sea una zona horaria válida y un `APP_ENV` fuera de `development|production`
-abortan el arranque; con `APP_ENV=production`, un `CORS_ORIGINS` comodín (`*`) también se
-rechaza. `DOCS_ENABLED=false` apaga `/api/docs` y `/api/openapi.json` (ambos responden `404`).
+abortan el arranque; con `APP_ENV=production`, un `CORS_ORIGINS` comodín (`*`) y un `SECRET_KEY`
+que siga en el valor por defecto también se rechazan (los tiempos y umbrales de autenticación
+deben ser > 0). `DOCS_ENABLED=false` apaga `/api/docs` y `/api/openapi.json` (ambos responden
+`404`).
 
 **Zona horaria:** el mes "actual" y la fecha "hoy" se calculan SIEMPRE con `APP_TZ`,
 nunca con la hora UTC del contenedor (si no, el mes cambia a las 21:00 hora local).

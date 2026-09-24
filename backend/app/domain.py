@@ -574,3 +574,45 @@ def account_balance_item(
 def total_debt_cents(balances: Iterable[int]) -> int:
     """Total outstanding debt: the sum of the negative balances, made positive."""
     return sum(-int(balance) for balance in balances if int(balance) < 0)
+
+
+# --------------------------------------------------------------------------- #
+# Administrator credentials
+# --------------------------------------------------------------------------- #
+# Policy for the single administrator's username and password.
+MIN_USERNAME_LEN = 3
+MAX_USERNAME_LEN = 60
+MIN_PASSWORD_LEN = 10
+MAX_PASSWORD_LEN = 200
+
+
+def validate_username(value: object) -> str:
+    """Validate the administrator's username: a trimmed string of 3..60 chars."""
+    if not isinstance(value, str):
+        raise DomainError("El usuario debe ser un texto.")
+    username = value.strip()
+    if len(username) < MIN_USERNAME_LEN:
+        raise DomainError(f"El usuario debe tener al menos {MIN_USERNAME_LEN} caracteres.")
+    if len(username) > MAX_USERNAME_LEN:
+        raise DomainError(f"El usuario no puede superar los {MAX_USERNAME_LEN} caracteres.")
+    return username
+
+
+def validate_password(value: object, username: str = "") -> str:
+    """Validate the administrator's password.
+
+    A minimum length plus two cheap sanity rules (not the username, not all
+    digits). Generating and remembering anything stronger is the job of a
+    password manager, not of a personal app.
+    """
+    if not isinstance(value, str):
+        raise DomainError("La contraseña debe ser un texto.")
+    if len(value) < MIN_PASSWORD_LEN:
+        raise DomainError(f"La contraseña debe tener al menos {MIN_PASSWORD_LEN} caracteres.")
+    if len(value) > MAX_PASSWORD_LEN:
+        raise DomainError(f"La contraseña no puede superar los {MAX_PASSWORD_LEN} caracteres.")
+    if username and value.strip().casefold() == username.strip().casefold():
+        raise DomainError("La contraseña no puede ser igual al usuario.")
+    if value.isdigit():
+        raise DomainError("La contraseña no puede ser sólo números.")
+    return value

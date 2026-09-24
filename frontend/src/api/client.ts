@@ -11,13 +11,17 @@ import type {
   ImportMode,
   ImportResult,
   JarAssignResponse,
+  LoginResponse,
+  MeResponse,
   MonthlyStat,
   Movement,
   MovementInput,
   MovementPatch,
   MovementType,
+  PasswordChangeInput,
   PlanResponse,
   PutBudgetResponse,
+  SessionsResponse,
   StatsByCategory,
   StatsSummary,
 } from './types';
@@ -75,8 +79,34 @@ interface RequestOptions {
   body?: unknown;
 }
 
+type UnauthorizedHandler = () => void;
+
+let unauthorizedHandler: UnauthorizedHandler | null = null;
+
+/**
+ * Register the callback fired whenever a request answers 401, so an expired or
+ * remotely revoked session sends the UI back to the login screen without a reload.
+ */
+export function setUnauthorizedHandler(handler: UnauthorizedHandler | null): void {
+  unauthorizedHandler = handler;
+}
+
+function notifyUnauthorized(status: number): void {
+  if (status === 401) unauthorizedHandler?.();
+}
+
+/** Read the API `detail` out of a failed response, tolerating a non-JSON body. */
+async function readDetail(response: Response): Promise<unknown> {
+  try {
+    const data = (await response.json()) as { detail?: unknown };
+    return data?.detail;
+  } catch {
+    return undefined;
+  }
+}
+
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const init: RequestInit = { method: options.method ?? 'GET' };
+  const init: RequestInit = { method: options.method ?? 'GET', credentials: 'include' };
   if (options.body !== undefined) {
     init.body = JSON.stringify(options.body);
     init.headers = { 'Content-Type': 'application/json' };
@@ -90,14 +120,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
   }
 
   if (!response.ok) {
-    let detail: unknown;
-    try {
-      const data = (await response.json()) as { detail?: unknown };
-      detail = data?.detail;
-    } catch {
-      detail = undefined;
-    }
-    throw new ApiError(detailToMessage(detail, response.status), response.status);
+    notifyUnauthorized(response.status);
+    throw new ApiError(detailToMessage(await readDetail(response), response.status), response.status);
   }
 
   if (response.status === 204) return undefined as T;
@@ -109,25 +133,34 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
 async function requestText(path: string): Promise<string> {
   let response: Response;
   try {
-    response = await fetch(`${API_BASE}${path}`);
+    response = await fetch(`${API_BASE}${path}`, { credentials: 'include' });
   } catch {
     throw new ApiError('No se pudo conectar con el servidor. Verificá que la API esté en ejecución.', 0);
   }
   if (!response.ok) {
-    let detail: unknown;
-    try {
-      const data = (await response.json()) as { detail?: unknown };
-      detail = data?.detail;
-    } catch {
-      detail = undefined;
-    }
-    throw new ApiError(detailToMessage(detail, response.status), response.status);
+    notifyUnauthorized(response.status);
+    throw new ApiError(detailToMessage(await readDetail(response), response.status), response.status);
   }
   return response.text();
 }
 
 export const api = {
   health: () => request<HealthResponse>('/health'),
+
+  auth: {
+    login: (username: string, password: string) =>
+      request<LoginResponse>('/auth/login', { method: 'POST', body: { username, password } }),
+    logout: () => request<void>('/auth/logout', { method: 'POST' }),
+    me: () => request<MeResponse>('/auth/me'),
+    changePassword: (input: PasswordChangeInput) =>
+      request<void>('/auth/password', { method: 'POST', body: input }),
+  },
+
+  admin: {
+    sessions: () => request<SessionsResponse>('/admin/sessions'),
+    revokeSession: (id: number) => request<void>(`/admin/sessions/${id}`, { method: 'DELETE' }),
+    revokeAllSessions: () => request<void>('/admin/sessions/revoke-all', { method: 'POST' }),
+  },
 
   categories: () => request<Category[]>('/categories'),
 

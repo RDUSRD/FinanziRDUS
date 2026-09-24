@@ -798,6 +798,7 @@
 }
 
 input[type="text"],
+input[type="password"],
 input[type="date"],
 input[type="month"],
 input[type="number"],
@@ -1971,6 +1972,41 @@ input[type="file"]::file-selector-button {
   100% {
     opacity: 1;
   }
+}
+
+/* ================================================================== *
+ * Autenticación — la hoja de entrar y el panel de administración
+ * ================================================================== */
+/* La hoja de entrar es la misma hoja del tablero, centrada en la pantalla:
+ * mientras no hay sesión es lo único que se ve. */
+.auth-screen {
+  display: flex;
+  align-items: center;
+  min-height: 100vh;
+}
+
+.auth-screen .sheet {
+  width: min(520px, 100% - 36px);
+}
+
+/* Los campos apilados a lo ancho: entrar y cambiar la contraseña. */
+.auth-body {
+  display: grid;
+  gap: 14px;
+  min-width: 0;
+  padding-top: 14px;
+}
+
+/* En la hoja de entrar y en el panel, la acción ocupa el ancho del formulario. */
+.auth-body .plate {
+  width: 100%;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
 }
 
 /* ================================================================== *

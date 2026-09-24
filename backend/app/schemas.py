@@ -216,3 +216,52 @@ class PlanOut(BaseModel):
 
 class JarAssignIn(BaseModel):
     jar_id: str
+
+
+# --------------------------------------------------------------------------- #
+# Authentication
+# --------------------------------------------------------------------------- #
+class LoginIn(BaseModel):
+    username: str
+    password: str
+
+
+class SessionOut(BaseModel):
+    """One server-side session as the admin panel shows it."""
+
+    id: int
+    created_at: datetime
+    last_seen_at: datetime
+    expires_at: datetime
+    ip: str | None
+    user_agent: str | None
+    is_current: bool
+
+    @field_serializer("created_at", "last_seen_at", "expires_at")
+    def _serialize_timestamps(self, value: datetime) -> str:
+        return _serialize_local(value)
+
+
+class SessionsOut(BaseModel):
+    items: list[SessionOut]
+
+
+class LoginOut(BaseModel):
+    username: str
+    must_change_password: bool
+    expires_at: datetime
+
+    @field_serializer("expires_at")
+    def _serialize_expires_at(self, value: datetime) -> str:
+        return _serialize_local(value)
+
+
+class MeOut(BaseModel):
+    username: str
+    must_change_password: bool
+    session: SessionOut
+
+
+class PasswordChangeIn(BaseModel):
+    current_password: str
+    new_password: str

@@ -1,7 +1,7 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 
-.PHONY: help up dev down build logs ps restart seed migrate test test-backend test-frontend lint typecheck dev-api dev-web clean nuke
+.PHONY: help up dev down build logs ps restart seed migrate admin-reset test test-backend test-frontend lint typecheck dev-api dev-web clean nuke
 
 help: ## Muestra esta ayuda
 	@grep -hE '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -36,6 +36,10 @@ seed: ## (Re)siembra los datos de ejemplo — ¡BORRA los movimientos existentes
 
 migrate: ## Aplica las migraciones de Alembic
 	$(COMPOSE) exec api alembic upgrade head
+
+admin-reset: ## Restablece la contraseña del admin desde ADMIN_PASSWORD (recuperación)
+	@echo "Usa la ADMIN_USERNAME/ADMIN_PASSWORD de tu .env; el próximo ingreso obliga a cambiarla."
+	$(COMPOSE) exec api python -m app.auth_seed --reset-password
 
 test: test-backend test-frontend ## Corre todos los tests
 

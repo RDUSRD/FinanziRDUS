@@ -131,6 +131,54 @@ Mapeo por defecto (editable): **esencial** supermercado, transporte, alquiler-se
 suscripciones · **crecimiento** ahorro · **estabilidad** otros · **recompensas**
 comidas-afuera, ocio, ropa.
 
+### `admin_users`
+
+El único administrador (la app es de un solo usuario; la tabla existe para poder soportar más de
+una credencial sin migrar nada). La llena `app.auth_seed` al arrancar, nunca el seed de ejemplo.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | `Integer` PK autoincrement | |
+| `username` | `Text` NOT NULL UNIQUE | 3..60 caracteres (validado en la API) |
+| `password_hash` | `Text` NOT NULL | `scrypt$n$r$p$<salt_b64>$<hash_b64>` (scrypt, stdlib) |
+| `must_change_password` | `Boolean` NOT NULL default true | lo pone el bootstrap y el reset; la UI obliga a cambiarla |
+| `password_changed_at` | `TIMESTAMPTZ` NULL | |
+| `created_at` / `updated_at` | `TIMESTAMPTZ` NOT NULL default `now()` | |
+
+### `sessions`
+
+Sesiones de servidor: la cookie lleva un token opaco y **acá vive el estado**. Se guarda sólo el
+hash del token (HMAC-SHA256 con `SECRET_KEY`), así una fuga de esta tabla no entrega sesiones.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | `Integer` PK autoincrement | lo usa el panel para cerrar una sesión |
+| `token_hash` | `Text` NOT NULL UNIQUE | `hmac(SECRET_KEY, token)`, nunca el token |
+| `user_id` | `Integer` NOT NULL | FK → `admin_users.id` **ON DELETE CASCADE** |
+| `created_at` | `TIMESTAMPTZ` NOT NULL default `now()` | |
+| `last_seen_at` | `TIMESTAMPTZ` NOT NULL default `now()` | se desliza con la actividad (máx. 1 escritura/minuto) |
+| `expires_at` | `TIMESTAMPTZ` NOT NULL | vencimiento por inactividad (`SESSION_TTL_MINUTES`) |
+| `absolute_expires_at` | `TIMESTAMPTZ` NOT NULL | tope duro (`SESSION_ABSOLUTE_TTL_MINUTES`) |
+| `revoked_at` | `TIMESTAMPTZ` NULL | logout o cierre remoto desde el panel |
+| `ip` / `user_agent` | `Text` NULL | sólo para mostrarlos en el panel |
+| | | índice `ix_sessions_user_id` |
+
+### `login_attempts`
+
+Un registro por intento de login (con o sin éxito). Es el contador de fuerza bruta: si los fallos
+de los últimos `LOGIN_LOCKOUT_MINUTES` **de esa cuenta** llegan a `LOGIN_MAX_ATTEMPTS`, el login
+responde `429`. Se cuenta por cuenta (no por IP) porque la app tiene un solo usuario y contar por
+IP dejaría que una dirección compartida (NAT) dejara al dueño afuera de su propia app. Un login
+exitoso borra los fallos previos de ese usuario.
+
+| Columna | Tipo | Notas |
+|---|---|---|
+| `id` | `Integer` PK autoincrement | |
+| `username` | `Text` NOT NULL | el usuario *enviado* (truncado a 60), exista o no |
+| `created_at` | `TIMESTAMPTZ` NOT NULL default `now()` | |
+| `success` | `Boolean` NOT NULL default false | |
+| | | índice `ix_login_attempts_username_created` |
+
 ## Migraciones
 
 - `0001_initial`: crea las 3 tablas + índices + CHECKs y **siembra `categories`**
@@ -144,6 +192,9 @@ comidas-afuera, ocio, ropa.
   `downgrade` las revierte.
 - `0004_movement_items`: crea `movement_items` (FK `ON DELETE CASCADE` a `movements`, CHECK
   `amount_cents > 0` e índice por `movement_id`). Tabla nueva, sin backfill. `downgrade` la elimina.
+- `0005_admin_auth`: crea `admin_users`, `sessions` y `login_attempts` (índices y FKs incluidos).
+  Sin backfill: `admin_users` arranca vacía y la llena `python -m app.auth_seed` en el arranque.
+  `downgrade` las elimina (y con ellas las sesiones abiertas).
 
 - No editar una migración ya aplicada; los cambios de esquema van en una migración nueva.
 - `alembic upgrade head` corre automáticamente al arrancar el contenedor `api`.

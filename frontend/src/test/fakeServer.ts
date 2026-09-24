@@ -8,14 +8,19 @@ import type {
   EntryCurrency,
   ExportPayload,
   ImportMode,
+  LoginResponse,
+  MeResponse,
   MonthlyStat,
   Movement,
   MovementInput,
   MovementItem,
   PlanResponse,
+  SessionInfo,
+  SessionsResponse,
   StatsByCategory,
   StatsSummary,
 } from '../api/types';
+import { MIN_PASSWORD_LEN } from '../lib/credentials';
 
 /** The 15 catalogue categories from docs/data-model.md (11 expense, "deudas" is system). */
 export const CATEGORIES: Category[] = [
@@ -44,6 +49,21 @@ export interface StoredAccount {
   sort_order: number;
 }
 
+/**
+ * The session the fake API answers `/api/auth/*` from, so the fake models the
+ * single administrator the real backend has.
+ */
+export interface FakeSession {
+  /** False once logged out: every protected route answers 401. */
+  authed: boolean;
+  username: string;
+  password: string;
+  /** Forces the password-change screen after signing in. */
+  mustChangePassword: boolean;
+  /** The other open sessions (id > 1) the admin panel lists. */
+  others: SessionInfo[];
+}
+
 export interface FakeDb {
   categories: Category[];
   accounts: StoredAccount[];
@@ -51,6 +71,7 @@ export interface FakeDb {
   budgets: Record<string, number>;
   /** category_id -> jar_id (plan 25/15/50/10). */
   jarCategories: Record<string, string>;
+  session: FakeSession;
   nextId: number;
   nextAccountId: number;
 }
@@ -81,6 +102,54 @@ export const DEFAULT_JAR_CATEGORIES: Record<string, string> = {
   ahorro: 'crecimiento',
   otros: 'estabilidad',
 };
+
+/* ------------------------------------------------------------------ *
+ * Session: the fake models the single administrator the backend has.
+ * ------------------------------------------------------------------ */
+export const ADMIN_USERNAME = 'admin';
+export const ADMIN_PASSWORD = 'clave-de-prueba-2026';
+
+/** The session the panel shows as "Esta sesión". */
+export function currentSession(): SessionInfo {
+  return {
+    id: 1,
+    created_at: '2026-09-24T14:05:00-04:00',
+    last_seen_at: '2026-09-24T14:05:00-04:00',
+    expires_at: '2026-10-24T14:05:00-04:00',
+    ip: '127.0.0.1',
+    user_agent: 'Mozilla/5.0 (X11; Linux x86_64) Firefox/128.0',
+    is_current: true,
+  };
+}
+
+/** Another device signed in with the same credential. */
+export function otherSession(id = 2): SessionInfo {
+  return {
+    id,
+    created_at: '2026-09-23T08:30:00-04:00',
+    last_seen_at: '2026-09-23T20:10:00-04:00',
+    expires_at: '2026-10-23T08:30:00-04:00',
+    ip: '10.0.0.24',
+    user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Chrome/129.0.0.0 Safari/537.36',
+    is_current: false,
+  };
+}
+
+export const DEFAULT_SESSION: FakeSession = {
+  authed: true,
+  username: ADMIN_USERNAME,
+  password: ADMIN_PASSWORD,
+  mustChangePassword: false,
+  others: [otherSession()],
+};
+
+/** Routes reachable without a session, exactly like the real API. */
+function isPublic(path: string, method: string): boolean {
+  if (path === '/api/health') return true;
+  if (path === '/api/auth/login' && method === 'POST') return true;
+  if (path === '/api/auth/logout' && method === 'POST') return true;
+  return false;
+}
 
 /* ------------------------------------------------------------------ *
  * Minimal Response shim: only the surface the client actually uses.
@@ -464,12 +533,19 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
     movements: [],
     budgets: {},
     jarCategories: { ...DEFAULT_JAR_CATEGORIES },
+    session: DEFAULT_SESSION,
     nextId: 1,
     nextAccountId: 2,
     ...seed,
   };
   // Clone the stored wallets so mutations never leak into the caller's fixture.
   db.accounts = db.accounts.map((account) => ({ ...account }));
+  // Merge the session field by field: a test can flip one flag and keep the rest.
+  db.session = {
+    ...DEFAULT_SESSION,
+    ...(seed.session ?? {}),
+    others: (seed.session?.others ?? DEFAULT_SESSION.others).map((item) => ({ ...item })),
+  };
   if (seed.nextAccountId === undefined) {
     db.nextAccountId = db.accounts.reduce((max, account) => Math.max(max, account.id), 0) + 1;
   }
@@ -481,6 +557,96 @@ export function createFakeServer(seed: Partial<FakeDb> = {}): FakeServer {
     const path = url.pathname;
     const month = url.searchParams.get('month') ?? currentMonth();
     const accountParam = parseAccount(url.searchParams.get('account'), db);
+
+    /* ---------------- authentication ---------------- */
+    if (path === '/api/auth/login' && method === 'POST') {
+      const body = JSON.parse(String(init?.body ?? '{}')) as {
+        username?: string;
+        password?: string;
+      };
+      const username = String(body.username ?? '').trim();
+      if (username !== db.session.username || String(body.password ?? '') !== db.session.password) {
+        return json({ detail: 'Usuario o contraseña incorrectos.' }, 401);
+      }
+      db.session.authed = true;
+      const response: LoginResponse = {
+        username: db.session.username,
+        must_change_password: db.session.mustChangePassword,
+        expires_at: '2026-10-24T14:05:00-04:00',
+      };
+      return json(response);
+    }
+
+    if (path === '/api/auth/logout' && method === 'POST') {
+      db.session.authed = false;
+      return noContent();
+    }
+
+    if (path === '/api/auth/me' && method === 'GET') {
+      if (!db.session.authed) return json({ detail: 'Sesión inválida o expirada.' }, 401);
+      const me: MeResponse = {
+        username: db.session.username,
+        must_change_password: db.session.mustChangePassword,
+        session: currentSession(),
+      };
+      return json(me);
+    }
+
+    if (path === '/api/auth/password' && method === 'POST') {
+      if (!db.session.authed) return json({ detail: 'Sesión inválida o expirada.' }, 401);
+      const body = JSON.parse(String(init?.body ?? '{}')) as {
+        current_password?: string;
+        new_password?: string;
+      };
+      if (String(body.current_password ?? '') !== db.session.password) {
+        return json({ detail: 'La contraseña actual no es correcta.' }, 401);
+      }
+      const next = String(body.new_password ?? '');
+      if (next.length < MIN_PASSWORD_LEN) {
+        return json(
+          { detail: `La contraseña debe tener al menos ${MIN_PASSWORD_LEN} caracteres.` },
+          422,
+        );
+      }
+      db.session.password = next;
+      db.session.mustChangePassword = false;
+      // Changing the password closes every other session.
+      db.session.others = [];
+      return noContent();
+    }
+
+    if (path === '/api/admin/sessions' && method === 'GET') {
+      if (!db.session.authed) return json({ detail: 'Sesión inválida o expirada.' }, 401);
+      const sessions: SessionsResponse = { items: [currentSession(), ...db.session.others] };
+      return json(sessions);
+    }
+
+    if (path === '/api/admin/sessions/revoke-all' && method === 'POST') {
+      if (!db.session.authed) return json({ detail: 'Sesión inválida o expirada.' }, 401);
+      db.session.others = [];
+      db.session.authed = false;
+      return noContent();
+    }
+
+    const adminSession = /^\/api\/admin\/sessions\/(\d+)$/.exec(path);
+    if (adminSession && method === 'DELETE') {
+      if (!db.session.authed) return json({ detail: 'Sesión inválida o expirada.' }, 401);
+      const id = Number(adminSession[1]);
+      if (id === 1) {
+        // Closing the current session is a logout.
+        db.session.authed = false;
+        return noContent();
+      }
+      const index = db.session.others.findIndex((item) => item.id === id);
+      if (index < 0) return json({ detail: 'La sesión no existe.' }, 404);
+      db.session.others.splice(index, 1);
+      return noContent();
+    }
+
+    // Everything else needs the cookie, like the real API.
+    if (!db.session.authed && !isPublic(path, method)) {
+      return json({ detail: 'Sesión inválida o expirada.' }, 401);
+    }
 
     if (method === 'GET' && path === '/api/categories') return json(db.categories);
 

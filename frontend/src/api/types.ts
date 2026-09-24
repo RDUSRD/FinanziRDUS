@@ -256,3 +256,40 @@ export interface HealthResponse {
   db: string;
   version: string;
 }
+
+/** The signed-in administrator (single-user app). */
+export interface AuthUser {
+  username: string;
+  /** Set by the bootstrap and by a password reset: the UI forces a change. */
+  must_change_password: boolean;
+}
+
+/** One server-side session, as the admin panel lists it. */
+export interface SessionInfo {
+  id: number;
+  created_at: string;
+  last_seen_at: string;
+  expires_at: string;
+  ip: string | null;
+  user_agent: string | null;
+  /** True for the session the current request travelled with. */
+  is_current: boolean;
+}
+
+export interface SessionsResponse {
+  items: SessionInfo[];
+}
+
+export interface LoginResponse extends AuthUser {
+  expires_at: string;
+}
+
+export interface MeResponse extends AuthUser {
+  session: SessionInfo;
+}
+
+export interface PasswordChangeInput {
+  current_password: string;
+  new_password: string;
+}
+

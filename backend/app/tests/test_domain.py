@@ -12,6 +12,10 @@ from app.domain import (
     MAX_ITEM_DESC_LEN,
     MAX_MOVEMENT_ITEMS,
     MAX_NAME_LEN,
+    MAX_PASSWORD_LEN,
+    MAX_USERNAME_LEN,
+    MIN_PASSWORD_LEN,
+    MIN_USERNAME_LEN,
     DomainError,
     account_balance,
     account_balance_item,
@@ -36,7 +40,9 @@ from app.domain import (
     validate_is_debt_payment,
     validate_items,
     validate_opening_balance,
+    validate_password,
     validate_rate_micros,
+    validate_username,
     ves_to_usd_cents,
 )
 
@@ -609,3 +615,46 @@ class TestResolveMovementAmount:
         with pytest.raises(DomainError) as exc_info:
             resolve_movement_amount("USD", None, None, [])
         assert str(exc_info.value) == "El monto es obligatorio."
+
+
+class TestValidateUsername:
+    def test_trims_surrounding_spaces(self) -> None:
+        assert validate_username("  rdus  ") == "rdus"
+
+    def test_accepts_the_boundaries(self) -> None:
+        assert validate_username("a" * MIN_USERNAME_LEN) == "a" * MIN_USERNAME_LEN
+        assert validate_username("a" * MAX_USERNAME_LEN) == "a" * MAX_USERNAME_LEN
+
+    @pytest.mark.parametrize("value", [None, 42, "", "  ", "ab", "a" * (MAX_USERNAME_LEN + 1)])
+    def test_rejects_everything_else(self, value: object) -> None:
+        with pytest.raises(DomainError):
+            validate_username(value)
+
+
+class TestValidatePassword:
+    def test_accepts_a_reasonable_password(self) -> None:
+        assert validate_password("una-clave-larga") == "una-clave-larga"
+
+    def test_rejects_a_short_password(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            validate_password("a" * (MIN_PASSWORD_LEN - 1))
+        assert "al menos" in str(exc_info.value)
+
+    def test_rejects_a_password_longer_than_the_cap(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            validate_password("a" * (MAX_PASSWORD_LEN + 1))
+        assert "superar" in str(exc_info.value)
+
+    def test_rejects_a_password_equal_to_the_username(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            validate_password("rdus-rdus-2026", "  RDUS-RDUS-2026  ")
+        assert str(exc_info.value) == "La contraseña no puede ser igual al usuario."
+
+    def test_rejects_an_all_digits_password(self) -> None:
+        with pytest.raises(DomainError) as exc_info:
+            validate_password("1234567890123")
+        assert str(exc_info.value) == "La contraseña no puede ser sólo números."
+
+    def test_rejects_a_non_string(self) -> None:
+        with pytest.raises(DomainError):
+            validate_password(None)

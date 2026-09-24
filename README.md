@@ -41,12 +41,25 @@ cp .env.example .env                              # opcional: ajustar puertos y 
 docker compose up --build -d                      # o: make up
 ```
 
-- App: **http://localhost:8080**
+Antes de levantar, **poné tu `SECRET_KEY` y tu credencial en el `.env`** (el `.env.example` trae
+todo el bloque comentado):
+
+```bash
+openssl rand -hex 32        # pegá el resultado en SECRET_KEY
+```
+
+`ADMIN_USERNAME` / `ADMIN_PASSWORD` son la credencial de arranque: crean el admin la primera vez
+que arranca la API, y **el primer ingreso obliga a cambiarla** por una que elijas (esa es la que
+queda guardada en la base). Si ya existe un admin, esas variables se ignoran. Con
+`APP_ENV=production` la API **no arranca** si `SECRET_KEY` falta o es débil.
+
+- App: **http://localhost:8080** (pide usuario y contraseña)
 - Documentación interactiva de la API (Swagger): **http://localhost:8000/api/docs** (se puede
   apagar con `DOCS_ENABLED=false`; por defecto está activa)
 
-Al arrancar, el contenedor `api` espera a Postgres, aplica las migraciones y —si la base
-no tiene movimientos ni presupuestos y `SEED_ON_START=true`— carga un **mes de ejemplo**
+Al arrancar, el contenedor `api` espera a Postgres, aplica las migraciones, **crea la credencial
+del admin si todavía no existe** y —si la base no tiene movimientos ni presupuestos y
+`SEED_ON_START=true`— carga un **mes de ejemplo**
 con movimientos repartidos en las 10 categorías de gasto (incluido uno cargado en bolívares a una
 tasa), 6 meses de historial, 10 presupuestos y **3 carteras** (dos con deuda: `Binance` y
 `Cartera USD normal`, con un pago de deuda de ejemplo), para que todos los gráficos y paneles
@@ -57,6 +70,7 @@ make help          # lista todos los atajos
 make logs          # seguir los logs
 make down          # bajar (conserva los datos)
 make seed          # re-sembrar el ejemplo (¡borra tus movimientos!)
+make admin-reset   # restablecer la contraseña del admin (usa ADMIN_PASSWORD del .env)
 make clean         # bajar y borrar el volumen de datos
 ```
 
@@ -87,6 +101,10 @@ make clean         # bajar y borrar el volumen de datos
 - **Categorías**: 10 de gasto (supermercado, comidas afuera, transporte, alquiler y servicios,
   salud, suscripciones, ropa, ocio, ahorro, otros) y 4 de ingreso (sueldo, freelance,
   inversiones, otros).
+- **Login y panel de administración** (arriba a la derecha, botón **Admin**): cambiar tu
+  contraseña y ver/cerrar las **sesiones activas** (dispositivo, IP, último uso y vencimiento),
+  incluida la de este navegador. Cerrar una sesión corta ese dispositivo al instante; el botón
+  **Salir** del membrete termina la sesión actual.
 
 ## Cómo está organizado
 
@@ -128,7 +146,10 @@ cd backend
 python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 export DATABASE_URL=postgresql+psycopg://financirdus:financirdus@localhost:5432/financirdus
-alembic upgrade head && python -m app.seed    # migrar y sembrar el ejemplo
+# Sin esto, con APP_ENV=production la app no arranca (SECRET_KEY es obligatoria):
+export SECRET_KEY="$(openssl rand -hex 32)"
+export ADMIN_USERNAME=rdus ADMIN_PASSWORD='una-clave-larga-y-propia'
+alembic upgrade head && python -m app.auth_seed && python -m app.seed   # migrar, admin, ejemplo
 uvicorn app.main:app --reload                 # API en :8000
 
 cd ../frontend
@@ -142,37 +163,57 @@ pnpm run dev                                  # SPA en :5173 con proxy a /api
 make test              # backend + frontend
 make test-backend      # pytest (en un contenedor descartable)
 make test-frontend     # vitest + tsc
-make test-integration  # contrato completo contra el stack levantado (148 checks; re-siembra solo)
+make test-integration  # contrato completo contra el stack levantado (248 checks; re-siembra solo)
 make lint              # ruff + eslint
 ```
 
 - **Backend**: unitarios de la lógica pura (aritmética de meses, bisiestos, promedios,
   umbrales del 80%/100%, shares) y de API completos con `TestClient` y SQLite en memoria:
-  CRUD, validaciones, presupuestos, stats, export/import (merge, replace, inválidos y
+  autenticación (login, bloqueo por intentos, sesiones, cambio de contraseña, CSRF), CRUD,
+  validaciones, presupuestos, stats, export/import (merge, replace, inválidos y
   límites). Hay además un test marcado `postgres` para correr contra la base real:
   `TEST_DATABASE_URL=... pytest -m postgres`.
 - **Frontend**: `vitest` sobre la matemática de dinero/meses/gráficos y tests de render e
   interacción (formulario, edición, borrado, presupuestos, navegación de mes, estados de
   comparación y de error) contra un servidor falso.
 - **Integración (contrato completo)**: [`tests/integration/api_smoke.py`](tests/integration/api_smoke.py)
-  pega contra el stack real (API + nginx) y verifica el contrato completo, los límites, el
-  proxy, las cabeceras de seguridad y CORS. Es destructivo (usa import `replace`), por eso
-  `make test-integration` re-siembra el ejemplo al terminar.
+  pega contra el stack real (API + nginx) y verifica autenticación (login, cookie, sesiones,
+  logout, CSRF), el contrato completo, los límites, el proxy, las cabeceras de seguridad y CORS.
+  Se autentica con la `ADMIN_USERNAME`/`ADMIN_PASSWORD` de tu entorno o de tu `.env`. Es
+  destructivo (usa import `replace`), por eso `make test-integration` re-siembra el ejemplo al
+  terminar.
 
 ## Seguridad y alcance
 
-**Esta app no tiene autenticación: es de un solo usuario, a propósito.** Cualquiera que llegue
-al puerto del frontend puede leer, modificar y borrar tus finanzas. Por eso:
+**La app pide credencial: un solo usuario (el dueño) con una sola contraseña.** Todo el ledger
+queda detrás de la sesión; lo único abierto es `/api/health` (lo usan Docker y Railway) y el
+propio login.
+
+- La sesión es un **token opaco que vive en la base** (se guarda sólo su hash con pepper) y
+  viaja en una cookie `httpOnly`, `SameSite=Lax` y `Secure` cuando se sirve por HTTPS. Expira
+  por inactividad (30 días) y tiene un tope duro (60 días), y se puede cerrar a distancia desde
+  **Admin → Sesiones activas**.
+- La contraseña se hashea con `scrypt` (parámetros OWASP). El primer ingreso usa la credencial
+  de arranque (`ADMIN_USERNAME` / `ADMIN_PASSWORD`) y la app **obliga a cambiarla**; después
+  manda la contraseña guardada en la base. Reiniciar con otra `ADMIN_PASSWORD` no la pisa.
+- Fuerza bruta: `LOGIN_MAX_ATTEMPTS` intentos fallidos (5 por defecto) bloquean el login
+  `LOGIN_LOCKOUT_MINUTES` minutos (15). Las mutaciones con `Origin` ajeno se rechazan con `403`.
+- Con `APP_ENV=production` la API **no arranca** si `SECRET_KEY` falta, quedó vacía o es más
+  corta que 32 caracteres. Generala con `openssl rand -hex 32` y ponela en tu `.env`.
+- ¿Olvidaste la contraseña? `make admin-reset` (usa `ADMIN_PASSWORD` del `.env` y vuelve a
+  obligar el cambio en el próximo ingreso).
+
+Además:
 
 - Postgres **no** se publica al host (vive sólo en la red de Compose).
 - La API se publica únicamente en `127.0.0.1` (`API_BIND`), accesible desde tu máquina para
   ver Swagger. El navegador entra por `web`, que proxea `/api` en el mismo origen y se publica
   en `0.0.0.0` por defecto (`WEB_BIND`).
-- Si algún día querés usarla desde otra máquina de tu LAN, poné `API_BIND=0.0.0.0` sólo si
-  entendés el riesgo, o entrá por el puerto del frontend.
-- **No la expongas a Internet tal como está.** Si lo vas a hacer: TLS + un proxy delante,
-  un secreto por header, sacá `SEED_ON_START`, cambiá las credenciales por defecto y apagá
-  `/api/docs` (`DOCS_ENABLED=false`).
+- `SESSION_COOKIE_SECURE=false` es lo que hace funcionar la LAN por HTTP plano: con `true` el
+  navegador no manda la cookie. En Railway (HTTPS) va en `true`.
+- **No la expongas a Internet sin TLS.** Si lo vas a hacer: TLS + un proxy delante,
+  `SECRET_KEY` propia, `SESSION_COOKIE_SECURE=true`, credenciales propias, sacá
+  `SEED_ON_START` y apagá `/api/docs` (`DOCS_ENABLED=false`).
 
 El contenedor de la API corre como usuario sin privilegios (`appuser`), nginx corre sin
 privilegios (uid 101) y el SPA se sirve con CSP, `X-Frame-Options: DENY`, `nosniff`,
@@ -184,14 +225,16 @@ tope de 5 MB y 20.000 movimientos por archivo, y los montos están acotados al r
 ### Checklist de producción web: qué aplica y qué no
 
 Es una app personal, local y sin terceros, así que varias cosas del checklist de producción
-no aplican y lo dejamos explícito en vez de simularlas: **no hay cookies, ni analítica, ni
-tracking, ni fuentes o CDNs externos**, por lo que no corresponde banner de consentimiento,
+no aplican y lo dejamos explícito en vez de simularlas: **no hay analítica, ni tracking, ni
+fuentes o CDNs externos**, y la única cookie es la de sesión (la pone el propio backend, es
+`httpOnly` y no la lee ningún script). Por eso no corresponde banner de consentimiento,
 páginas legales, `sitemap.xml`, `robots.txt` ni Open Graph (tampoco hay tráfico externo).
 Lo que sí se aplica y está hecho: `lang="es"`, título y meta description, favicon SVG inline,
 imágenes/íconos sin requests externos (no hay imágenes de contenido), contraste AA, navegación
 por teclado, foco visible, `prefers-reduced-motion`, estados de carga/error/vacío con reintento
 en todas las vistas, validación de formularios con `aria-invalid`/`aria-describedby`, y
 cabeceras de seguridad en el HTML.
+
 
 ## Limitaciones conocidas
 

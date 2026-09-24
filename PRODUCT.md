@@ -11,7 +11,8 @@ web
 Una sola persona: el dueño de la app, que registra sus finanzas personales. La usa
 **principalmente desde el celular, en el momento** en que ocurre el gasto o el ingreso, y
 también la revisa desde la computadora para entender cómo viene el mes. No hay otros roles,
-invitados ni multiusuario: la app no tiene autenticación a propósito.
+invitados ni multiusuario: hay **una sola credencial** (la del dueño) y el resto de la app queda
+cerrado detrás de ella.
 
 ## Product Purpose
 
@@ -59,7 +60,8 @@ no un producto de mercado.
 - Export e import JSON (fusionar o reemplazar; transaccional; tope 5 MB / 20.000 movimientos).
 - Filtro por cartera y por categoría; navegación por mes.
 - Categorías vienen de la API (10 de gasto, 4 de ingreso), nunca hardcodeadas.
-- Restricciones fijas: un solo usuario sin login, PostgreSQL, React + TypeScript + Tailwind.
+- Restricciones fijas: un solo usuario con credencial propia (login único, sin registro ni
+  multirol), PostgreSQL, React + TypeScript + Tailwind.
   El backend no se toca en un rediseño de UI; el contrato de la API está congelado. (Las **líneas
   de detalle** en las facturas son una extensión deliberada posterior, aprobada por el dueño, no
   parte de un rediseño de UI: ver `docs/handoff-facturas-visual.md`.)
@@ -91,8 +93,8 @@ no un producto de mercado.
    cliente.
 3. **El mes es la unidad**: toda la navegación y la jerarquía giran alrededor de entender el mes
    actual.
-4. **Una sola persona, cero ceremonia**: sin login, sin onboarding, sin pasos de confirmación
-   innecesarios; pero nada destructivo sin confirmar.
+4. **Una sola persona, cero ceremonia**: un login y nada más (sin registro, sin onboarding, sin
+   pasos de confirmación innecesarios); pero nada destructivo sin confirmar.
 5. **La accesibilidad no se negocia**: teclado, foco visible, contraste AA y una sola región
    live son parte del producto, no un extra.
 

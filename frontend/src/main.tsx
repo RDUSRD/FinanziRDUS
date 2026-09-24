@@ -2,7 +2,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import './index.css';
-import { App } from './App';
+import { AuthGate } from './auth/AuthGate';
+import { AuthProvider } from './auth/AuthContext';
 import { LiveRegionProvider } from './components/LiveRegion';
 
 const queryClient = new QueryClient({
@@ -21,7 +22,10 @@ createRoot(rootElement).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
       <LiveRegionProvider>
-        <App />
+        {/* The session wraps everything: it decides between the login and the app. */}
+        <AuthProvider>
+          <AuthGate />
+        </AuthProvider>
       </LiveRegionProvider>
     </QueryClientProvider>
   </StrictMode>,

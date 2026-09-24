@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AdminWindow } from './components/AdminWindow';
 import { AppHeader } from './components/AppHeader';
 import { AccountsPanel } from './components/AccountsPanel';
 import { BarsChart } from './components/BarsChart';
@@ -14,6 +15,7 @@ import { Notice } from './components/Notice';
 import { ConfirmWindow } from './components/Window';
 import { SheetPin } from './components/SheetPin';
 import { useAnnounce } from './components/LiveRegion';
+import { useAuth } from './auth/AuthContext';
 import { api, readableError } from './api/client';
 import {
   useAccounts,
@@ -61,12 +63,14 @@ const MAX_IMPORT_BYTES = 5 * 1024 * 1024;
 
 export function App() {
   const announce = useAnnounce();
+  const { logout } = useAuth();
   const [month, setMonth] = useState(() => currentMonthKey());
   const [account, setAccount] = useState<AccountFilter>('all');
   const [filter, setFilter] = useState('all');
   const [editing, setEditing] = useState<Movement | null>(null);
   const [movementOpen, setMovementOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [adminOpen, setAdminOpen] = useState(false);
   const [banner, setBanner] = useState<Banner | null>(null);
   const [importing, setImporting] = useState(false);
   const [repaintKey, setRepaintKey] = useState(0);
@@ -345,6 +349,17 @@ export function App() {
     }
   }
 
+  /** End the session. A failed call keeps the user signed in, so a reload cannot
+   * silently restore a session the server never revoked. */
+  async function handleLogout() {
+    try {
+      await logout();
+    } catch (error) {
+      setBanner({ kind: 'error', text: readableError(error) });
+      announce(readableError(error));
+    }
+  }
+
   const budgetsBusy = setBudget.isPending || deleteBudget.isPending;
   const accountsBusy = createAccount.isPending || updateAccount.isPending || deleteAccount.isPending;
   const baseError = categoriesQuery.error ?? accountsQuery.error ?? null;
@@ -378,6 +393,13 @@ export function App() {
               setImportOpen(true);
             }}
             onNewMovement={() => openMovementWindow(null)}
+            onOpenAdmin={() => {
+              setBanner(null);
+              setAdminOpen(true);
+            }}
+            onLogout={() => {
+              void handleLogout();
+            }}
             accounts={accounts}
             account={account}
             onAccountChange={changeAccount}
@@ -575,6 +597,8 @@ export function App() {
         onError={announce}
         busy={importing}
       />
+
+      <AdminWindow open={adminOpen} onClose={() => setAdminOpen(false)} />
 
       {pendingConfirm?.kind === 'movement' && (
         <ConfirmWindow

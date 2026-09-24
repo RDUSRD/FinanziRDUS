@@ -14,8 +14,9 @@ from . import __version__
 from .config import get_settings
 from .db import get_db
 from .models import Category
-from .routers import accounts, budgets, data, movements, plan, stats
+from .routers import accounts, admin, auth, budgets, data, movements, plan, stats
 from .schemas import CategoryOut
+from .security import CsrfProtectionMiddleware, require_session
 
 
 def _configure_logging(level: str) -> None:
@@ -43,12 +44,23 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
-    application.include_router(movements.router)
-    application.include_router(accounts.router)
-    application.include_router(budgets.router)
-    application.include_router(stats.router)
-    application.include_router(plan.router)
-    application.include_router(data.router)
+    # Refuse cross-site mutating requests. The session travels in a cookie, so a
+    # browser request carrying a foreign Origin must never reach a handler.
+    application.add_middleware(CsrfProtectionMiddleware)
+
+    # Authentication is open (that is the door); the admin panel guards itself.
+    application.include_router(auth.router)
+    application.include_router(admin.router)
+
+    # Everything else needs a live session. Guarding at include time keeps the
+    # per-domain routers (and their tests) untouched.
+    protected = [Depends(require_session)]
+    application.include_router(movements.router, dependencies=protected)
+    application.include_router(accounts.router, dependencies=protected)
+    application.include_router(budgets.router, dependencies=protected)
+    application.include_router(stats.router, dependencies=protected)
+    application.include_router(plan.router, dependencies=protected)
+    application.include_router(data.router, dependencies=protected)
 
     @application.get("/api/health", tags=["health"])
     def health(db: Session = Depends(get_db)) -> JSONResponse:
@@ -64,7 +76,12 @@ def create_app() -> FastAPI:
             content={"status": "ok", "db": "ok", "version": __version__},
         )
 
-    @application.get("/api/categories", response_model=list[CategoryOut], tags=["catalog"])
+    @application.get(
+        "/api/categories",
+        response_model=list[CategoryOut],
+        tags=["catalog"],
+        dependencies=protected,
+    )
     def list_categories(db: Session = Depends(get_db)) -> list[Category]:
         stmt = select(Category).order_by(Category.type, Category.sort_order, Category.id)
         return list(db.execute(stmt).scalars().all())

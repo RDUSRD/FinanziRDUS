@@ -14,6 +14,10 @@ interface AppHeaderProps {
   onExport: () => void;
   onImport: () => void;
   onNewMovement: () => void;
+  /** Opens the admin panel (password and active sessions). */
+  onOpenAdmin: () => void;
+  /** Ends the session and returns to the login screen. */
+  onLogout: () => void;
   accounts: Account[];
   account: AccountFilter;
   onAccountChange: (value: AccountFilter) => void;
@@ -42,6 +46,8 @@ export function AppHeader({
   onExport,
   onImport,
   onNewMovement,
+  onOpenAdmin,
+  onLogout,
   accounts,
   account,
   onAccountChange,
@@ -136,6 +142,12 @@ export function AppHeader({
         </button>
         <button type="button" className="pbtn" onClick={onImport} disabled={busy}>
           Importar
+        </button>
+        <button type="button" className="pbtn" onClick={onOpenAdmin} disabled={busy}>
+          Admin
+        </button>
+        <button type="button" className="linkb" onClick={onLogout}>
+          Salir
         </button>
       </div>
     </header>

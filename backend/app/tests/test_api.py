@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.config import Settings, get_settings
+from app.config import INSECURE_DEFAULT_SECRET, MIN_SECRET_LEN, Settings, get_settings
 from app.db import get_db
 from app.domain import MAX_CENTS, account_balance, shift_month, total_debt_cents
 from app.main import create_app
@@ -1432,6 +1432,38 @@ def test_settings_defaults_build() -> None:
     settings = Settings()
     assert settings.app_env == "development"
     assert settings.docs_enabled is True
+
+
+@pytest.mark.parametrize(
+    "secret",
+    # Empty matters: docker compose passes the variable through as "" when it is
+    # not set in .env, and an empty pepper would protect nothing.
+    ["", "   ", INSECURE_DEFAULT_SECRET, "corta"],
+)
+def test_settings_reject_insecure_secret_in_production(secret: str) -> None:
+    with pytest.raises(ValidationError):
+        Settings(app_env="production", secret_key=secret)
+
+
+def test_settings_accept_a_proper_secret_in_production() -> None:
+    settings = Settings(app_env="production", secret_key="x" * MIN_SECRET_LEN)
+    assert settings.app_env == "production"
+    assert settings.session_cookie_secure is False
+
+
+@pytest.mark.parametrize(
+    "field",
+    [
+        "session_ttl_minutes",
+        "session_absolute_ttl_minutes",
+        "login_max_attempts",
+        "login_lockout_minutes",
+    ],
+)
+def test_settings_reject_non_positive_auth_knobs(field: str) -> None:
+    """A zero/negative knob would silently disable a control, so it fails at boot."""
+    with pytest.raises(ValidationError):
+        Settings(**{field: 0})
 
 
 def test_docs_disabled_returns_404(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -15,12 +15,14 @@ import type {
   Movement,
   PlanResponse,
   PutBudgetResponse,
+  SessionsResponse,
 } from './types';
 
 /** Centralised query keys. */
 export const queryKeys = {
   categories: ['categories'] as const,
   accounts: ['accounts'] as const,
+  sessions: ['sessions'] as const,
   movements: (month: string, account: AccountFilter) => ['movements', month, account] as const,
   budgets: (month: string) => ['budgets', month] as const,
   plan: (month: string) => ['plan', month] as const,
@@ -179,3 +181,36 @@ export function useImportData() {
     onSuccess: () => invalidateDerived(client),
   });
 }
+
+/**
+ * The administrator's live sessions. Only read while the admin panel is open,
+ * so the ledger never pays for it.
+ */
+export function useSessions(enabled: boolean) {
+  return useQuery<SessionsResponse>({
+    queryKey: queryKeys.sessions,
+    queryFn: () => api.admin.sessions(),
+    enabled,
+  });
+}
+
+export function useRevokeSession() {
+  const client = useQueryClient();
+  return useMutation<void, Error, number>({
+    mutationFn: (id) => api.admin.revokeSession(id),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.sessions });
+    },
+  });
+}
+
+export function useRevokeAllSessions() {
+  const client = useQueryClient();
+  return useMutation<void, Error, void>({
+    mutationFn: () => api.admin.revokeAllSessions(),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.sessions });
+    },
+  });
+}
+

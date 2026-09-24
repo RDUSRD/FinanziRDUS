@@ -3,9 +3,11 @@
 # Container entrypoint for the FinanciRDUS API.
 #   1. Wait for the database (retry with timeout).
 #   2. Apply Alembic migrations (alembic upgrade head).
-#   3. Run the seed module, which decides idempotently based on Settings.seed_on_start
+#   3. Create the administrator credential from the environment if there is none yet
+#      (idempotent; never overwrites an existing password).
+#   4. Run the seed module, which decides idempotently based on Settings.seed_on_start
 #      (SEED_ON_START); with SEED_ON_START=false it skips and exits 0.
-#   4. Start Uvicorn on 0.0.0.0:8000.
+#   5. Start Uvicorn on 0.0.0.0:8000.
 #
 set -euo pipefail
 
@@ -42,6 +44,9 @@ PY
 
 echo "[entrypoint] Applying database migrations..."
 alembic upgrade head
+
+echo "[entrypoint] Bootstrapping the administrator credential (idempotent)..."
+python -m app.auth_seed
 
 echo "[entrypoint] Running seed (idempotent; gated by SEED_ON_START)..."
 python -m app.seed

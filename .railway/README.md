@@ -42,3 +42,19 @@ Railway **no** lee este archivo durante los deploys: se aplica cuando se corre
   el dialecto `+psycopg` que necesita la app.
 - Las variables nuevas se declaran en el `env` del servicio; los secretos que no
   deban vivir en el repo van con `preserve()`.
+- **Autenticación.** Antes de aplicar hay que cargar una vez los tres secretos en el
+  servicio `api` (van con `preserve()`, así que `apply` no los escribe ni los borra):
+
+  ```bash
+  railway variables --service api --set SECRET_KEY="$(openssl rand -hex 32)"
+  railway variables --service api --set ADMIN_USERNAME=rdus
+  railway variables --service api --set ADMIN_PASSWORD='<clave larga y única>'
+  ```
+
+  Con `APP_ENV=production` la API **no arranca** si `SECRET_KEY` falta o quedó en el
+  valor por defecto. `ADMIN_USERNAME`/`ADMIN_PASSWORD` sólo se usan para crear el
+  admin la primera vez; después la contraseña vive en la base y se cambia desde la
+  app (el primer ingreso la obliga a cambiar), y reiniciar con otra `ADMIN_PASSWORD`
+  no la pisa. Para recuperar el acceso: `python -m app.auth_seed --reset-password`
+  dentro del contenedor.
+

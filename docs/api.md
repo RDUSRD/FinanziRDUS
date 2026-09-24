@@ -5,6 +5,9 @@ Base: `/api`. JSON en `snake_case`. **Todo el dinero en centavos enteros**
 meses `YYYY-MM`. Porcentajes como fracción `0..1` en `share`/`pct` (el redondeo es
 responsabilidad del frontend).
 
+**La API está cerrada**: salvo `GET /api/health` y `/api/auth/*`, todo endpoint necesita la
+cookie de sesión (ver [Autenticación](#autenticación)).
+
 **Moneda canónica: USD.** `amount_cents` es siempre centavos de dólar. Un movimiento se
 puede *cargar* en bolívares: se envían `entry_currency: "VES"`, `entry_amount_cents` (monto
 en Bs, en céntimos) y `rate_micros` (Bs por 1 USD × 1_000_000), y el backend calcula el
@@ -26,6 +29,9 @@ apagar con `DOCS_ENABLED=false` (por defecto `true`); con `false`, ambos respond
   Errores de reglas de negocio de la API (categoría inexistente, tipo que no coincide,
   fecha inválida, import inválido) → `422` con `detail` como **string** legible.
 - `404` si el recurso no existe.
+- `401` sin sesión válida (cookie ausente, sesión vencida o revocada); `403` en una mutación que
+  llega con un `Origin` ajeno; `429` con `Retry-After` cuando el login está bloqueado por
+  intentos fallidos.
 - `204` sin cuerpo en los DELETE.
 - Parámetros de mes inválidos → `422`, nunca `500`: si `month` (o `end` en `/api/stats/monthly`)
   no es un `YYYY-MM` válido o cae fuera de `0001-01 .. 9999-12`, la respuesta es
@@ -41,6 +47,36 @@ apagar con `DOCS_ENABLED=false` (por defecto `true`); con `false`, ambos respond
   - El borde superior ya era `422`: `9999-12` no tiene mes siguiente, así que `month_bounds`
     lo rechaza.
 - Listados: sin paginación (el volumen es personal), siempre ordenados de forma determinista.
+
+## Autenticación
+
+La app es de un solo usuario y **todo** el ledger queda detrás de la sesión: los únicos endpoints
+abiertos son `GET /api/health` (lo usan Docker y Railway) y los de `/api/auth`. Cualquier otro
+responde `401` sin una cookie válida.
+
+La sesión es un **token opaco** que viaja en la cookie `financirdus_session` (`httpOnly`,
+`SameSite=Lax`, `Secure` cuando `SESSION_COOKIE_SECURE=true`, `Path=/`). La base guarda sólo su
+hash, expira por inactividad (`SESSION_TTL_MINUTES`, 30 días) con un tope duro
+(`SESSION_ABSOLUTE_TTL_MINUTES`, 60 días) y se puede revocar desde el panel.
+
+| Método | Ruta | Sesión | Qué hace |
+|---|---|---|---|
+| POST | `/api/auth/login` | no | Body `{"username":"...","password":"..."}`. `200` → `{"username","must_change_password","expires_at"}` + `Set-Cookie`. `401` → `{"detail":"Usuario o contraseña incorrectos."}` (**el mismo** para usuario inexistente y contraseña equivocada). `429` con `Retry-After` si esa cuenta acumuló demasiados fallos recientes (`LOGIN_MAX_ATTEMPTS` / `LOGIN_LOCKOUT_MINUTES`); un login exitoso limpia los fallos de la cuenta |
+| POST | `/api/auth/logout` | no | `204` y borra la cookie. Idempotente: revoca la sesión si la cookie es válida y nunca falla |
+| GET | `/api/auth/me` | sí | `200` → `{"username","must_change_password","session":{...}}`; `401` sin sesión válida. Es lo que consulta el frontend para decidir si muestra el login |
+| POST | `/api/auth/password` | sí | Body `{"current_password","new_password"}`. `204` al cambiarla; `401` si la actual no coincide; `422` si la nueva no cumple la política (mínimo 10 caracteres, distinta del usuario, no sólo números). Cierra **todas las demás** sesiones |
+| GET | `/api/admin/sessions` | sí | `200` → `{"items":[{"id","created_at","last_seen_at","expires_at","ip","user_agent","is_current"}]}`. Sólo las vivas, la última usada primero, con `is_current` marcando la de esta petición |
+| DELETE | `/api/admin/sessions/{id}` | sí | `204` cierra esa sesión (si es la actual, además borra la cookie); `404` si no existe |
+| POST | `/api/admin/sessions/revoke-all` | sí | `204` cierra todas, la actual incluida |
+
+**Desde un script**: no hay token de API en esta versión. Se hace login, se guarda la cookie
+(`curl -c cookies.txt` / `-b cookies.txt`) y se usa. Es la misma sesión que aparece en el panel,
+así que se puede cerrar a distancia desde ahí.
+
+**CSRF y CORS.** Las mutaciones (`POST`/`PUT`/`PATCH`/`DELETE`) que lleguen con
+`Sec-Fetch-Site: cross-site` o con un `Origin` ajeno responden `403`
+`{"detail":"Origen no permitido."}`. Las peticiones sin cabeceras de origen (curl, scripts de
+servidor) se aceptan: no pueden arrastrar la cookie de nadie.
 
 ## Endpoints
 
@@ -247,7 +283,7 @@ tienen notas ≤ 140, así que el round-trip export → import sigue funcionando
 
 ## Límites (defensa contra payloads absurdos)
 
-La app es personal y no tiene autenticación, así que la API se defiende de entradas
+La app es personal y de un solo usuario, así que la API se defiende de entradas
 desproporcionadas con límites explícitos y errores claros:
 
 | Límite | Valor | Respuesta |

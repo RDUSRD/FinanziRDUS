@@ -17,13 +17,15 @@ services:
       - ./backend:/app
     # El entrypoint de la imagen termina en un `uvicorn` sin recarga. Como `db` ya está
     # sana cuando este servicio arranca (depends_on + healthcheck), acá se repiten sólo
-    # los dos pasos que hacen falta — migrar y sembrar (el seed es idempotente) — y se
-    # levanta Uvicorn mirando el código montado.
+    # los tres pasos que hacen falta — migrar, crear la credencial del admin si no existe
+    # y sembrar (los dos últimos son idempotentes) — y se levanta Uvicorn mirando el código
+    # montado.
     command:
       - sh
       - -c
       - >-
         alembic upgrade head
+        && python -m app.auth_seed
         && python -m app.seed
         && exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 

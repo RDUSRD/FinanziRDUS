@@ -21,11 +21,40 @@ from alembic import command
 from app.config import get_settings
 from app.db import get_db
 from app.main import create_app
+from app.models import AdminUser
+from app.security import hash_password
 
 pytestmark = pytest.mark.postgres
 
 TEST_DATABASE_URL = os.environ.get("TEST_DATABASE_URL")
 ALEMBIC_INI = Path(__file__).resolve().parents[2] / "alembic.ini"
+
+# The administrator this test signs in as (the migration creates the tables; the
+# credential itself is the bootstrap's job, so here it is written directly).
+PG_ADMIN_USERNAME = "admin"
+PG_ADMIN_PASSWORD = "clave-de-postgres-2026"
+
+
+def _create_admin(factory: sessionmaker) -> None:
+    with factory() as session:
+        session.add(
+            AdminUser(
+                username=PG_ADMIN_USERNAME,
+                password_hash=hash_password(PG_ADMIN_PASSWORD),
+                must_change_password=False,
+            )
+        )
+        session.commit()
+
+
+def _sign_in(client: TestClient) -> None:
+    """Sign in through the real endpoint; the TestClient keeps the cookie."""
+    response = client.post(
+        "/api/auth/login",
+        json={"username": PG_ADMIN_USERNAME, "password": PG_ADMIN_PASSWORD},
+    )
+    assert response.status_code == 200, response.text
+
 
 
 @pytest.fixture(scope="module")
@@ -63,6 +92,8 @@ def migrated_app(pg_url: str):
 
     application.dependency_overrides[get_db] = override_get_db
     with TestClient(application) as client:
+        _create_admin(factory)
+        _sign_in(client)
         yield client
     application.dependency_overrides.clear()
     engine.dispose()

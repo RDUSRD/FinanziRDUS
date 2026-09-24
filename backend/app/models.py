@@ -3,6 +3,10 @@
 Tables: ``categories`` (fixed catalogue), ``movements``, ``budgets`` and the
 money-jars tables ``jars`` / ``jar_categories``. All money is stored as an
 integer number of cents (canonical USD cents for movements).
+
+Authentication lives in ``admin_users`` (the single administrator),
+``sessions`` (revocable server-side sessions) and ``login_attempts`` (the brute
+force throttle). See :mod:`app.security`.
 """
 
 from __future__ import annotations
@@ -260,3 +264,92 @@ class JarCategory(Base):
         ForeignKey("jars.id", ondelete="RESTRICT"),
         nullable=False,
     )
+
+
+class AdminUser(Base):
+    """The application's administrator (a personal app: a single credential).
+
+    ``must_change_password`` is set by the bootstrap and by a password reset, so
+    the first login can force the user to pick their own password.
+    """
+
+    __tablename__ = "admin_users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    password_hash: Mapped[str] = mapped_column(Text, nullable=False)
+    must_change_password: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    password_changed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        server_default=func.now(),
+        onupdate=func.now(),
+    )
+
+
+class AdminSession(Base):
+    """A server-side session: the cookie carries an opaque token, this row is the state.
+
+    Named ``AdminSession`` (table ``sessions``) so it never collides with
+    :class:`sqlalchemy.orm.Session`, which every router uses for the DB session.
+
+    Only the peppered hash of the token is stored, so a leak of this table never
+    hands out a usable session. ``expires_at`` slides forward with activity up to
+    ``absolute_expires_at``; ``revoked_at`` marks an explicit logout or a remote
+    close from the admin panel.
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    token_hash: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("admin_users.id", ondelete="CASCADE", name="fk_sessions_user"),
+        nullable=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    absolute_expires_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ip: Mapped[str | None] = mapped_column(Text, nullable=True)
+    user_agent: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    __table_args__ = (Index("ix_sessions_user_id", "user_id"),)
+
+
+class LoginAttempt(Base):
+    """One login try, successful or not: the brute-force throttle reads this.
+
+    Counted per username: the app has a single account, so throttling the account
+    is what protects it, and counting by IP as well would let a shared address
+    (NAT) lock the owner out of their own app.
+    """
+
+    __tablename__ = "login_attempts"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    username: Mapped[str] = mapped_column(Text, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    success: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+
+    __table_args__ = (Index("ix_login_attempts_username_created", "username", "created_at"),)

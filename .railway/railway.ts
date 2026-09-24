@@ -1,4 +1,4 @@
-import { defineRailway, github, postgres, project, service } from "railway/iac";
+import { defineRailway, github, postgres, preserve, project, service } from "railway/iac";
 
 const REPO = "RDUSRD/FinanziRDUS";
 const BRANCH = "master";
@@ -20,6 +20,16 @@ export default defineRailway(() => {
       SEED_ON_START: "false",
       DOCS_ENABLED: "false",
       LOG_LEVEL: "info",
+      // El front y la API se sirven por HTTPS en Railway, así que la cookie de
+      // sesión se manda sólo por HTTPS.
+      SESSION_COOKIE_SECURE: "true",
+      // Secretos que no viven en el repo: `preserve()` deja el valor ya cargado
+      // en Railway (definilos una vez con `railway variables`, o desde el
+      // dashboard, ANTES de aplicar). Con APP_ENV=production la API NO arranca
+      // si SECRET_KEY falta.
+      SECRET_KEY: preserve(),
+      ADMIN_USERNAME: preserve(),
+      ADMIN_PASSWORD: preserve(),
     },
   });
 

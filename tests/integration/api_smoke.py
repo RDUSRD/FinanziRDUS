@@ -1,15 +1,20 @@
 """Test de integración de FinanciRDUS contra el stack levantado.
 
 Verifica el contrato completo (docs/api.md) contra la API real y el SPA servido por nginx:
-health, categorías, CRUD de movimientos, presupuestos, stats, export/import (merge, replace,
-inválidos y límites), proxy, cabeceras de seguridad y CORS.
+autenticación (login, cookie de sesión, sesiones activas, logout), health, categorías, CRUD de
+movimientos, presupuestos, stats, export/import (merge, replace, inválidos y límites), proxy,
+cabeceras de seguridad y CORS.
+
+La API está cerrada: todo menos `/api/health` y el login pide la cookie de sesión, así que el
+test se autentica primero (ADMIN_USERNAME/ADMIN_PASSWORD del entorno, o de tu `.env`).
 
 OJO: es destructivo (los casos de import usan modo replace). Al terminar, re-sembrá el ejemplo:
 
     make test-integration      # corre el test y vuelve a sembrar
     python3 tests/integration/api_smoke.py   # a mano, con el stack ya levantado
 
-Variables opcionales: API_URL (default http://localhost:8000/api) y WEB_URL (default http://localhost:8080).
+Variables opcionales: API_URL (default http://localhost:8000/api), WEB_URL (default
+http://localhost:8080), ADMIN_USERNAME y ADMIN_PASSWORD.
 """
 
 import json
@@ -18,9 +23,43 @@ import urllib.request
 import urllib.error
 import re
 import sys
+from pathlib import Path
 
 API = os.environ.get("API_URL", "http://localhost:8000/api").rstrip("/")
 WEB = os.environ.get("WEB_URL", "http://localhost:8080").rstrip("/")
+
+
+def env_value(name, default=""):
+    """Read a variable from the environment, falling back to the repo's .env."""
+    value = os.environ.get(name)
+    if value:
+        return value
+    env_file = Path(__file__).resolve().parents[2] / ".env"
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, _, raw = line.partition("=")
+            if key.strip() == name:
+                return raw.strip().strip("'\"")
+    return default
+
+
+ADMIN_USERNAME = env_value("ADMIN_USERNAME", "admin")
+ADMIN_PASSWORD = env_value("ADMIN_PASSWORD")
+
+# The session cookie captured from the login, sent by every authenticated request.
+SESSION_COOKIE = "financirdus_session"
+session_cookie = ""
+
+if not ADMIN_PASSWORD:
+    print(
+        "ERROR: falta ADMIN_PASSWORD. Definilo en el entorno o en tu .env "
+        "(es la credencial de arranque que usa la API).",
+        file=sys.stderr,
+    )
+    sys.exit(2)
 
 passed, failures = 0, []
 def check(name, cond, extra=None):
@@ -28,9 +67,11 @@ def check(name, cond, extra=None):
     if cond: passed += 1
     else: failures.append(f"{name}" + (f" >>> {extra!r}" if extra is not None else ""))
 
-def req(method, url, body=None, headers=None):
+def req(method, url, body=None, headers=None, auth=True):
     data = None
     hdrs = dict(headers or {})
+    if auth and session_cookie:
+        hdrs["Cookie"] = session_cookie
     if body is not None:
         data = json.dumps(body).encode()
         hdrs["Content-Type"] = "application/json"
@@ -41,6 +82,7 @@ def req(method, url, body=None, headers=None):
             return resp.status, {k.lower(): v for k, v in resp.headers.items()}, raw
     except urllib.error.HTTPError as e:
         return e.code, {k.lower(): v for k, v in e.headers.items()}, e.read().decode()
+
 
 def j(raw):
     try: return json.loads(raw)
@@ -54,13 +96,64 @@ def shift_month(month_key, delta):
     total = year * 12 + (month - 1) + delta
     return f"{total // 12:04d}-{total % 12 + 1:02d}"
 
-# ---------------- health / categories ----------------
-st, _, raw = req("GET", f"{API}/health")
+# ---------------- health / autenticación ----------------
+st, _, raw = req("GET", f"{API}/health", auth=False)
 h = j(raw)
 check("health 200", st == 200, st)
 check("health shape", keys_of(h) == {"status", "db", "version"}, h)
 check("health ok", h and h.get("status") == "ok" and h.get("db") == "ok", h)
 
+# La API está cerrada: sin cookie no se ve nada (el health es la excepción).
+st, _, raw = req("GET", f"{API}/categories", auth=False)
+check("endpoint protegido sin sesión => 401", st == 401, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/data/export", auth=False)
+check("export sin sesión => 401", st == 401, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/admin/sessions", auth=False)
+check("panel de sesiones sin sesión => 401", st == 401, (st, raw[:120]))
+
+st, _, raw = req(
+    "POST",
+    f"{API}/auth/login",
+    {"username": ADMIN_USERNAME, "password": "contrasena-equivocada"},
+    auth=False,
+)
+check("login con contraseña incorrecta => 401", st == 401, (st, raw[:160]))
+check(
+    "login fallido con mensaje genérico (no revela el usuario)",
+    j(raw) == {"detail": "Usuario o contraseña incorrectos."},
+    raw[:160],
+)
+st, _, raw = req(
+    "POST",
+    f"{API}/auth/login",
+    {"username": "no-existe", "password": "contrasena-equivocada"},
+    auth=False,
+)
+check("login de usuario inexistente => 401 con el mismo mensaje", st == 401 and j(raw) == {"detail": "Usuario o contraseña incorrectos."}, (st, raw[:160]))
+
+st, hdr, raw = req(
+    "POST", f"{API}/auth/login", {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}, auth=False
+)
+login = j(raw)
+check("login 200", st == 200, (st, raw[:160]))
+check("login shape", keys_of(login) == {"username", "must_change_password", "expires_at"}, login)
+check("login devuelve el usuario", login and login["username"] == ADMIN_USERNAME, login)
+set_cookie = hdr.get("set-cookie", "")
+check("login setea la cookie de sesión", set_cookie.startswith(f"{SESSION_COOKIE}="), set_cookie)
+check(
+    "la cookie es httpOnly, SameSite=Lax y Path=/",
+    "httponly" in set_cookie.lower() and "samesite=lax" in set_cookie.lower() and "Path=/" in set_cookie,
+    set_cookie,
+)
+check("la cookie no es Secure en HTTP local (si no, el navegador no la manda)", "secure" not in set_cookie.lower(), set_cookie)
+session_cookie = set_cookie.split(";")[0]
+check("la cookie no viaja en el cuerpo de la respuesta", SESSION_COOKIE not in raw, raw[:120])
+
+st, _, raw = req("GET", f"{API}/auth/me")
+check("me 200 con la cookie", st == 200 and j(raw)["username"] == ADMIN_USERNAME, (st, raw[:160]))
+check("me marca la sesión actual", j(raw)["session"]["is_current"] is True, raw[:200])
+
+# ---------------- categories ----------------
 st, _, raw = req("GET", f"{API}/categories")
 cats = j(raw) or []
 check("categories 200 y 15 items", st == 200 and len(cats) == 15, len(cats))
@@ -308,7 +401,11 @@ check("PATCH reemplaza líneas y recalcula el total", st == 200 and j(raw)["amou
 st, _, raw = req("PATCH", f"{API}/movements/{iline['id']}", {"items":[]})
 check("PATCH limpia líneas y conserva el último total como monto manual", st == 200 and j(raw)["items"] == [] and j(raw)["amount_cents"] == 900, raw[:200])
 st, _, raw = req("POST", f"{API}/movements", {**items_new, "entry_currency":"VES", "rate_micros":40000000})
-check("POST VES con líneas => 422", st == 422, (st, raw[:160]))
+ves_lines = j(raw)
+check("POST VES con líneas es válido y convierte la suma una sola vez (Bs 500 @ 40 => $0,13)",
+      st == 201 and ves_lines["entry_currency"] == "VES" and ves_lines["entry_amount_cents"] == 500
+      and ves_lines["rate_micros"] == 40000000 and ves_lines["amount_cents"] == 13, (st, raw[:200]))
+req("DELETE", f"{API}/movements/{ves_lines['id']}")
 st, _, raw = req("POST", f"{API}/movements", {**items_new, "items":[{"description":"x","amount_cents":0}]})
 check("POST línea con precio 0 => 422", st == 422, (st, raw[:160]))
 st, _, raw = req("POST", f"{API}/movements", {**items_new, "items":[{"description":"   ","amount_cents":10}]})
@@ -374,7 +471,10 @@ check("import merge v2 preserva la entrada en Bs",
 
 # JSON inválido tiene que mandarse como texto crudo, no como JSON serializado
 def raw_post(url, text):
-    r = urllib.request.Request(url, data=text.encode(), method="POST", headers={"Content-Type":"application/json"})
+    headers = {"Content-Type": "application/json"}
+    if session_cookie:
+        headers["Cookie"] = session_cookie
+    r = urllib.request.Request(url, data=text.encode(), method="POST", headers=headers)
     try:
         with urllib.request.urlopen(r, timeout=20) as resp: return resp.status, resp.read().decode()
     except urllib.error.HTTPError as e: return e.code, e.read().decode()
@@ -438,15 +538,23 @@ check("CORS no permite orígenes ajenos", hdr.get("access-control-allow-origin")
 before_limits = len(j(req("GET", f"{API}/movements")[2]))
 limits_acc = j(req("GET", f"{API}/accounts")[2])["items"][0]["id"]
 
-def raw_declared_length(port, path, length):
+def raw_declared_length(base_url, path, length):
     """Manda solo los headers con un Content-Length grande y lee la respuesta temprana.
 
     Un cuerpo de 11 MB no se puede mandar con urllib: el servidor contesta y cierra antes
     (broken pipe), que es justo el comportamiento correcto. Asi se verifica el rechazo real.
+    La API está cerrada, así que la petición necesita la cookie de sesión: sin ella el
+    rechazo temprano llegaría después del 401, no del 413.
     """
     import socket
-    sock = socket.create_connection(("127.0.0.1", port), timeout=20)
-    head = (f"POST {path} HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\nContent-Type: application/json\r\n"
+    from urllib.parse import urlsplit
+    target = urlsplit(base_url)
+    host = target.hostname or "127.0.0.1"
+    port = target.port or 80
+    sock = socket.create_connection((host, port), timeout=20)
+    cookie_line = f"Cookie: {session_cookie}\r\n" if session_cookie else ""
+    head = (f"POST {path} HTTP/1.1\r\nHost: {host}:{port}\r\nContent-Type: application/json\r\n"
+            f"{cookie_line}"
             f"Content-Length: {length}\r\nConnection: close\r\n\r\n")
     sock.sendall(head.encode())
     data = b""
@@ -466,7 +574,7 @@ def raw_declared_length(port, path, length):
     sock.close()
     return int(head_text.split(b" ")[1]), rest.decode(errors="replace")
 
-st, raw = raw_declared_length(8000, "/api/data/import?mode=merge", 11 * 1024 * 1024)
+st, raw = raw_declared_length(API, "/api/data/import?mode=merge", 11 * 1024 * 1024)
 print("[info] rechazo temprano por Content-Length:", st, raw[:80].replace("\n", " "))
 body = j(raw)
 check("import con cuerpo > 5 MB => 413 (rechazo temprano por Content-Length)", st == 413, (st, raw[:120]))
@@ -502,8 +610,34 @@ check("tras el replace no sobreviven topes de otras categorias",
       all(i["cap_cents"] == 0 for i in items_after), [i["cap_cents"] for i in items_after])
 
 # nginx corta el cuerpo antes de llegar a la API (defensa en profundidad)
-st_proxy, proxy_body = raw_declared_length(8080, "/api/data/import?mode=merge", 7 * 1024 * 1024)
+st_proxy, proxy_body = raw_declared_length(WEB, "/api/data/import?mode=merge", 7 * 1024 * 1024)
 check("el proxy también corta el cuerpo gigante (413)", st_proxy == 413, (st_proxy, proxy_body[:80]))
+
+# ---------------- sesiones activas, CSRF y cierre ----------------
+st, _, raw = req("GET", f"{API}/admin/sessions")
+sessions = (j(raw) or {}).get("items", [])
+check("sesiones activas 200", st == 200, (st, raw[:160]))
+check("sesión item shape", all(set(s) == {"id","created_at","last_seen_at","expires_at","ip","user_agent","is_current"} for s in sessions), sessions)
+check("la sesión de este test es la única marcada como actual", [s["is_current"] for s in sessions].count(True) == 1, sessions)
+check("cada sesión vence después de haberse creado", all(s["expires_at"] > s["created_at"] for s in sessions), sessions)
+
+st, _, raw = req("DELETE", f"{API}/admin/sessions/99999999")
+check("cerrar una sesión inexistente => 404", st == 404, (st, raw[:120]))
+
+st, _, raw = req("POST", f"{API}/auth/logout", headers={"Origin": "http://evil.example"})
+check("CSRF: mutación con origen ajeno => 403 y mensaje", st == 403 and j(raw) == {"detail": "Origen no permitido."}, (st, raw[:120]))
+st, _, raw = req("POST", f"{API}/auth/logout", headers={"Sec-Fetch-Site": "cross-site"})
+check("CSRF: petición cross-site => 403", st == 403, (st, raw[:120]))
+st, _, raw = req("GET", f"{API}/categories")
+check("el intento cross-site no cerró la sesión", st == 200, (st, raw[:120]))
+
+st, hdr, raw = req("POST", f"{API}/auth/logout")
+check("logout 204", st == 204, st)
+check("logout borra la cookie", SESSION_COOKIE in hdr.get("set-cookie", ""), hdr.get("set-cookie"))
+check("la sesión revocada deja de servir (revocación en el servidor)", req("GET", f"{API}/categories")[0] == 401)
+
+st, _, raw = req("POST", f"{API}/auth/login", {"username": ADMIN_USERNAME, "password": ADMIN_PASSWORD}, auth=False)
+check("se puede volver a entrar después del logout", st == 200, (st, raw[:160]))
 
 print()
 print(f"{passed} passed, {len(failures)} failed")
